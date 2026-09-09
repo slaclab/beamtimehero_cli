@@ -88,8 +88,7 @@ tools depend on it without tracing imports by hand.
 If you add or change a published method, record the reference in that module's
 `CITATIONS` dict. The index collects those into a bibliography and lists the
 entries still marked `None` as attribution gaps; `docgen_science` prints the
-running count when it regenerates. Filling one in is a genuinely useful first
-contribution.
+running count when it regenerates.
 
 ## What to raise rather than edit
 
