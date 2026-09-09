@@ -10,6 +10,9 @@ real playground pod. Here we cover:
 """
 from __future__ import annotations
 
+import sys
+import types
+
 import pytest
 
 
@@ -77,9 +80,23 @@ def test_execute_readonly_sql_rejects_non_select():
 # Missing-config error messages
 # ---------------------------------------------------------------------------
 
+def test_missing_driver_raises_value_error(monkeypatch):
+    """A missing optional driver names the extra that installs it."""
+    from beamtimehero_cli.spec_data import postgres_backend as pb
+    # None in sys.modules makes `import psycopg2` raise ImportError, so this
+    # branch is reachable even where `[postgres]` is installed.
+    monkeypatch.setitem(sys.modules, "psycopg2", None)
+    with pytest.raises(ValueError, match="psycopg2 not installed"):
+        pb._connect()
+
+
 def test_missing_env_vars_raises_value_error(monkeypatch):
     """`_connect` should report missing env vars by name, not crash."""
     from beamtimehero_cli.spec_data import postgres_backend as pb
+    # psycopg2 lives in the `[postgres]` extra, which CI does not install.
+    # Stub it so the env-var check is what this test actually reaches,
+    # rather than the driver guard ahead of it.
+    monkeypatch.setitem(sys.modules, "psycopg2", types.ModuleType("psycopg2"))
     for k in ("DB_HOST", "DB_NAME", "DB_USER"):
         monkeypatch.delenv(k, raising=False)
     with pytest.raises(ValueError, match="env vars not set"):
