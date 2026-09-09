@@ -18,9 +18,12 @@ from __future__ import annotations
 import numpy as np
 from typing import Any
 
+from beamtimehero_cli.science.statistics.efficiency import _c4
 from beamtimehero_cli.science.statistics.policy import (
     DEFAULT_DRIFT_THRESHOLD_FRAC,
     DEFAULT_SEM_THRESHOLD_FRAC,
+    DEFAULT_TREND_P_VALUE,
+    DEFAULT_TREND_TOTAL_FRAC,
 )
 
 VALID_STATISTICS = {"max", "min", "mean", "median", "integral", "argmax", "argmin", "height"}
@@ -116,15 +119,56 @@ def extract_window_scalar(
     }
 
 
+def _trend_test(vals: np.ndarray) -> dict[str, Any]:
+    """Mann-Kendall / Theil-Sen monotone-trend test on a per-rep trace.
+
+    Answers the question the running-mean step cannot: is this series a
+    stationary set of repeats, or is it walking? Rank-based, so it does not
+    care whether the drift is linear, and a single wild rep cannot manufacture
+    a trend the way it can with a least-squares slope.
+
+    Returns tau, the two-sided p-value, the Theil-Sen slope per rep and the
+    implied total excursion across the series, both as fractions of |mean|.
+    """
+    n = vals.size
+    mean_abs = abs(float(np.mean(vals)))
+    scale = mean_abs if mean_abs > 1e-15 else 1.0
+    if n < 4:
+        # Below 4 points the rank test has no power worth reporting; saying
+        # "no trend" here would be a false all-clear, so say "unknown".
+        return {"trend_tau": None, "trend_p_value": None,
+                "trend_slope_frac_per_rep": None, "trend_total_frac": None,
+                "is_drifting": None}
+    from scipy import stats as _st
+    reps = np.arange(1, n + 1, dtype=float)
+    tau, p = _st.kendalltau(reps, vals)
+    slope = float(_st.theilslopes(vals, reps)[0])
+    total = abs(slope) * (n - 1) / scale
+    p_val = float(p) if np.isfinite(p) else 1.0
+    return {
+        "trend_tau": round(float(tau), 6) if np.isfinite(tau) else None,
+        "trend_p_value": round(p_val, 6),
+        "trend_slope_frac_per_rep": round(slope / scale, 8),
+        "trend_total_frac": round(total, 8),
+        "is_drifting": bool(p_val < DEFAULT_TREND_P_VALUE
+                            and total > DEFAULT_TREND_TOTAL_FRAC),
+    }
+
+
 def analyze_scalar_convergence(
     per_rep_values: list[float],
     sem_threshold_frac: float = DEFAULT_SEM_THRESHOLD_FRAC,
     drift_threshold_frac: float = DEFAULT_DRIFT_THRESHOLD_FRAC,
+    trend_p_value: float = DEFAULT_TREND_P_VALUE,
+    trend_total_frac: float = DEFAULT_TREND_TOTAL_FRAC,
 ) -> dict[str, Any]:
     """Decide whether a 1D per-rep scalar trace has converged.
 
-    Computes running mean, running SEM (std / sqrt(n)), and the rep-over-rep
-    drift in the running mean as fractions of the latest running mean.
+    Computes running mean, running SEM (std / [c4(n) * sqrt(n)]), and the
+    rep-over-rep drift in the running mean as fractions of the latest running
+    mean. The c4(n) divisor is the same small-sample debiasing the merge-level
+    curve in ``efficiency.analyze_scan_efficiency`` applies; see the comment on
+    the running-SEM computation below.
 
     Parameters
     ----------
@@ -135,19 +179,43 @@ def analyze_scalar_convergence(
         Tighten for publication-quality work where the feature drives a result.
     drift_threshold_frac : float, default 0.01
         Step-to-step drift in running mean (as fraction of latest mean) below
-        which the trace is considered stable.
+        which the trace is considered stable. Weak by construction — see the
+        warning on ``policy.DEFAULT_DRIFT_THRESHOLD_FRAC``. Kept as a cheap
+        early-outlier catch; ``trend_p_value`` is the real drift gate.
+    trend_p_value : float, default 0.05
+        Mann-Kendall two-sided p-value below which the trace is called
+        monotonically drifting. Needs n >= 4 to be evaluated at all.
+    trend_total_frac : float, default 0.01
+        Total Theil-Sen excursion across the series, as a fraction of the
+        mean, above which a significant trend is also called *material*.
+        Both conditions must hold for ``is_drifting``.
 
     Returns
     -------
     dict with:
         - n: int
         - running_mean: list[float]
-        - running_sem: list[float]
+        - running_sem: list[float] (std / [c4(n) * sqrt(n)]; 0.0 at n=1)
         - running_sem_frac: list[float] (sem / |running_mean|)
         - mean_step_frac: list[float] (step-to-step running-mean change / |latest|)
         - final_mean, final_sem, final_sem_frac, final_drift_frac
-        - verdict: "needs_more" | "marginal" | "converged"
+        - trend_tau, trend_p_value, trend_slope_frac_per_rep,
+          trend_total_frac, is_drifting: monotone-trend test over the whole
+          trace (None for n < 4, meaning "not enough reps to tell")
+        - sem_is_rising: bool — the running SEM grew over the last third of
+          the series. Cannot happen for repeats of the same measurement, so
+          it is treated as a hard veto on "converged" regardless of level.
+        - verdict: "needs_more" | "marginal" | "converged" | "drifting"
         - verdict_explanation: str
+
+    Notes
+    -----
+    A precision test alone cannot decide convergence. ``running_sem_frac``
+    falls as 1/sqrt(n) for as long as the reps are repeats, so it eventually
+    crosses any threshold — including on a sample that is being destroyed,
+    where it reports growing confidence in a moving number. Convergence needs
+    both conditions: the mean is precise, *and* the reps are samples of the
+    same thing. ``is_drifting`` and ``sem_is_rising`` supply the second.
     """
     vals = np.array(per_rep_values, dtype=float)
     n = vals.size
@@ -157,7 +225,20 @@ def analyze_scalar_convergence(
     running_mean = np.array([np.mean(vals[: i + 1]) for i in range(n)])
     # SEM defined for n>=2; report 0 for n=1 row
     running_std = np.array([np.std(vals[: i + 1], ddof=1) if i >= 1 else 0.0 for i in range(n)])
-    running_sem = running_std / np.sqrt(np.arange(1, n + 1))
+    # ddof=1 debiases the *variance*; its square root is still a biased
+    # estimate of sigma, low by c4(n) -- 20% at n=2, 8% at n=4, 2% at n=14.
+    # Left in, that bias understates the running standard error, and this one
+    # feeds a stopping decision: ``precise`` below fires as soon as
+    # final_sem_frac drops under the target, so an estimate that reads low
+    # signs off a feature whose true SEM has not reached it. Divide it out,
+    # exactly as the merge-level SEM does in efficiency.analyze_scan_efficiency
+    # -- the two numbers are quoted side by side and must mean the same thing.
+    # (c4 rises monotonically to 1, so this lifts early points slightly more
+    # than late ones and tilts the sem_is_rising comparison below by ~1%
+    # against its 25% threshold. Noted rather than corrected: it is an order
+    # of magnitude inside the tolerance.)
+    c4 = np.array([1.0] + [_c4(i + 1) for i in range(1, n)])
+    running_sem = running_std / (c4 * np.sqrt(np.arange(1, n + 1)))
 
     with np.errstate(divide="ignore", invalid="ignore"):
         running_sem_frac = np.where(
@@ -173,16 +254,56 @@ def analyze_scalar_convergence(
     final_sem_frac = float(running_sem_frac[-1])
     final_drift_frac = float(mean_step[-1])
 
+    trend = _trend_test(vals)
+    if trend["trend_p_value"] is not None:
+        trend["is_drifting"] = bool(trend["trend_p_value"] < trend_p_value
+                                    and trend["trend_total_frac"] > trend_total_frac)
+
+    # A running SEM that grows is self-contradictory for repeats of one
+    # measurement: sigma is being re-estimated upward faster than sqrt(n)
+    # shrinks it, which only happens when the later reps disagree with the
+    # earlier ones. Compare the last third against its minimum rather than
+    # just the last two points, so one noisy rep does not trip it.
+    sem_is_rising = False
+    if n >= 6:
+        tail = running_sem_frac[-max(2, n // 3):]
+        finite = tail[np.isfinite(tail)]
+        if finite.size >= 2 and finite.min() > 0:
+            sem_is_rising = bool(finite[-1] > 1.25 * finite.min())
+
+    precise = np.isfinite(final_sem_frac) and final_sem_frac < sem_threshold_frac
+    near = np.isfinite(final_sem_frac) and final_sem_frac < 2 * sem_threshold_frac
+
     if not np.isfinite(final_sem_frac):
         verdict = "needs_more"
         explanation = "Running mean is ~0; cannot compute fractional SEM."
-    elif final_sem_frac < sem_threshold_frac and final_drift_frac < drift_threshold_frac:
+    elif trend["is_drifting"] or sem_is_rising:
+        verdict = "drifting"
+        why = []
+        if trend["is_drifting"]:
+            why.append(
+                f"monotone trend over all {n} reps (Kendall tau={trend['trend_tau']:+.2f}, "
+                f"p={trend['trend_p_value']:.4f}, {trend['trend_total_frac']:.2%} total "
+                f"excursion at {trend['trend_slope_frac_per_rep']:+.3%}/rep)"
+            )
+        if sem_is_rising:
+            why.append("running SEM is rising, which repeats of one measurement cannot do")
+        explanation = (
+            f"Feature is not stationary: {' and '.join(why)}. "
+            f"SEM is {final_sem_frac:.3%} of mean, but averaging a moving target buys "
+            f"precision on the wrong number — investigate beam damage, spot drift or "
+            f"energy calibration before collecting more."
+        )
+    elif precise and final_drift_frac < drift_threshold_frac:
         verdict = "converged"
         explanation = (
-            f"SEM is {final_sem_frac:.3%} of mean (target <{sem_threshold_frac:.1%}) and "
-            f"running mean has stabilized (step {final_drift_frac:.3%} < {drift_threshold_frac:.1%})."
+            f"SEM is {final_sem_frac:.3%} of mean (target <{sem_threshold_frac:.1%}), "
+            f"running mean has stabilized (step {final_drift_frac:.3%} < "
+            f"{drift_threshold_frac:.1%}), and no monotone trend is detected"
+            + (f" (p={trend['trend_p_value']:.3f})." if trend["trend_p_value"] is not None
+               else f" (only {n} reps — too few to test for drift).")
         )
-    elif final_sem_frac < 2 * sem_threshold_frac and final_drift_frac < 2 * drift_threshold_frac:
+    elif near and final_drift_frac < 2 * drift_threshold_frac:
         verdict = "marginal"
         explanation = (
             f"SEM is {final_sem_frac:.3%} of mean and last step is {final_drift_frac:.3%} — "
@@ -208,6 +329,8 @@ def analyze_scalar_convergence(
         "final_sem": float(running_sem[-1]),
         "final_sem_frac": final_sem_frac if np.isfinite(final_sem_frac) else None,
         "final_drift_frac": final_drift_frac,
+        "sem_is_rising": sem_is_rising,
+        **trend,
         "verdict": verdict,
         "verdict_explanation": explanation,
     }

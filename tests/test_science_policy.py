@@ -135,6 +135,26 @@ def test_statistics_convergence_defaults():
     assert stats_policy.DEFAULT_MIN_RECOMMENDED_SCANS >= 2
 
 
+def test_statistics_trend_defaults():
+    """The stationarity half of the convergence decision.
+
+    Precision and stationarity are separate conditions and a precision test
+    alone passes a sample that is being destroyed — it just gets more
+    confident about a moving number. These two pin the second condition.
+    """
+    assert stats_policy.DEFAULT_TREND_P_VALUE == 0.05
+    assert stats_policy.DEFAULT_TREND_TOTAL_FRAC == 0.01
+    # Significance alone is not enough to block a merge: with enough reps the
+    # rank test resolves arbitrarily small trends, so a "so what" gate on the
+    # size of the excursion has to sit beside it.
+    assert 0.0 < stats_policy.DEFAULT_TREND_P_VALUE < 1.0
+    assert stats_policy.DEFAULT_TREND_TOTAL_FRAC > 0.0
+    # Same scale as the SEM target on purpose — a trend smaller than the noise
+    # floor the merge is being held to is not a trend worth stopping for.
+    assert (stats_policy.DEFAULT_TREND_TOTAL_FRAC
+            == stats_policy.DEFAULT_SEM_THRESHOLD_FRAC)
+
+
 # --------------------------------------------------------------------------
 # Wiring — the part that actually broke twice during review
 # --------------------------------------------------------------------------
@@ -176,11 +196,17 @@ def test_science_signatures_read_from_policy():
             is stats_policy.DEFAULT_EFFICIENCY_THRESHOLD)
     assert (_default_of(efficiency.analyze_scan_efficiency, "min_recommended_scans")
             is stats_policy.DEFAULT_MIN_RECOMMENDED_SCANS)
+    assert (_default_of(efficiency.analyze_scan_efficiency, "sem_threshold_frac")
+            is stats_policy.DEFAULT_SEM_THRESHOLD_FRAC)
     for fn in (features.analyze_scalar_convergence, features.analyze_feature_evolution):
         assert (_default_of(fn, "sem_threshold_frac")
                 is stats_policy.DEFAULT_SEM_THRESHOLD_FRAC)
         assert (_default_of(fn, "drift_threshold_frac")
                 is stats_policy.DEFAULT_DRIFT_THRESHOLD_FRAC)
+    assert (_default_of(features.analyze_scalar_convergence, "trend_p_value")
+            is stats_policy.DEFAULT_TREND_P_VALUE)
+    assert (_default_of(features.analyze_scalar_convergence, "trend_total_frac")
+            is stats_policy.DEFAULT_TREND_TOTAL_FRAC)
 
 
 def _schema(tool_name):

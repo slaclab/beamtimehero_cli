@@ -98,10 +98,10 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <h1>Science index — <span class="thin">every function, and what uses it</span></h1>
 <p class="lede">The scientific core of the toolbelt: what each function does, what it is called by, and what it cites. Generated from the source tree, so a new function appears here by existing. Regenerate with <code>python -m beamtimehero_cli.docgen_science</code>.</p>
 <div class="statstrip">
-<div class="stat"><b>116</b><span>functions</span></div>
+<div class="stat"><b>121</b><span>functions</span></div>
 <div class="stat"><b>92</b><span>public</span></div>
 <div class="stat"><b>34</b><span>modules</span></div>
-<div class="stat"><b>35</b><span>cited methods</span></div>
+<div class="stat"><b>37</b><span>cited methods</span></div>
 <div class="stat"><b>55</b><span>attribution gaps</span></div>
 <button id="themetoggle">&#9689; theme</button></div></header>
 <div class="therule"><blockquote>Everything under <code>science/</code> takes <b>numbers in</b> and returns <b>numbers out</b>. No file paths, no environment variables, no SPEC, no database, no argparse.</blockquote></div>
@@ -284,13 +284,28 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </details>
 <details class="dir" style="--c: var(--c-statistics)" open>
-<summary><span class="dname">science/statistics/</span><span class="chip" style="--c: var(--c-statistics)">3 modules</span><span class="count">5 fns</span></summary>
+<summary><span class="dname">science/statistics/</span><span class="chip" style="--c: var(--c-statistics)">3 modules</span><span class="count">9 fns</span></summary>
 <p class="note">Statistics over a stack of repeated scans — convergence, repetition efficiency, spot heterogeneity. Judges a set of reps rather than producing one spectrum.</p>
 <div class="modblock">
 <div class="modhead"><span class="mpath">statistics.efficiency</span><span class="mdoc">Comprehensive scan repetition efficiency analysis.</span></div>
 <div class="fn" data-hay="analyze_scan_efficiency statistics.efficiency comprehensive efficiency analysis for repeated scan data. spec-file analyze-efficiency spec-file analyze-per-spot">
-<span class="sig"><span class="fname">analyze_scan_efficiency</span>(scan_data, efficiency_threshold=..., min_recommended_scans=..., raw_counts_per_point=...)</span>
+<span class="sig"><span class="fname">analyze_scan_efficiency</span>(scan_data, efficiency_threshold=..., sem_threshold_frac=..., min_recommended_scans=..., raw_counts_per_point=...)</span>
 <p class="fdoc">Comprehensive efficiency analysis for repeated scan data.</p>
+<p class="users"><b>used by</b> spec-file analyze-efficiency, spec-file analyze-per-spot</p>
+</div>
+<div class="fn priv" data-hay="_c4 statistics.efficiency e[s]/sigma for a sample of size n drawn from a normal distribution. spec-file analyze-efficiency spec-file analyze-feature-evolution spec-file analyze-per-spot spec-file plot-feature-evolution">
+<span class="sig"><span class="fname">_c4</span>(n)</span>
+<p class="fdoc">E[s]/sigma for a sample of size n drawn from a normal distribution.</p>
+<p class="users"><b>used by</b> spec-file analyze-efficiency, spec-file analyze-feature-evolution, spec-file analyze-per-spot, spec-file plot-feature-evolution</p>
+</div>
+<div class="fn priv" data-hay="_pct_list statistics.efficiency percent-scaled list with nan rendered as none, so a rep count at which spec-file analyze-efficiency spec-file analyze-per-spot">
+<span class="sig"><span class="fname">_pct_list</span>(arr)</span>
+<p class="fdoc">Percent-scaled list with NaN rendered as None, so a rep count at which</p>
+<p class="users"><b>used by</b> spec-file analyze-efficiency, spec-file analyze-per-spot</p>
+</div>
+<div class="fn priv" data-hay="_plateau_onset statistics.efficiency first rep count at which the merge sem stops tracking counting statistics. spec-file analyze-efficiency spec-file analyze-per-spot">
+<span class="sig"><span class="fname">_plateau_onset</span>(cumulative_cv, floor_pct=..., margin=..., tol=...)</span>
+<p class="fdoc">First rep count at which the merge SEM stops tracking counting statistics.</p>
 <p class="users"><b>used by</b> spec-file analyze-efficiency, spec-file analyze-per-spot</p>
 </div>
 </div>
@@ -306,7 +321,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>used by</b> spec-file analyze-feature-evolution, spec-file plot-feature-evolution</p>
 </div>
 <div class="fn" data-hay="analyze_scalar_convergence statistics.features decide whether a 1d per-rep scalar trace has converged. spec-file analyze-feature-evolution spec-file plot-feature-evolution">
-<span class="sig"><span class="fname">analyze_scalar_convergence</span>(per_rep_values, sem_threshold_frac=..., drift_threshold_frac=...)</span>
+<span class="sig"><span class="fname">analyze_scalar_convergence</span>(per_rep_values, sem_threshold_frac=..., drift_threshold_frac=..., trend_p_value=..., trend_total_frac=...)</span>
 <p class="fdoc">Decide whether a 1D per-rep scalar trace has converged.</p>
 <p class="users"><b>used by</b> spec-file analyze-feature-evolution, spec-file plot-feature-evolution</p>
 </div>
@@ -320,11 +335,16 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="fdoc">One-way ANOVA F-stat across spots, on a windowed scan stack.</p>
 <p class="users"><b>used by</b> spec-file analyze-per-spot</p>
 </div>
+<div class="fn priv" data-hay="_trend_test statistics.features mann-kendall / theil-sen monotone-trend test on a per-rep trace. spec-file analyze-feature-evolution spec-file plot-feature-evolution">
+<span class="sig"><span class="fname">_trend_test</span>(vals)</span>
+<p class="fdoc">Mann-Kendall / Theil-Sen monotone-trend test on a per-rep trace.</p>
+<p class="users"><b>used by</b> spec-file analyze-feature-evolution, spec-file plot-feature-evolution</p>
+</div>
 </div>
 <div class="modblock">
 <div class="modhead"><span class="mpath">statistics.policy</span><span class="mdoc">Statistics policy — the convergence and repetition-efficiency thresholds.</span></div>
-<div class="fn const" data-hay="statistics.policy default_sem_threshold_frac default_drift_threshold_frac default_efficiency_threshold default_min_recommended_scans">
-<p class="users"><b>constants</b> <code>DEFAULT_SEM_THRESHOLD_FRAC</code>, <code>DEFAULT_DRIFT_THRESHOLD_FRAC</code>, <code>DEFAULT_EFFICIENCY_THRESHOLD</code>, <code>DEFAULT_MIN_RECOMMENDED_SCANS</code></p>
+<div class="fn const" data-hay="statistics.policy default_sem_threshold_frac default_drift_threshold_frac default_trend_p_value default_trend_total_frac default_efficiency_threshold default_min_recommended_scans">
+<p class="users"><b>constants</b> <code>DEFAULT_SEM_THRESHOLD_FRAC</code>, <code>DEFAULT_DRIFT_THRESHOLD_FRAC</code>, <code>DEFAULT_TREND_P_VALUE</code>, <code>DEFAULT_TREND_TOTAL_FRAC</code>, <code>DEFAULT_EFFICIENCY_THRESHOLD</code>, <code>DEFAULT_MIN_RECOMMENDED_SCANS</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
 </div>
 </div>
@@ -786,7 +806,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </details>
 <details class="dir" style="--c: var(--c-plots)" open>
-<summary><span class="dname">science/plots/</span><span class="chip" style="--c: var(--c-plots)">4 modules</span><span class="count">16 fns</span></summary>
+<summary><span class="dname">science/plots/</span><span class="chip" style="--c: var(--c-plots)">4 modules</span><span class="count">17 fns</span></summary>
 <p class="note">Figures over arrays and descriptor dicts. A figure that takes a file name belongs in spec_data/ instead.</p>
 <div class="modblock">
 <div class="modhead"><span class="mpath">plots.exafs</span><span class="mdoc">Figures for the EXAFS pipeline (k- and R-space).</span></div>
@@ -817,9 +837,14 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="fdoc">Render one scan&#x27;s DataFrame to a matplotlib Figure.</p>
 <p class="users"><b>used by</b> s3df plot-scan, spec-file plot-scan</p>
 </div>
-<div class="fn" data-hay="plot_statistics_trend plots.scan render a two-subplot statistics trend from pre-computed convergence stats.">
-<span class="sig"><span class="fname">plot_statistics_trend</span>(stats, sample_name=...)</span>
-<p class="fdoc">Render a two-subplot statistics trend from pre-computed convergence stats.</p>
+<div class="fn" data-hay="plot_statistics_trend plots.scan render the merge-convergence trend: one panel, one decision.">
+<span class="sig"><span class="fname">plot_statistics_trend</span>(stats, sample_name=..., figsize=..., title=...)</span>
+<p class="fdoc">Render the merge-convergence trend: one panel, one decision.</p>
+<p class="users"><span class="none">not reached from any catalog tool</span></p>
+</div>
+<div class="fn priv" data-hay="_trend_summary plots.scan the text an agent reads instead of looking at the panel.">
+<span class="sig"><span class="fname">_trend_summary</span>(stats, sem, valid, floor_arr, threshold, sample_name=...)</span>
+<p class="fdoc">The text an agent reads instead of looking at the panel.</p>
 <p class="users"><span class="none">not reached from any catalog tool</span></p>
 </div>
 </div>
@@ -886,6 +911,8 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <tr><td>Cosine-similarity convergence component</td><td>Delegates to science.fitting.similarity.analyze_scan_quality.</td><td class="mono">statistics.efficiency</td></tr>
 <tr><td>Poisson-limit comparison (counting-statistics floor)</td><td>Compares the observed scan-to-scan scatter with the sqrt(N) counting-statistics floor; scatter at the floor means further reps buy only sqrt(N) improvement.</td><td class="mono">statistics.efficiency</td></tr>
 <tr><td>Heterogeneity F-statistic across sample spots</td><td>One-way ANOVA F-test: between-spot variance over within-spot variance, on the per-rep window scalar.</td><td class="mono">statistics.features</td></tr>
+<tr><td>Mann-Kendall trend test for rep-series stationarity</td><td>Mann, H.B. (1945) Econometrica 13, 245; Kendall, M.G. (1948) Rank Correlation Methods. Rank-based monotone-trend test, used here to separate &#x27;precise&#x27; from &#x27;stationary&#x27; when deciding convergence.</td><td class="mono">statistics.policy</td></tr>
+<tr><td>Theil-Sen slope for per-rep drift rate</td><td>Theil, H. (1950) Proc. K. Ned. Akad. Wet. 53, 386; Sen, P.K. (1968) J. Am. Stat. Assoc. 63, 1379. Median-of-pairwise-slopes estimator, chosen over least squares for resistance to single outlying reps.</td><td class="mono">statistics.policy</td></tr>
 <tr><td>5d L3 white-line trend</td><td>L3 white-line area tracks unoccupied d-DOS / d-hole count (standard 5d practice, e.g. Pt/Ir XANES literature); higher oxidation -&gt; higher white-line energy and intensity.</td><td class="mono">tables.edge_shifts</td></tr>
 <tr><td>Ce L3 final-state doublet</td><td>Standard Ce L3 XANES final-state analysis (e.g. Bianconi et al. PRB 35, 806 (1987); applied in HERFD in Inorg. Chem. 2021 lanthanide L3 studies).</td><td class="mono">tables.edge_shifts</td></tr>
 <tr><td>Core-hole widths</td><td>xraydb core_width (Krause &amp; Oliver 1979 / Keski-Rahkonen &amp; Krause 1974 compilations)</td><td class="mono">tables.edge_shifts</td></tr>

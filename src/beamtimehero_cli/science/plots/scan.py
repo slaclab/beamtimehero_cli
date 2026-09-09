@@ -93,84 +93,193 @@ def render_scan(
     return fig, summary
 
 
-def plot_statistics_trend(stats, sample_name=""):
-    """Render a two-subplot statistics trend from pre-computed convergence stats.
+def plot_statistics_trend(stats, sample_name="", figsize=(10, 5.4), title=None):
+    """Render the merge-convergence trend: one panel, one decision.
+
+    Plots the fractional standard error of the merge of the first n reps
+    against the *absolute* counting-statistics floor for the counts that were
+    actually recorded, plus the science threshold. Three marks make the
+    stopping decision readable at a glance: where the target was met, where
+    the curve left the floor, and whether the feature is drifting.
+
+    .. note::
+
+       The reference curve is the floor from the recorded counts
+       (``cumulative_floor_pct``), not a 1/sqrt(n) line anchored on a point of
+       the data. An earlier version anchored on the rep-1 value, which
+       ``analyze_scan_efficiency`` filled with the standard deviation of the
+       *whole* stack — so the guide inherited a baseline inflated by every
+       later systematic, and any series with a mid-run step appeared to beat
+       counting statistics for its first few reps. Nothing does. When no
+       counts are available the fallback is a least-squares 1/sqrt(n) fit to
+       all the points, labelled as a fit rather than a floor, so it cannot be
+       read as a limit either.
 
     Parameters
     ----------
     stats : dict
-        convergence_stats dict stored per-sample in the plan JSON. Expected
-        keys: feature_window_eV, cumulative_cv_pct, running_sem_frac,
-        efficiency_verdict, feature_verdict, statistic.
+        convergence_stats dict stored per-sample in the plan JSON. Uses
+        ``cumulative_sem_pct`` (or the ``cumulative_cv_pct`` alias),
+        ``cumulative_floor_pct``, ``sem_threshold_pct``/``sem_threshold_frac``,
+        ``target_reached_at_rep``, ``plateau_from_rep``, ``limited_by``,
+        ``reps_to_target``, ``feature_window_eV``, and — when the feature
+        analysis ran — ``is_drifting`` / ``sem_is_rising`` for the drift
+        banner.
     sample_name : str
         Sample name for the plot title.
+    title : str, optional
+        Replaces the whole generated title. The default title names the
+        sample, the window and the verdict, which is what the dashboard wants
+        beside the other per-sample panels; a caller placing this figure
+        somewhere that already supplies that context passes its own.
+    figsize : tuple, default (10, 5.4)
+        Figure size in inches. Every font size on the panel is a multiple of
+        ``rcParams["font.size"]``, so a caller rendering for print sets that
+        and the figure size together and the whole panel scales — rather than
+        shrinking a dashboard-sized figure and getting unreadable axes.
 
     Returns
     -------
     (fig, summary_text) or (None, error_text)
     """
-    cv_pct = stats.get("cumulative_cv_pct")
-    sem_frac = stats.get("running_sem_frac")
-    if not cv_pct or not sem_frac:
-        return None, "convergence_stats missing cumulative_cv_pct or running_sem_frac"
+    sem_pct = stats.get("cumulative_sem_pct") or stats.get("cumulative_cv_pct")
+    if not sem_pct:
+        return None, "convergence_stats missing cumulative_sem_pct (or cumulative_cv_pct)"
 
-    n = len(cv_pct)
+    sem = np.array([np.nan if v is None else float(v) for v in sem_pct], dtype=float)
+    n = sem.size
     reps = np.arange(1, n + 1)
-    cv_arr = np.array(cv_pct, dtype=float)
-    sem_arr = np.array([(v if v is not None else np.nan) for v in sem_frac], dtype=float) * 100
+    valid = np.isfinite(sem) & (sem > 0)
+    if valid.sum() < 2:
+        return None, f"only {int(valid.sum())} usable points on the SEM curve; need 2"
 
-    window = stats.get("feature_window_eV") or [None, None]
-    sem_threshold = stats.get("sem_threshold_frac", 0.01) * 100
-    eff_verdict = stats.get("efficiency_verdict", "?")
-    feat_verdict = stats.get("feature_verdict", "?")
+    if stats.get("sem_threshold_pct") is not None:
+        threshold = float(stats["sem_threshold_pct"])
+    else:
+        threshold = float(stats.get("sem_threshold_frac", 0.01)) * 100
 
-    fig, (ax_cv, ax_sem) = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
+    floor = stats.get("cumulative_floor_pct")
+    floor_arr = None
+    if floor and len(floor) == n:
+        floor_arr = np.array([np.nan if v is None else float(v) for v in floor], dtype=float)
 
-    # --- Top: Cumulative CV ---
-    ax_cv.plot(reps, cv_arr, "o-", color="C0", markersize=4, label="Cumulative CV")
-    poisson_cv = cv_arr[0] / np.sqrt(reps)
-    ax_cv.plot(reps, poisson_cv, "--", color="gray", alpha=0.7, label="1/√n Poisson")
-    ax_cv.set_ylabel("Cumulative CV (%)")
-    ax_cv.legend(fontsize=7, loc="upper right")
-    ax_cv.grid(alpha=0.3)
+    base = float(plt.rcParams.get("font.size", 10.0))
+    fig, ax = plt.subplots(figsize=figsize)
 
-    # --- Bottom: Feature SEM ---
-    # Rep 1 has SEM=0 by definition (single sample); skip it so the
-    # axis isn't pinned to zero.
-    sem_reps = reps[1:]
-    sem_vals = sem_arr[1:]
-    ax_sem.plot(sem_reps, sem_vals, "o-", color="C0", markersize=4,
-                label="Feature SEM (% of mean)")
-    finite_mask = np.isfinite(sem_vals) & (sem_vals > 0)
-    if finite_mask.sum() >= 2:
-        first = int(np.where(finite_mask)[0][0])
-        anchor = sem_vals[first]
-        anchor_rep = sem_reps[first]
-        poisson_sem = anchor * np.sqrt(anchor_rep) / np.sqrt(sem_reps)
-        ax_sem.plot(sem_reps, poisson_sem, "--", color="gray", alpha=0.7,
-                    label="1/√n Poisson")
-    ax_sem.axhline(sem_threshold, color="C1", linestyle="-", alpha=0.6,
-                   label=f"{sem_threshold:.0f}% publication threshold")
-    ax_sem.set_ylabel("SEM (% of mean)")
-    ax_sem.set_xlabel("Rep #")
-    ax_sem.legend(fontsize=7, loc="upper right")
-    ax_sem.grid(alpha=0.3)
+    # --- the reference: absolute floor if we have counts, else an honest fit
+    if floor_arr is not None and np.isfinite(floor_arr).any():
+        ax.plot(reps, floor_arr, "--", color="0.42", lw=1.7, zorder=2,
+                label=r"Poisson floor $\propto 1/\sqrt{n}$")
+        has_floor = True
+    else:
+        # Least-squares a/sqrt(n) through every point, so no single rep sets it.
+        a = float(np.sum(sem[valid] / np.sqrt(reps[valid])) / np.sum(1.0 / reps[valid]))
+        ax.plot(reps, a / np.sqrt(reps), "--", color="0.42", lw=1.7, zorder=2,
+                label=r"$1/\sqrt{n}$ fit — not a floor (no counts)")
+        has_floor = False
 
-    e_min, e_max = window
-    window_str = f"[{e_min}, {e_max}] eV" if e_min is not None else ""
-    title = (
-        f"{sample_name} — statistics trend {window_str} "
-        f"(CV: {eff_verdict}, SEM: {feat_verdict})"
-    )
-    fig.suptitle(title, fontsize=9)
+    ax.axhline(threshold, color="#E8830C", lw=1.8, zorder=3,
+               label=f"{threshold:.2g}% target")
+    ax.plot(reps[valid], sem[valid], "o-", color="#0072B5", lw=2.0, ms=6, zorder=5,
+            label="Standard error")
+
+    # --- the decision marks
+    target_rep = stats.get("target_reached_at_rep")
+    plateau_rep = stats.get("plateau_from_rep")
+    if target_rep and 1 <= int(target_rep) <= n:
+        t = int(target_rep)
+        ax.plot([t], [sem[t - 1]], "o", ms=15, mfc="none", mec="#1a7f37", mew=2.4, zorder=6)
+        ax.annotate(f"target met\nrep {t} — stop", xy=(t, sem[t - 1]),
+                    xytext=(10, 26), textcoords="offset points", fontsize=0.9 * base,
+                    color="#1a7f37", fontweight="bold",
+                    arrowprops=dict(arrowstyle="-", color="#1a7f37", lw=1.2))
+    if plateau_rep and 1 <= int(plateau_rep) <= n:
+        pr = int(plateau_rep)
+        ax.axvspan(pr, n, color="#8c1515", alpha=0.07, lw=0, zorder=0)
+        ax.axvline(pr, color="#8c1515", ls=":", lw=1.8, zorder=4)
+        ax.annotate(f"left the floor at rep {pr}\nsystematics — more reps\nwill not help",
+                    xy=(pr, ax.get_ylim()[1]), xytext=(6, -34),
+                    textcoords="offset points", fontsize=0.9 * base, color="#8c1515",
+                    fontweight="bold", va="top")
+
+    drifting = stats.get("is_drifting") or stats.get("sem_is_rising")
+    if drifting:
+        ax.text(0.015, 0.04,
+                "feature is drifting — averaging a moving target",
+                transform=ax.transAxes, fontsize=0.9 * base, color="#8c1515",
+                fontweight="bold",
+                bbox=dict(fc="#fdeaea", ec="#8c1515", lw=0.9, pad=4.5))
+
+    ax.set_xlabel("Scan reps merged")
+    ax.set_ylabel("Standard error (% of signal)")
+    ax.set_xlim(0.55, n + 0.45)
+    # Start the y axis just under the lowest thing on the panel rather than at
+    # zero: the gap between the curve and the floor is the whole message, and
+    # anchoring at zero spends half the panel on a region no experiment can
+    # enter.
+    lo_candidates = [np.nanmin(sem[valid]), threshold]
+    if has_floor:
+        lo_candidates.append(np.nanmin(floor_arr[np.isfinite(floor_arr)]))
+    y_lo = max(0.0, min(lo_candidates) * 0.78)
+    y_hi = np.nanmax(sem[valid]) + 0.12 * (np.nanmax(sem[valid]) - y_lo)
+    ax.set_ylim(y_lo, y_hi)
+    ax.set_xticks(reps if n <= 20 else reps[::2])
+    ax.grid(alpha=0.22)
+    # Lower left: the curve falls left-to-right, so it is the one corner the
+    # data and the annotations both stay out of.
+    ax.legend(fontsize=0.80 * base, loc="lower left", framealpha=0.94,
+              borderpad=0.55, handlelength=1.9)
+
+
+    e_min, e_max = (stats.get("feature_window_eV") or [None, None])[:2]
+    window_str = f"{e_min:g}–{e_max:g} eV" if e_min is not None else ""
+    if title is not None:
+        ax.set_title(title, fontsize=0.9 * base, color="#1a1a1a", pad=8)
+        fig.tight_layout()
+        return fig, _trend_summary(stats, sem, valid, floor_arr, threshold, sample_name)
+    bits = []
+    if stats.get("efficiency_verdict"):
+        bits.append(f"verdict: {stats['efficiency_verdict']}")
+    if stats.get("limited_by"):
+        bits.append(f"limited by {stats['limited_by'].replace('_', ' ')}")
+    title = sample_name
+    if window_str:
+        title = f"{title}  ({window_str})" if sample_name else window_str
+    # Second line rather than a longer first one: the panel is often placed at
+    # a fixed width, and a single long title silently clips at both ends.
+    ax.set_title(title + ("\n" + ", ".join(bits) if bits else ""),
+                 fontsize=0.9 * base, color="#1a1a1a", linespacing=1.35, pad=8)
+
     fig.tight_layout()
 
-    summary = (
-        f"Statistics trend for {sample_name}: "
-        f"CV verdict={eff_verdict}, feature verdict={feat_verdict}, "
-        f"final CV={cv_arr[-1]:.2f}%, final SEM={sem_arr[-1]:.2f}%."
-    )
-    return fig, summary
+    return fig, _trend_summary(stats, sem, valid, floor_arr, threshold, sample_name)
+
+
+def _trend_summary(stats, sem, valid, floor_arr, threshold, sample_name=""):
+    """The text an agent reads instead of looking at the panel.
+
+    Shared by both title paths, because a caller overriding the title is
+    changing what the figure is captioned, not what it found.
+    """
+    final = float(sem[valid][-1])
+    bits = [
+        f"Merge convergence for {sample_name}: {int(valid.sum())} usable rep counts, "
+        f"final standard error {final:.3f}% of signal (target {threshold:.2g}%)"
+    ]
+    if floor_arr is not None and np.isfinite(floor_arr[-1]) and floor_arr[-1] > 0:
+        bits.append(f"{final / float(floor_arr[-1]):.2f}x the counting-statistics floor")
+    target_rep = stats.get("target_reached_at_rep")
+    plateau_rep = stats.get("plateau_from_rep")
+    if target_rep:
+        bits.append(f"target met at rep {int(target_rep)}")
+    else:
+        rtt = stats.get("reps_to_target")
+        bits.append("target not met" + (f", ~{int(rtt)} reps needed" if rtt else ""))
+    if plateau_rep:
+        bits.append(f"left the floor at rep {int(plateau_rep)}")
+    if stats.get("is_drifting") or stats.get("sem_is_rising"):
+        bits.append("feature is drifting")
+    return ". ".join(bits) + "."
 
 
 # ---------------------------------------------------------------------------
