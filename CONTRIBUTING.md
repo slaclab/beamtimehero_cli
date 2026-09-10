@@ -207,6 +207,15 @@ instead — that is the boundary this repo is organized around.
   your change is about what a plot looks like, `science/plots/` is almost
   certainly the place; old import paths still work via shims.
 
+- **Actions must be SHA-pinned.** `slaclab` enforces `sha_pinning_required`, so
+  every `uses:` in `.github/workflows/` is a full 40-character commit SHA with
+  the version in a trailing comment. First-party `actions/*` get no exemption.
+  A tag or branch ref fails the whole run at `Set up job` before any step
+  executes, and it presents as a red run with an *empty step list* — which
+  reads like infrastructure flakiness rather than policy, so it is worth
+  recognising. To bump an action, look up the commit SHA for the tag you want;
+  do not put the tag back.
+
 ## Background
 
 `docs/architecture-review.html` is the analysis this layout came out of: why the
