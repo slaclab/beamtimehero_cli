@@ -17,7 +17,10 @@ import numpy as np
 import pytest
 
 from beamtimehero_cli.science.statistics import policy as stats_policy
-from beamtimehero_cli.science.statistics.efficiency import analyze_scan_efficiency
+from beamtimehero_cli.science.statistics.efficiency import (
+    analyze_scan_efficiency,
+    screen_reps,
+)
 from beamtimehero_cli.science.statistics.features import analyze_scalar_convergence
 
 
@@ -326,3 +329,106 @@ def test_panel_refuses_to_draw_what_it_cannot_support():
 
     fig, msg = plot_statistics_trend({})
     assert fig is None and "missing" in msg
+
+
+# ---------------------------------------------------------------------------
+# 4. A single bad rep is nobody else's job
+#
+# Every other check here reads the series as a whole, so one wild rep slips
+# into the merge unremarked: the rank trend test sees only the direction of
+# pairwise comparisons, and the floor comparison averages the offending rep
+# into a dispersion taken over the whole stack.
+# ---------------------------------------------------------------------------
+
+def _screen(normalised, raw, **kw):
+    result = screen_reps(normalised, raw, **kw)
+    assert "error" not in result, result.get("error")
+    return result
+
+
+def test_screening_expectation_is_one_for_photon_limited_reps():
+    """The denominator is counts, not scatter, so the scale is absolute.
+
+    This is the property that lets a fixed threshold mean anything. If the
+    statistic were normalised by the observed spread it would sit at 1 by
+    construction for every series, clean or not, and carry no information.
+    """
+    norm, raw = _stack(12)
+    result = _screen(norm, raw)
+    assert 0.7 < result["median_chi2"] < 1.4, result["rep_chi2"]
+    assert result["verdict"] == "clean"
+    assert result["flagged_reps"] == []
+
+
+def test_screening_flags_a_minority_of_offset_reps():
+    """Nine clean reps and a three-rep excursion at the end."""
+    offsets = [0.0] * 9 + [0.04] * 3
+    norm, raw = _stack(12, offsets=offsets)
+    result = _screen(norm, raw)
+    assert result["verdict"] == "outliers_present"
+    assert set(result["flagged_reps"]) <= {10, 11, 12}, result["rep_chi2"]
+    assert result["flagged_reps"], result["rep_chi2"]
+
+
+def test_screening_localises_the_split_not_the_fault():
+    """It flags whichever side of a step is in the minority.
+
+    The comparison is against the merge of the other reps, so when a
+    disturbance takes over most of the stack it is the *clean* reps that
+    disagree with the consensus. The screen locates the split; it cannot say
+    which side of it is the good measurement. That is what the departure onset
+    is for.
+    """
+    offsets = [0.0] * 5 + [0.04] * 7          # the disturbance is the majority
+    norm, raw = _stack(12, offsets=offsets)
+    flagged = _screen(norm, raw)["flagged_reps"]
+    assert flagged, "a 4% step has to show up somewhere"
+    # Whichever side is named, it must be one contiguous side of the step.
+    assert max(flagged) <= 5 or min(flagged) >= 6, flagged
+
+
+def test_screening_stays_quiet_at_the_drift_tests_own_scale():
+    """A monotone trend is the rank test's business, not the screen's.
+
+    The threshold clears trends up to roughly 3% total excursion, which is
+    above the 1% materiality gate the drift criterion uses, so the two do not
+    double-count. A large enough ramp does eventually push its endpoints out,
+    which is honest: they genuinely disagree with the merge.
+    """
+    for step, total in ((0.001, "1.1%"), (0.002, "2.2%")):
+        norm, raw = _stack(12, offsets=[step * i for i in range(12)])
+        result = _screen(norm, raw)
+        assert result["flagged_reps"] == [], (total, result["rep_chi2"])
+
+
+def test_screening_scale_is_not_set_by_the_noise_level():
+    """The failure that retired the shape-similarity screen.
+
+    A metric dominated by overall amplitude scores a *quieter* series closer
+    to perfect agreement than a noisy one, regardless of defects, so the same
+    threshold cannot serve both. Here a disturbed high-count series must still
+    be flagged even though its absolute scatter is far smaller than a clean
+    low-count series'.
+    """
+    offsets = [0.0] * 5 + [0.03] * 7
+    loud_clean, loud_raw = _stack(12, counts_at_peak=400.0)
+    quiet_bad, quiet_raw = _stack(12, counts_at_peak=40000.0, offsets=offsets)
+    assert _screen(loud_clean, loud_raw)["flagged_reps"] == []
+    assert _screen(quiet_bad, quiet_raw)["flagged_reps"] != []
+
+
+def test_screening_needs_a_merge_of_others_to_compare_against():
+    norm, raw = _stack(2)
+    result = screen_reps(norm, raw)
+    assert "error" in result and "3 reps" in result["error"]
+
+
+def test_screening_refuses_mismatched_counts():
+    norm, raw = _stack(6)
+    result = screen_reps(norm, [row[:-1] for row in raw])
+    assert "error" in result and "does not match" in result["error"]
+
+
+def test_screening_threshold_is_pinned_in_policy():
+    norm, raw = _stack(6)
+    assert _screen(norm, raw)["chi2_threshold"] == stats_policy.DEFAULT_REP_CHI2_THRESHOLD

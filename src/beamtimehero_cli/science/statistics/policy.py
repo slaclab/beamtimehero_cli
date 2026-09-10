@@ -50,6 +50,21 @@ DEFAULT_TREND_TOTAL_FRAC = 0.01
 # below which further repetitions are called wasteful.
 DEFAULT_EFFICIENCY_THRESHOLD = 0.05
 
+# Leave-one-out reduced chi-square, per rep, above which a single repetition is
+# flagged as inconsistent with the others. The statistic compares each rep
+# against the merge of its siblings in units of the counting error expected at
+# each point, so its expectation is 1 for a rep limited by photon statistics
+# and the scale needs no per-experiment calibration.
+#
+# The value is empirical rather than a quantile of the chi-square distribution.
+# Across clean and monotonically-damaged reference series the largest single
+# rep value observed is 1.6, while a series with a genuine positional
+# disturbance puts eight of its nine disturbed reps above 3. Three therefore
+# clears the dispersion of the estimate itself without giving up the cases the
+# screen exists for. It does not catch a single late disturbance that is only
+# mildly inconsistent; the rising-SEM check is what covers that.
+DEFAULT_REP_CHI2_THRESHOLD = 3.0
+
 # Floor on the recommended repetition count. Two reps is the minimum that
 # permits any scatter estimate at all, so it is never sensible to recommend
 # fewer regardless of what the efficiency curve says.
@@ -76,4 +91,11 @@ CITATIONS = {
     ),
     "Marginal-efficiency stopping rule": None,
     "Poisson-limit comparison for repetition efficiency": None,
+    "Leave-one-out reduced chi-square for per-rep screening": (
+        "International XAFS Society, Standards and Criteria Committee (2000), "
+        "Error Reporting Recommendations, Eqs. (7)-(9). Compares the measured "
+        "scan-to-scan dispersion against the counting-statistics expectation "
+        "computed from raw photon counts; applied here per rep rather than "
+        "once to a finished dataset."
+    ),
 }

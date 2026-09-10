@@ -131,6 +131,13 @@ def test_statistics_convergence_defaults():
     assert stats_policy.DEFAULT_DRIFT_THRESHOLD_FRAC == 0.01
     assert stats_policy.DEFAULT_EFFICIENCY_THRESHOLD == 0.05
     assert stats_policy.DEFAULT_MIN_RECOMMENDED_SCANS == 2
+    # Per-rep screening. Empirical, not a chi-square quantile: clean and
+    # monotonically-damaged reference series top out near 1.6, so 3 clears the
+    # dispersion of the estimate without giving up a genuine step.
+    assert stats_policy.DEFAULT_REP_CHI2_THRESHOLD == 3.0
+    # Must sit above 1, the photon-limited expectation, or every rep of a
+    # perfectly good stack is flagged.
+    assert stats_policy.DEFAULT_REP_CHI2_THRESHOLD > 1.0
     # Two reps is the fewest that permits any scatter estimate at all.
     assert stats_policy.DEFAULT_MIN_RECOMMENDED_SCANS >= 2
 

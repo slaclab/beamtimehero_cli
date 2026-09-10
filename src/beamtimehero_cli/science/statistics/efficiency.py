@@ -18,6 +18,7 @@ from beamtimehero_cli.science.statistics.policy import (
     DEFAULT_EFFICIENCY_THRESHOLD,
     DEFAULT_SEM_THRESHOLD_FRAC,
     DEFAULT_MIN_RECOMMENDED_SCANS,
+    DEFAULT_REP_CHI2_THRESHOLD,
 )
 
 
@@ -473,3 +474,187 @@ CITATIONS = {
         "Delegates to science.fitting.similarity.analyze_scan_quality."
     ),
 }
+
+
+def screen_reps(
+    scan_data: list[list[float]],
+    raw_counts_per_point: list[list[float]],
+    chi2_threshold: float = DEFAULT_REP_CHI2_THRESHOLD,
+    window_mask: list[bool] | None = None,
+) -> dict[str, Any]:
+    """
+    Flag single repetitions that disagree with the others by more than counting
+    statistics allow.
+
+    Every other check in this module reads the series as a whole. The rank
+    trend test uses only the direction of pairwise comparisons, so one wild rep
+    cannot move it; the floor comparison averages that rep into a dispersion
+    taken over the whole stack. A single bad repetition therefore enters the
+    merge unremarked. This screens for one.
+
+    Each rep is compared against the merge of its *siblings*, in units of the
+    counting error expected at each energy point::
+
+        chi2_i = (1/m) * sum_E [ y_i(E) - mu_-i(E) ]^2 / sigma_i(E)^2
+
+    Leaving rep *i* out of the mean it is measured against removes the
+    correlation between a rep and its own contribution to that mean; the
+    remaining variance of the leave-one-out mean is folded into sigma.
+
+    The scale is absolute. ``sigma`` comes from the recorded counts and not
+    from the spread of the data, so the expectation is 1 for a rep limited by
+    photon statistics, and a value of 4 means four times the variance photon
+    counting can account for. That is what makes a fixed threshold meaningful
+    here where a shape-similarity score is not: a normalised inner product
+    between two spectra that agree on a tall edge is dominated by the edge, and
+    tracks the overall noise level rather than the defect.
+
+    Parameters
+    ----------
+    scan_data : list[list[float]]
+        2D array, one row per rep, of edge-step normalised intensities.
+        Shape (n_scans, n_points). At least 3 reps are required, since the
+        comparison is against a merge of the others.
+    raw_counts_per_point : list[list[float]]
+        Raw, un-normalised counts per energy point per rep, same shape as
+        *scan_data*. Required: the whole point of the statistic is that its
+        denominator is independent of the dispersion it is testing. These must
+        be the counts as recorded, before any dead-time correction, since a
+        corrected count is a rescaled quantity whose variance exceeds its
+        value and would push every chi2 down.
+    chi2_threshold : float, default=3.0
+        Value above which a rep is flagged for inspection.
+    window_mask : list[bool], optional
+        Per-point mask selecting the feature window. If omitted, the same 5%
+        end trim used elsewhere in this module is applied.
+
+    Returns
+    -------
+    dict with keys:
+        - rep_chi2: reduced chi-square per rep, in collection order
+        - flagged_reps: 1-based rep numbers above the threshold
+        - median_chi2, max_chi2, max_over_median
+        - edge_step_counts, background_counts: the affine calibration used
+        - n_window_points: points entering each average
+        - chi2_threshold: the threshold applied
+        - verdict, verdict_explanation
+
+    Notes
+    -----
+    The conversion from counts to normalised units is recovered from the data
+    rather than taken as an argument. Edge-step normalisation is affine, so the
+    mean recorded counts and the mean normalised spectrum are related by
+    ``N(E) ~ b + edge_step * y(E)``; a least-squares fit over all points
+    returns both, and ``sigma_i(E) = sqrt(N_i(E)) / edge_step``.
+    """
+    data = np.array(scan_data, dtype=float)
+    if data.ndim != 2:
+        return {"error": "scan_data must be a 2D array (n_scans, n_points)."}
+    n_scans, n_points = data.shape
+    if n_scans < 3:
+        return {
+            "error": (
+                f"Screening compares each rep against the merge of the others, "
+                f"which needs at least 3 reps; got {n_scans}."
+            )
+        }
+
+    counts = np.array(raw_counts_per_point, dtype=float)
+    if counts.shape != data.shape:
+        return {
+            "error": (
+                f"raw_counts_per_point shape {counts.shape} does not match "
+                f"scan_data shape {data.shape}."
+            )
+        }
+
+    if window_mask is None:
+        trim = max(1, n_points // 20)
+        mask = np.zeros(n_points, dtype=bool)
+        if n_points > 2 * trim:
+            mask[trim:-trim] = True
+        else:
+            mask[:] = True
+    else:
+        mask = np.asarray(window_mask, dtype=bool)
+        if mask.shape != (n_points,):
+            return {
+                "error": (
+                    f"window_mask length {mask.shape} does not match "
+                    f"{n_points} energy points."
+                )
+            }
+    m = int(mask.sum())
+    if m < 2:
+        return {"error": "Fewer than 2 points in the analysis window."}
+
+    # Affine calibration: recover the edge step in counts so the counting error
+    # can be expressed in the units of the normalised spectrum.
+    mean_norm = data.mean(axis=0)
+    mean_counts = counts.mean(axis=0)
+    design = np.vstack([np.ones_like(mean_norm), mean_norm]).T
+    background, edge_step = np.linalg.lstsq(design, mean_counts, rcond=None)[0]
+    if not np.isfinite(edge_step) or edge_step <= 0:
+        return {
+            "error": (
+                "Could not recover a positive edge step relating the raw counts "
+                "to the normalised spectrum; are these the matching arrays?"
+            )
+        }
+
+    # Leaving one rep out inflates the variance of the comparison mean by
+    # 1/(n-1) of a single rep's variance.
+    loo_inflation = np.sqrt(1.0 + 1.0 / (n_scans - 1))
+    total = data.sum(axis=0)
+    rep_chi2: list[float] = []
+    for i in range(n_scans):
+        others_mean = (total - data[i]) / (n_scans - 1)
+        sigma = np.sqrt(np.maximum(counts[i], 1.0)) / edge_step * loo_inflation
+        resid = ((data[i] - others_mean) / sigma)[mask]
+        rep_chi2.append(float(np.mean(resid ** 2)))
+
+    chi2_arr = np.array(rep_chi2)
+    median_chi2 = float(np.median(chi2_arr))
+    max_chi2 = float(chi2_arr.max())
+    flagged = [int(i) + 1 for i in np.flatnonzero(chi2_arr > chi2_threshold)]
+
+    if flagged:
+        verdict = "outliers_present"
+        explanation = (
+            f"Rep(s) {', '.join(str(r) for r in flagged)} disagree with the "
+            f"others by more than counting statistics allow (reduced chi-square "
+            f"up to {max_chi2:.1f} against a threshold of {chi2_threshold:g}, "
+            f"where 1 is the photon-limited expectation). Inspect them before "
+            f"merging."
+        )
+    elif median_chi2 > chi2_threshold:
+        verdict = "stack_above_counting_limit"
+        explanation = (
+            f"No single rep stands out, but the whole stack sits at a median "
+            f"reduced chi-square of {median_chi2:.1f}, so the dispersion "
+            f"exceeds counting statistics throughout. This is a property of the "
+            f"series, not of one rep."
+        )
+    else:
+        verdict = "clean"
+        explanation = (
+            f"No rep exceeds the threshold; median reduced chi-square "
+            f"{median_chi2:.2f} against a photon-limited expectation of 1."
+        )
+
+    return {
+        "rep_chi2": [round(v, 4) for v in rep_chi2],
+        "flagged_reps": flagged,
+        "median_chi2": round(median_chi2, 4),
+        "max_chi2": round(max_chi2, 4),
+        "max_over_median": (
+            round(max_chi2 / median_chi2, 3) if median_chi2 > 0 else None
+        ),
+        "edge_step_counts": round(float(edge_step), 3),
+        "background_counts": round(float(background), 3),
+        "n_window_points": m,
+        "n_scans": n_scans,
+        "chi2_threshold": chi2_threshold,
+        "verdict": verdict,
+        "verdict_explanation": explanation,
+    }
