@@ -20,7 +20,7 @@ agent-harness concepts — those live in consuming projects.
 Not on PyPI — install from a clone, into a virtualenv:
 
 ```bash
-git clone https://github.com/deanSLAC/beamtimehero_cli
+git clone https://github.com/slaclab/beamtimehero_cli
 cd beamtimehero_cli
 python3 -m venv venv && source venv/bin/activate
 pip install -e .

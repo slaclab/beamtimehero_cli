@@ -94,7 +94,7 @@ running count when it regenerates.
 
 Three places define what the *agents* see. Changing them changes what several
 separate applications see, so open an issue
-([deanSLAC/beamtimehero_cli/issues](https://github.com/deanSLAC/beamtimehero_cli/issues))
+([slaclab/beamtimehero_cli/issues](https://github.com/slaclab/beamtimehero_cli/issues))
 or ask a maintainer first:
 
 | File | Why |
