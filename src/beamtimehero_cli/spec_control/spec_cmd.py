@@ -26,13 +26,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
-from beamtimehero_cli.config import SPEC_MOCK, SPEC_TRANSPORT
+from beamtimehero_cli.config import DATA_DIR, SPEC_MOCK, SPEC_TRANSPORT
 from beamtimehero_cli.spec_control import (
     sandbox_client,
     screen_client,
@@ -44,14 +45,30 @@ from beamtimehero_cli.spec_control.transport import DispatchResult
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Safety switches — re-read from disk on every call so flipping the file
-# takes effect immediately without restarting the process.
+# Safety switches — the operator's stop control for SPEC traffic.
+#
+# Both the path and the file contents are resolved on every call, so flipping
+# the switch takes effect immediately without restarting anything, and no
+# import-order accident can pin the path to the wrong place.
+#
+# The file belongs to the *deployment*, not to this package: a switch written
+# inside site-packages would be unreachable for the app that owns the beamline.
+# It therefore lives in DATA_DIR by default — the same per-deployment directory
+# as the action log — and BEAMTIMEHERO_SAFETY_SWITCHES overrides it. Consumers
+# that offer the switch in a UI must call safety_switches_path() rather than
+# recompute a path of their own; a UI writing a file the check does not read is
+# an operator control that silently does nothing.
 # ---------------------------------------------------------------------------
 
-_SAFETY_SWITCHES_PATH = Path(__file__).resolve().parent.parent / "safety_switches.json"
-
-
 _KIND_TO_SWITCH = {"read": "spec_read_enabled", "action": "spec_write_enabled"}
+
+
+def safety_switches_path() -> Path:
+    """Absolute path of the safety-switches file this process enforces."""
+    override = os.environ.get("BEAMTIMEHERO_SAFETY_SWITCHES")
+    if override:
+        return Path(override).expanduser()
+    return Path(DATA_DIR) / "safety_switches.json"
 
 
 def _safety_check(kind: str) -> str | None:
@@ -59,16 +76,30 @@ def _safety_check(kind: str) -> str | None:
     key = _KIND_TO_SWITCH.get(kind)
     if key is None:
         return None
+    path = safety_switches_path()
     try:
-        with open(_SAFETY_SWITCHES_PATH) as f:
+        with open(path) as f:
             switches = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return None  # fail-open: missing/corrupt file doesn't block
+    except FileNotFoundError:
+        # No file means no switch has been configured. A fresh clone and a
+        # bare install must both work, so this is the one fail-open case.
+        return None
+    except (json.JSONDecodeError, OSError) as exc:
+        # The file exists but cannot be trusted. Reads stay available so an
+        # operator can still see the beamline; actions fail closed, because
+        # "I could not read the stop switch" must never mean "go ahead".
+        logger.error("safety switches unreadable at %s: %s", path, exc)
+        if kind == "action":
+            return (
+                f"SAFETY SWITCH: {path} exists but could not be read ({exc}); "
+                "refusing spec write commands until it parses"
+            )
+        return None
     if switches.get(key, True) is False:
         label = "read" if kind == "read" else "write"
         return (
             f"SAFETY SWITCH: spec {label} commands are disabled "
-            f"(set {key}=true in {_SAFETY_SWITCHES_PATH.name} to re-enable)"
+            f"(set {key}=true in {path} to re-enable)"
         )
     return None
 

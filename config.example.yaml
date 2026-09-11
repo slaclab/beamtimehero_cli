@@ -79,6 +79,22 @@ env:
   # Action-log SQLite path. Default <data dir>/beamline_tools.db.
   # BEAMLINE_TOOLS_DB_PATH: "/var/lib/beamtimehero/beamline_tools.db"
 
+  # Operator stop switch for SPEC traffic. A JSON file holding
+  # {"spec_read_enabled": true, "spec_write_enabled": true}; set either to
+  # false and spec_cmd refuses that kind of command before it reaches SPEC,
+  # re-read on every call so a flip is immediate. Default
+  # <data dir>/safety_switches.json.
+  #
+  # A missing file means "no switch configured" and does not block. A file
+  # that exists but does not parse fails CLOSED for writes — an unreadable
+  # stop switch must never read as "go ahead".
+  #
+  # Point this at the deployment's own copy. An application that surfaces the
+  # switch in a UI must resolve the path with
+  # spec_cmd.safety_switches_path() rather than compute its own, or it ends
+  # up writing a file the enforcement point never reads.
+  # BEAMTIMEHERO_SAFETY_SWITCHES: "/var/lib/beamtimehero/safety_switches.json"
+
   # Where a tool's PNG output is written. Default ./data/tool_plots relative
   # to the working directory — set this if you do not want plots landing
   # wherever the agent happened to run.
