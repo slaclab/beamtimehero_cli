@@ -125,25 +125,6 @@
   <span>~87,000 lines of Python</span><span>No code changed</span></p>
 </header>
 
-<section id="s0" style="grid-column:1/-1;margin:0 0 8px">
-  <div class="find note" style="max-width:none">
-    <p class="chip">Status · 11 September 2026</p>
-    <p><span class="t">Three findings below have since been fixed.</span> The kill
-    switch (§2, §8) resolved its file from the package rather than the deployment,
-    so it was inert; it now resolves per deployment, fails closed on a corrupt
-    file, and is verified blocking a motor move. The phase-override claims in four
-    agent prompts (§3) are gone, and the bl-aligner motor list now matches the
-    code. The compatibility shims (§5) are removed, and every consumer imports
-    the real modules.</p>
-    <p>One finding was found while fixing those and is not described below:
-    autonomy's action log — the audit trail for every SPEC command — was writing
-    into the toolbelt's checkout rather than its own, for the same reason the
-    switch was inert. Fixed in the same commit. Two databases now hold parts of
-    that history, and which one survives is an open decision.</p>
-    <p>Everything else stands as written.</p>
-  </div>
-</section>
-
 <nav class="toc">
   <p>Contents</p>
   <ol>
@@ -174,9 +155,8 @@
 
   <p>The weaknesses are almost all at the seams rather than inside any one repo. Three consumers
   reach past the published four-symbol API into private internals, so the library has a public
-  interface that nobody actually depends on and a private one that everybody does. Two safety
-  mechanisms are described in agent prompts and dashboards but are not wired to anything. And
-  the boundary that keeps an agent away from hardware is a different mechanism in every
+  interface that nobody actually depends on and a private one that everybody does. And the
+  boundary that keeps an agent away from hardware is a different mechanism in every
   application, which makes it hard to state in one sentence what any given agent can do.</p>
 
   <figure>
@@ -303,17 +283,9 @@
   <p>The safety story is genuinely good where it is enforced. Justification text is checked for
   emptiness before a command reaches SPEC, the audit row is written before dispatch so a killed
   process still leaves evidence, and the justification is echoed into the SPEC session itself.
-  The mock transport is the default, so a fresh clone cannot touch hardware. One exception is
-  worth stating plainly.</p>
-
-  <div class="find high">
-    <p class="chip">High</p>
-    <p><span class="t">The kill switch is not connected.</span> Every SPEC command checks a
-    safety-switches file for a flag that can disable reads or writes, and re-reads it each call
-    so a flip takes effect immediately. The file it looks for does not exist in the package, and
-    a missing file fails open. The dashboard that offers the switch writes a different file in a
-    different repository. Turning writes off from the user interface currently does nothing.</p>
-  </div>
+  The mock transport is the default, so a fresh clone cannot touch hardware. The operator's stop
+  switch is enforced here as well, resolved per deployment and re-read on every call, and a
+  switch file that exists but does not parse refuses writes rather than passing them.</p>
 </section>
 
 <section id="s3">
@@ -335,28 +307,20 @@
   mock transport forced on early in three separate entry points. Free-form SPEC strings are not
   available to role agents; they get whitelisted commands only.</p>
 
-  <p class="pull">Three of the mechanisms an operator would name if asked how this system is kept
-  safe are not the mechanisms doing the work.</p>
-
   <div class="find high">
     <p class="chip">High</p>
-    <p><span class="t">A documented enforcement mechanism does not exist.</span> Four agent
-    prompts and the 637-line base prompt tell the model that its launcher sets a phase-override
-    variable and that a server-side allowlist enforces the current phase. No launcher sets it and
-    nothing in either repository reads it. The real gating is the per-role command branch alone.
-    The gap matters less for what the agent can do than for what the operators believe: the
-    prompt is the documentation people read.</p>
-  </div>
-
-  <div class="find high">
-    <p class="chip">High</p>
-    <p><span class="t">The tool configuration has drifted into an accidental feature freeze.</span>
-    A checked-in JSON file lists which tools are enabled, is intersected against the library's
-    schemas, and fails open if absent. It was generated in early July and never regenerated.
-    Thirty upstream tools are now invisible to every agent — the entire X-ray Raman branch, the
-    EXAFS chi extraction and Fourier transform, edge identification, quality assessment,
-    reference comparison — while thirty-two names in the file no longer exist. Science that was
-    written, tested, and documented is simply not reachable from the beamline that needs it.</p>
+    <p><span class="t">The tool enable list is the wrong shape, and has frozen the feature
+    set.</span> A checked-in JSON file lists which tools are enabled, is intersected against the
+    library's schemas, and fails open if absent. It was generated in early July and never
+    regenerated. Thirty upstream tools are now invisible to every agent — the entire X-ray Raman
+    branch, the EXAFS chi extraction and Fourier transform, edge identification, quality
+    assessment, reference comparison — while thirty-two names in the file no longer exist.
+    Science that was written, tested and documented is not reachable from the beamline that
+    needs it.</p>
+    <p>Regenerating the file is not the fix. X-ray Raman and EXAFS work happens on different
+    beamlines, so one agent will rarely want both branches, and a single global list cannot
+    express that. The tool set belongs next to the per-role motor and write-tool sets that
+    already exist, so each role sees the branch its science needs.</p>
   </div>
 
   <div class="find med">
@@ -460,9 +424,8 @@
   end over the command-line agent, allowed arbitrary Python, curl, wget, web search, web fetch
   and subagents, restricted only by a deny list in a settings file. It is effectively the
   low-guardrail research agent §7 asks for, already in use — but with no container boundary at
-  all. It is also the only remaining consumer of the library's pre-reorganisation import
-  paths, which means the compatibility shims can be retired once its two files are updated. The
-  portal module in chemcat that used to need them has already moved to the new paths.</p>
+  all. It was also the last consumer of the library's pre-reorganisation import
+  paths; those two files now import the real modules, and the compatibility shims are gone.</p>
 
   <p><strong>beamtimehero</strong> is the user-facing chat interface, running locally on the
   beamline machine for direct access to files, logs and the live SPEC session, with conversations
@@ -614,22 +577,18 @@
     <thead><tr><th>Do this</th><th>Where</th><th>Why now</th></tr></thead>
     <tbody>
       <tr><td>Rotate anything in the plaintext token file in the operations checkout</td><td class="n">chemcat-s3df</td><td>Credentials on disk outside a secret store, today.</td></tr>
-      <tr><td>Wire the safety switch to the file the dashboard writes, and fail closed on a corrupt file</td><td class="n">toolbelt + autonomous</td><td>An operator control that silently does nothing is worse than no control.</td></tr>
-      <tr><td>Regenerate the tool configuration, or delete it and let the library decide</td><td class="n">autonomous</td><td>Thirty tested tools, including all of X-ray Raman, are unreachable from the beamline.</td></tr>
-      <tr><td>Delete the phase-override claims from the agent prompts, or implement them</td><td class="n">autonomous</td><td>The prompt is the documentation people trust; it currently describes a mechanism that does not exist.</td></tr>
+      <tr><td>Replace the flat tool-enable list with a per-role tool set</td><td class="n">autonomous</td><td>Thirty tested tools, all of X-ray Raman included, are unreachable from the beamline, and one global list cannot express one agent doing X-ray Raman and another doing EXAFS.</td></tr>
       <tr><td>Add turn, time and spend caps before widening any capability</td><td class="n">autonomous</td><td>Prerequisite for §7, and cheap.</td></tr>
       <tr><td>Declare mutation as a property of the tool, not as a required argument name</td><td class="n">toolbelt</td><td>Removes a one-string path from mutating tool to unrestricted branch.</td></tr>
       <tr><td>Decide the two-beamline question: converge or diverge</td><td class="n">autonomous ×2</td><td>Every guardrail fix is currently two fixes, and one copy has no CI.</td></tr>
       <tr><td>Generate tool registration from typed handlers</td><td class="n">toolbelt</td><td>The change that makes outside contribution to tools possible at all.</td></tr>
       <tr><td>Port the sandbox pattern to a local service</td><td class="n">autonomous</td><td>Unblocks the capability you want, on ingredients you already run.</td></tr>
-      <tr><td>Update the two remaining old-path imports, then retire the shims</td><td class="n">playground</td><td>Last consumer of nineteen compatibility modules.</td></tr>
     </tbody>
   </table>
   </div>
   <p>A closing observation that the individual findings do not capture. Every serious problem
   here is a place where two descriptions of the same fact were allowed to drift apart: a schema
-  and its handler, a tool list and the tools, a prompt and its enforcement, a switch and its
-  file, two portals, two beamlines. The platform's own best idea is the answer to all of them —
+  and its handler, a tool list and the tools, two portals, two beamlines. The platform's own best idea is the answer to all of them —
   the science directory has one copy of each default, pinned by a test that fails when it moves.
   Applying that discipline to the tool surface is the through-line of this report.</p>
 </section>
