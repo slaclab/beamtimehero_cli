@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>html{color-scheme:light dark}body{margin:0}img{max-width:100%}</style>
+<title>Beamline Agent Platform Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ground:#F1F4F5; --surface:#FFFFFF; --surface-2:#E8EDEE;
+    --ink:#141B23; --muted:#5C6B76; --rule:#CBD5D8;
+    --accent:#0E6E75; --accent-soft:#DCEAEB;
+    --crit:#A8332B; --warn:#8F6006; --ok:#2C6E52;
+    --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+    --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1418; --surface:#161E24; --surface-2:#1D272E;
+      --ink:#E3EAED; --muted:#94A6B0; --rule:#2C3941;
+      --accent:#45AAB0; --accent-soft:#173234;
+      --crit:#E0736A; --warn:#D19A2E; --ok:#5FAE85;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#0E1418; --surface:#161E24; --surface-2:#1D272E;
+    --ink:#E3EAED; --muted:#94A6B0; --rule:#2C3941;
+    --accent:#45AAB0; --accent-soft:#173234;
+    --crit:#E0736A; --warn:#D19A2E; --ok:#5FAE85;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--ground);color:var(--ink);font-family:var(--sans);
+    font-size:16px;line-height:1.62;margin:0;padding-inline:20px;padding-block:0;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:212px minmax(0,1fr);
+    gap:56px;align-items:start}
+  @media (max-width:920px){.wrap{grid-template-columns:minmax(0,1fr);gap:0}}
+
+  /* masthead */
+  header.top{grid-column:1/-1;padding-block:56px 34px;border-bottom:2px solid var(--ink)}
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);margin:0 0 14px}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(30px,5vw,45px);line-height:1.1;
+    letter-spacing:-.015em;margin:0 0 16px;text-wrap:balance;max-width:22ch}
+  .standfirst{font-size:18px;color:var(--muted);margin:0;max-width:60ch}
+  .meta{font-family:var(--mono);font-size:12px;color:var(--muted);margin-top:22px;
+    display:flex;flex-wrap:wrap;gap:6px 22px}
+
+  /* toc rail */
+  nav.toc{position:sticky;top:24px;padding-block:40px;font-size:13.5px}
+  @media (max-width:920px){nav.toc{position:static;padding-block:30px 8px;
+    border-bottom:1px solid var(--rule)}}
+  nav.toc p{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--muted);margin:0 0 14px}
+  nav.toc ol{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+  nav.toc a{color:var(--ink);text-decoration:none;display:grid;grid-template-columns:26px 1fr;
+    gap:8px;line-height:1.35}
+  nav.toc a:hover{color:var(--accent)}
+  nav.toc a span{font-family:var(--mono);font-size:11.5px;color:var(--accent)}
+  a:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
+
+  main{padding-block:40px 80px;min-width:0}
+  section{margin-bottom:52px;scroll-margin-top:20px}
+  h2{font-family:var(--serif);font-size:25px;font-weight:600;line-height:1.2;letter-spacing:-.01em;
+    margin:0 0 6px;text-wrap:balance}
+  h2 .num{font-family:var(--mono);font-size:13px;font-weight:400;color:var(--accent);
+    display:block;margin-bottom:7px;letter-spacing:.08em}
+  h3{font-family:var(--sans);font-size:15.5px;font-weight:600;margin:30px 0 8px;
+    letter-spacing:-.005em}
+  .repo{font-family:var(--mono);font-size:12.5px;color:var(--muted);margin:0 0 20px;
+    padding-bottom:14px;border-bottom:1px solid var(--rule)}
+  p{margin:0 0 15px;max-width:66ch}
+  ul,ol.body{margin:0 0 15px;padding-left:20px;max-width:66ch}
+  li{margin-bottom:7px}
+  code{font-family:var(--mono);font-size:.875em;background:var(--surface-2);
+    padding:1px 4px;border-radius:2px}
+  strong{font-weight:600}
+  .lede{font-size:17px;color:var(--muted);max-width:62ch}
+
+  /* findings */
+  .find{background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--muted);
+    padding:15px 18px;margin:0 0 14px;max-width:68ch}
+  .find.high{border-left-color:var(--crit)}
+  .find.med{border-left-color:var(--warn)}
+  .find.note{border-left-color:var(--accent)}
+  .find p{margin:0;max-width:none;font-size:15px}
+  .find p+p{margin-top:9px}
+  .chip{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+    font-weight:500;display:inline-block;margin-bottom:7px}
+  .high .chip{color:var(--crit)} .med .chip{color:var(--warn)} .note .chip{color:var(--accent)}
+  .find .t{font-weight:600}
+
+  /* tables */
+  .scroll{overflow-x:auto;margin:0 0 18px;border:1px solid var(--rule);background:var(--surface)}
+  table{border-collapse:collapse;width:100%;font-size:14px;min-width:520px}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+    font-weight:500;color:var(--muted);background:var(--surface-2)}
+  tr:last-child td{border-bottom:none}
+  td.n{font-variant-numeric:tabular-nums;font-family:var(--mono);font-size:13px;white-space:nowrap}
+  caption{caption-side:bottom;text-align:left;font-size:12.5px;color:var(--muted);
+    padding:9px 13px;border-top:1px solid var(--rule)}
+
+  figure{margin:0 0 22px}
+  figcaption{font-size:12.5px;color:var(--muted);margin-top:9px;max-width:60ch}
+  svg{max-width:100%;height:auto;display:block}
+  .pull{font-family:var(--serif);font-size:19px;line-height:1.45;font-style:italic;
+    color:var(--ink);border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+    padding-block:18px;margin:24px 0;max-width:58ch}
+  footer{grid-column:1/-1;border-top:1px solid var(--rule);padding-block:22px 46px;
+    font-family:var(--mono);font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Architecture review · SSRL BL15-2 / BL4-3</p>
+  <h1>One toolbelt, five agents, and the seams between them</h1>
+  <p class="standfirst">A high-level read of the agentic platform: how the tool tree is built and
+  consumed, where the guardrails are real and where they are only written down, and what has to
+  change before outside scientists can safely contribute.</p>
+  <p class="meta"><span>10 September 2026</span><span>3 repositories surveyed in depth</span>
+  <span>~87,000 lines of Python</span><span>No code changed</span></p>
+</header>
+
+<nav class="toc">
+  <p>Contents</p>
+  <ol>
+    <li><a href="#s1"><span>§1</span>The platform at a glance</a></li>
+    <li><a href="#s2"><span>§2</span>beamtimehero_cli — the toolbelt</a></li>
+    <li><a href="#s3"><span>§3</span>autonomous — beamline control</a></li>
+    <li><a href="#s4"><span>§4</span>chemcat — multi-user portal</a></li>
+    <li><a href="#s5"><span>§5</span>The three lighter consumers</a></li>
+    <li><a href="#s6"><span>§6</span>Readiness for outside contributors</a></li>
+    <li><a href="#s7"><span>§7</span>A sandbox for unguarded queries</a></li>
+    <li><a href="#s8"><span>§8</span>Where to spend attention</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section id="s1">
+  <h2><span class="num">§1</span>The platform at a glance</h2>
+  <p class="lede">The shape is sound and unusual in a good way: one library owns every beamline
+  capability, and each application is a thin, differently-restricted view onto it.</p>
+
+  <p>The toolbelt declares 131 tool schemas, sorts them into nine top-level trees, and exposes
+  them three ways: as a nested argparse command surface an agent can explore with
+  <code>--help</code>, as exportable JSON schemas, and as an in-process dispatch function.
+  Five applications consume it as an editable sibling install with no version pin. Nothing about
+  the platform is speculative — it runs real beamtimes, and the scientific defaults are pinned by
+  tests rather than left to drift.</p>
+
+  <p>The weaknesses are almost all at the seams rather than inside any one repo. Three consumers
+  reach past the published four-symbol API into private internals, so the library has a public
+  interface that nobody actually depends on and a private one that everybody does. Two safety
+  mechanisms are described in agent prompts and dashboards but are not wired to anything. And
+  the boundary that keeps an agent away from hardware is a different mechanism in every
+  application, which makes it hard to state in one sentence what any given agent can do.</p>
+
+  <figure>
+    <svg viewBox="0 0 700 330" role="img" aria-labelledby="topo-t">
+      <title id="topo-t">The toolbelt and its five consuming applications, showing which import
+      path each one uses</title>
+      <rect x="1" y="1" width="698" height="88" fill="var(--accent-soft)" stroke="var(--accent)"/>
+      <text x="16" y="24" font-family="var(--mono)" font-size="11" fill="var(--accent)">beamtimehero_cli · 131 tool schemas · 9 trees</text>
+      <g font-family="var(--mono)" font-size="10.5" fill="var(--ink)">
+        <rect x="16" y="36" width="86" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="24" y="50">spec-write 40</text>
+        <rect x="108" y="36" width="80" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="116" y="50">spec-file 34</text>
+        <rect x="194" y="36" width="48" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="202" y="50">xrs 15</text>
+        <rect x="248" y="36" width="52" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="256" y="50">tool 14</text>
+        <rect x="306" y="36" width="84" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="314" y="50">spec-read 11</text>
+        <rect x="396" y="36" width="54" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="404" y="50">s3df 7</text>
+        <rect x="456" y="36" width="58" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="464" y="50">exafs 5</text>
+        <rect x="520" y="36" width="56" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="528" y="50">slack 4</text>
+        <rect x="582" y="36" width="42" height="20" fill="var(--surface)" stroke="var(--rule)"/><text x="590" y="50">db 1</text>
+      </g>
+      <text x="16" y="76" font-family="var(--mono)" font-size="10" fill="var(--muted)">published API: TOOL_DEFINITIONS · TOOL_CATEGORIES · CLI_TOOL_DEFINITION · execute_tool</text>
+
+      <g stroke="var(--rule)" stroke-width="1"><path d="M120 89 L120 150M270 89 L270 150M420 89 L420 150M540 89 L540 150M640 89 L640 150" fill="none"/></g>
+      <g font-family="var(--mono)" font-size="9.5" fill="var(--crit)">
+        <text x="126" y="122">private</text><text x="276" y="122">private</text>
+      </g>
+      <g font-family="var(--mono)" font-size="9.5" fill="var(--ok)">
+        <text x="426" y="122">CLI</text><text x="546" y="122">CLI</text><text x="646" y="122">CLI</text>
+      </g>
+
+      <g font-family="var(--mono)" font-size="10.5">
+        <rect x="40" y="150" width="160" height="52" fill="var(--surface)" stroke="var(--ink)"/>
+        <text x="52" y="169" fill="var(--ink)" font-weight="500">autonomous</text>
+        <text x="52" y="186" fill="var(--muted)" font-size="9.5">BL15-2 · hardware control</text>
+        <rect x="212" y="150" width="150" height="52" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="224" y="169" fill="var(--ink)">autonomous_fourone</text>
+        <text x="224" y="186" fill="var(--muted)" font-size="9.5">BL4-1 · fork, paused</text>
+        <rect x="374" y="150" width="120" height="52" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="386" y="169" fill="var(--ink)">playground</text>
+        <text x="386" y="186" fill="var(--muted)" font-size="9.5">wide-open agent</text>
+        <rect x="506" y="150" width="86" height="52" fill="var(--surface)" stroke="var(--rule)"/>
+        <text x="518" y="169" fill="var(--ink)">beamtime-</text><text x="518" y="181" fill="var(--ink)">hero</text>
+        <rect x="604" y="150" width="80" height="52" fill="var(--surface)" stroke="var(--ink)"/>
+        <text x="616" y="169" fill="var(--ink)" font-weight="500">chemcat</text>
+        <text x="616" y="186" fill="var(--muted)" font-size="9.5">k8s, multi-user</text>
+      </g>
+
+      <rect x="40" y="228" width="644" height="1" fill="var(--rule)"/>
+      <text x="40" y="252" font-family="var(--mono)" font-size="10.5" fill="var(--muted)">Each application defines its own allowlist, by a different mechanism:</text>
+      <g font-family="var(--mono)" font-size="10" fill="var(--ink)">
+        <text x="40" y="274">autonomous</text><text x="160" y="274" fill="var(--muted)">JSON tool config (stale) + role motor sets + Claude Bash() patterns</text>
+        <text x="40" y="292">chemcat</text><text x="160" y="292" fill="var(--muted)">a 1,100-line CLI wrapper + two Claude settings files + k8s pod</text>
+        <text x="40" y="310">playground</text><text x="160" y="310" fill="var(--muted)">Claude settings deny list only, no container boundary</text>
+      </g>
+    </svg>
+    <figcaption>Red paths import private internals; green paths shell out to the installed
+    command. The published API has no consumer.</figcaption>
+  </figure>
+</section>
+
+<section id="s2">
+  <h2><span class="num">§2</span>beamtimehero_cli — the toolbelt</h2>
+  <p class="repo">32,600 lines · 27 test files · CI on 3.11 and 3.13 · zero TODO markers</p>
+
+  <p>The scientific half of this repo is the best-organised code in the platform. Thirty-two
+  modules sit under a science directory arranged by technique, nothing there reads an environment
+  variable or opens a file, and nothing imports upward out of it. Every physics default lives in
+  a policy module next to the functions that use it, and a test pins each constant by value, so
+  moving a fit window or a convergence threshold is a deliberate two-line commit rather than a
+  silent change. A generated index lists every science function with its signature, its
+  citations, and which tools reach it. A scientist can be pointed at that directory with
+  confidence.</p>
+
+  <p>The tool-catalog half is where the strain shows. Three files — the schema list, the
+  provenance table, and the handler module — total 8,379 lines, a quarter of the source tree, and
+  a single new tool has to be added to all three plus, sometimes, a fourth. A tool's name is
+  written in up to five places. The tree is not declared anywhere; it is computed by a
+  five-step precedence chain that falls back through a hand-maintained map of about seventy-five
+  names, then infers the branch from whether the schema happens to require a justification
+  argument.</p>
+
+  <div class="find high">
+    <p class="chip">High</p>
+    <p><span class="t">Branch assignment is inferred, and one inference is also the safety
+    classification.</span> A mutating tool lands on the write branch because its schema lists
+    <code>justification</code> as required. Drop that one string and the tool silently moves to
+    the general branch, becomes reachable by agents that were never granted write access, and no
+    test notices. The two facts — this tool mutates the beamline, and this tool needs a
+    justification — should be one declared property, not one derived from the other.</p>
+  </div>
+
+  <div class="find med">
+    <p class="chip">Medium</p>
+    <p><span class="t">Schemas and handlers are only related by convention.</span> Every schema
+    is hand-written JSON; every handler takes an untyped dictionary and pulls keys out of it.
+    Nothing checks that the two agree, and nothing validates an argument before it reaches the
+    function. A renamed parameter in one place and not the other produces a tool that runs with a
+    silently missing value.</p>
+  </div>
+
+  <div class="find med">
+    <p class="chip">Medium</p>
+    <p><span class="t">Profiles look like allowlists but are not a boundary.</span> A profile
+    adds an aliased branch onto the command surface; it never removes the canonical branches.
+    Any agent that can run the command can still reach every tool, so restriction has to be
+    imposed by whatever wraps the CLI. This is understood inside the repo, but the word
+    "profile" invites the wrong assumption in the consumers.</p>
+  </div>
+
+  <div class="find note">
+    <p class="chip">Worth knowing</p>
+    <p><span class="t">Two silent-failure paths.</span> The dispatch table is built by importing
+    the handler module inside a function that swallows import errors into an empty dictionary, so
+    one bad import in one handler turns every tool into "unknown tool" rather than a traceback.
+    Separately, a tool that runs and fails prints plain text and exits zero, which the agent
+    integration document honestly flags — agents must not read the exit code.</p>
+  </div>
+
+  <p>Two smaller items: the category grouping used by consumer UIs has drifted badly, listing
+  twenty-three tools that no longer exist while five real tools belong to no category, and it is
+  the one part of the catalog no test covers. Thirty-five environment variables are read across
+  the package, mitigated by a YAML config shim but still the widest configuration surface in the
+  platform, and one of them is read but no longer used by anything.</p>
+
+  <p>The safety story is genuinely good where it is enforced. Justification text is checked for
+  emptiness before a command reaches SPEC, the audit row is written before dispatch so a killed
+  process still leaves evidence, and the justification is echoed into the SPEC session itself.
+  The mock transport is the default, so a fresh clone cannot touch hardware. One exception is
+  worth stating plainly.</p>
+
+  <div class="find high">
+    <p class="chip">High</p>
+    <p><span class="t">The kill switch is not connected.</span> Every SPEC command checks a
+    safety-switches file for a flag that can disable reads or writes, and re-reads it each call
+    so a flip takes effect immediately. The file it looks for does not exist in the package, and
+    a missing file fails open. The dashboard that offers the switch writes a different file in a
+    different repository. Turning writes off from the user interface currently does nothing.</p>
+  </div>
+</section>
+
+<section id="s3">
+  <h2><span class="num">§3</span>autonomous — agentic beamline control</h2>
+  <p class="repo">21,300 lines · 95 tests · no continuous integration · nine agent definitions</p>
+
+  <p>This is the highest-consequence application and, architecturally, the most interesting
+  choice in the platform: the orchestrator is deterministic Python, not a model. A supervisor
+  loop polls a SQLite plan store every three seconds and spawns the command-line agent as a
+  subprocess per phase, one phase at a time, with no recursive delegation — every agent
+  definition explicitly forbids spawning further agents. Sixteen tables hold experiment state, so
+  nothing important lives in a context window, and a phase can be killed and resumed from its
+  stored session. For a system that moves motors, putting the control flow in code and the
+  judgement in the model is the right division.</p>
+
+  <p>The guardrails that exist are real and layered: a per-role motor allowlist that denies
+  unknown roles by default, a human-intervention tool that blocks indefinitely until staff
+  respond, a stop path that kills every phase process group, orphan purging at startup, and the
+  mock transport forced on early in three separate entry points. Free-form SPEC strings are not
+  available to role agents; they get whitelisted commands only.</p>
+
+  <p class="pull">Three of the mechanisms an operator would name if asked how this system is kept
+  safe are not the mechanisms doing the work.</p>
+
+  <div class="find high">
+    <p class="chip">High</p>
+    <p><span class="t">A documented enforcement mechanism does not exist.</span> Four agent
+    prompts and the 637-line base prompt tell the model that its launcher sets a phase-override
+    variable and that a server-side allowlist enforces the current phase. No launcher sets it and
+    nothing in either repository reads it. The real gating is the per-role command branch alone.
+    The gap matters less for what the agent can do than for what the operators believe: the
+    prompt is the documentation people read.</p>
+  </div>
+
+  <div class="find high">
+    <p class="chip">High</p>
+    <p><span class="t">The tool configuration has drifted into an accidental feature freeze.</span>
+    A checked-in JSON file lists which tools are enabled, is intersected against the library's
+    schemas, and fails open if absent. It was generated in early July and never regenerated.
+    Thirty upstream tools are now invisible to every agent — the entire X-ray Raman branch, the
+    EXAFS chi extraction and Fourier transform, edge identification, quality assessment,
+    reference comparison — while thirty-two names in the file no longer exist. Science that was
+    written, tested, and documented is simply not reachable from the beamline that needs it.</p>
+  </div>
+
+  <div class="find med">
+    <p class="chip">Medium</p>
+    <p><span class="t">No budget of any kind.</span> There is no turn cap, no cost cap, and no
+    wall-clock limit anywhere in the repository, and the collection prompt instructs the agent to
+    run until manually interrupted. Rate-limit failover exists, which handles the gateway saying
+    no, but nothing bounds a productive loop that is doing the wrong thing.</p>
+  </div>
+
+  <div class="find med">
+    <p class="chip">Medium</p>
+    <p><span class="t">Coupling to private internals, including live monkey-patching.</span>
+    The overlay imports the schema list and dispatch table directly, then patches two library
+    modules at import time to substitute its own provenance table and executor. It works, and the
+    24 locally-defined tools genuinely overlay rather than duplicate — no name collides. But a
+    refactor in the library that respects its published API can still break this repository, and
+    there is no continuous integration here to catch it.</p>
+  </div>
+
+  <p>One asymmetry is worth naming for the sandbox discussion in §7. Arguments to the
+  locally-defined tools are validated by typed models; the roughly 124 tools that come from the
+  library are dispatched unvalidated. And the one unstructured-string surface in the whole
+  system — a tool that evaluates an arbitrary SPEC macro — sits on the general branch, so it
+  requires no justification, survives the role filter, and is available to every role. It routes
+  into a disposable network-isolated container running simulation-mode SPEC, which is the right
+  design; it is worth confirming that routing cannot be configured away on a production host.</p>
+</section>
+
+<section id="s4">
+  <h2><span class="num">§4</span>chemcat — the multi-user portal</h2>
+  <p class="repo">44,800 lines · 85 test files · required CI checks · five container images</p>
+
+  <p>Asked directly whether the containerisation is efficient and effective: yes, and it is the
+  strongest security engineering in the platform. It is also the only place where the model runs
+  behind a boundary a kernel enforces rather than a boundary the model is asked to respect.</p>
+
+  <p>Identity is Authentik OIDC with a mandatory group claim, and group membership is re-narrowed
+  against the live roster on every request, only ever narrowing, with caches that fail closed.
+  Data rows are keyed by user identifier, and conversations are siloed by a key derived from the
+  authenticated session rather than any identifier the browser can name — there is no
+  conversation id a user could tamper with. Each chat session gets its own pod: non-root, all
+  capabilities dropped, read-only root filesystem, default seccomp profile, no service-account
+  token, a twelve-hour hard deadline and an idle exit.</p>
+
+  <p>The two design decisions that carry the most weight are worth stating because they should be
+  copied elsewhere. First, the child process environment is built from an explicit allowlist
+  rather than inherited, so gateway keys and database URLs cannot leak into a process the model
+  influences, and user notebooks are launched with an empty environment — there is no language
+  model key in a user's notebook at all. Second, agent pods hold no database credentials;
+  database-backed tools post through a broker that recomputes the caller's scope server-side and
+  never trusts the pod's own copy of its scope file. The read-only workspace root is what makes
+  it safe to allow arbitrary Python inside the pod, since an agent cannot rewrite the file that
+  describes what it may read.</p>
+
+  <div class="find high">
+    <p class="chip">High</p>
+    <p><span class="t">Network policy is not enforced by the cluster.</span> The team has
+    confirmed, not merely suspected, that the virtual cluster's networking layer ignores network
+    policies — Postgres was reachable over TCP from an agent pod. Every policy in the repository
+    is therefore correct by construction but inert. Credential hygiene is currently the real
+    network boundary, and it is good enough that this is not a live exposure. It does mean the
+    isolation story rests on one layer rather than two, and the same class of gap would be much
+    more serious in a beamline-control context.</p>
+  </div>
+
+  <div class="find med">
+    <p class="chip">Medium</p>
+    <p><span class="t">The contribution tiers are explicitly unenforced.</span> The security
+    document says so itself: the tiers are guidance designed against accident, not malice, and it
+    names the concrete consequence — open-tier calculator code runs in the portal process and
+    could read the session secret and forge a staff session. That honesty is admirable and the
+    conclusion is unavoidable: this tier scheme cannot be the mechanism that lets strangers
+    contribute. See §6.</p>
+  </div>
+
+  <div class="find med">
+    <p class="chip">Medium</p>
+    <p><span class="t">Two portals, one codebase, parallel implementations.</span> Two FastAPI
+    applications share a database and a session secret under different base paths, with
+    side-by-side sample, beamtime, staff, template and static trees. Two files named the same
+    thing differ by seven lines. A separate module is a self-described keep-in-sync copy of a
+    library data reader. This is the largest maintenance liability in the repo and the hardest
+    thing for a newcomer to navigate.</p>
+  </div>
+
+  <div class="find note">
+    <p class="chip">Worth knowing</p>
+    <p><span class="t">Supply chain and checkout hygiene.</span> The agent image installs the
+    command-line tool by piping an unpinned install script into a shell, which sits oddly beside
+    otherwise careful pinning — every GitHub action is pinned by hash and the library is cloned
+    at a fixed commit, though nothing automatically bumps that clone. Separately, a plaintext
+    file in the operations checkout contains lines matching Slack token patterns; that is worth
+    checking and rotating today rather than sometime.</p>
+  </div>
+</section>
+
+<section id="s5">
+  <h2><span class="num">§5</span>The three lighter consumers</h2>
+  <p><strong>playground</strong> is the wide-capability assistant: a Streamlit and Slack front
+  end over the command-line agent, allowed arbitrary Python, curl, wget, web search, web fetch
+  and subagents, restricted only by a deny list in a settings file. It is effectively the
+  low-guardrail research agent §7 asks for, already in use — but with no container boundary at
+  all. It is also the only remaining consumer of the library's pre-reorganisation import
+  paths, which means the compatibility shims can be retired once its two files are updated. The
+  portal module in chemcat that used to need them has already moved to the new paths.</p>
+
+  <p><strong>beamtimehero</strong> is the user-facing chat interface, running locally on the
+  beamline machine for direct access to files, logs and the live SPEC session, with conversations
+  mirrored to Slack for staff. It has been untouched since June while the platform around it
+  moved four months; if it is still in service it is the least-reviewed door into the beamline
+  computer, and if it is not, saying so in its README costs nothing.</p>
+
+  <p><strong>autonomous_fourone</strong> is a BL4-1 port of the control system, forked in August
+  as a full copy. Its README names the parent honestly, and the parent does not mention it at
+  all. Two copies of a 21,000-line hardware-control application is the platform's most expensive
+  open structural question: every fix to a guardrail now has to be made twice, and the §3
+  findings almost certainly apply to both. Deciding whether these converge onto one
+  beamline-parameterised application, or divide permanently, is more consequential than any
+  individual item in this report.</p>
+</section>
+
+<section id="s6">
+  <h2><span class="num">§6</span>Readiness for outside contributors</h2>
+  <p class="lede">For science code in the library: close, and better than most research groups
+  ever get. For anything else: not yet, and the gap is mechanical rather than cultural.</p>
+
+  <p>What already works is substantial. The science directory has a stated rule, a layout by
+  technique, and a table mapping "you want to change X" to "go to Y". The contributing guide
+  names what is fair game without asking permission and names the three files to raise rather
+  than edit. Physics defaults are pinned by tests, so a scientist changing a threshold gets a
+  clear failure telling them to record the change, which is exactly the right teaching mechanism.
+  Tests use synthetic spectra with analytic ground truth, so a contributor can write one without
+  a beamtime. The linter is deliberately narrow — correctness only, no style opinions — so a
+  first pull request does not get argued with about import order. Citations are a convention, and
+  unattributed methods are recorded as explicit gaps rather than papered over.</p>
+
+  <p>Four things stand between that and a stranger's first pull request landing safely.</p>
+
+  <ol class="body">
+    <li><strong>A new tool costs five files and no test proves it worked.</strong> Adding science
+    is easy; exposing it to an agent is not. The registration ceremony — schema, provenance,
+    handler, sometimes a category map, then two regenerated documents — is the single biggest
+    barrier, and it lands on exactly the boundary the guide marks off-limits. A scientist who
+    writes a good analysis function currently cannot finish the job alone.</li>
+    <li><strong>The off-limits set is right but under-mechanised.</strong> It is stated in prose
+    in one repository, while the blast radius of breaking it lives in five sibling checkouts that
+    the library cannot see. A code-owners rule on those files, and a test that diffs the tool
+    surface against a recorded baseline, would turn a social rule into a mechanical one.</li>
+    <li><strong>Contribution safety is guidance, not enforcement.</strong> chemcat says this
+    outright, and its own example — open-tier code reaching the session secret — is the proof.
+    In-process contributed code in an authenticated multi-user service cannot be reviewed by
+    tiering; either it moves out of the process, or every contribution to it needs the same
+    review as core code.</li>
+    <li><strong>The control repositories are not contributor-ready and should say so.</strong>
+    autonomous has no continuous integration, a locally-ignored project instruction file, absolute
+    paths from two different developers' home directories, and stray databases in its data
+    directory. That is fine for a small trusted team and unfit for outside pull requests. Marking
+    it internal-only for now is a better answer than a rushed cleanup.</li>
+  </ol>
+
+  <p>The highest-leverage change is the first one. If registering a tool were derived from the
+  handler — one typed function with a docstring and a declared branch, from which the schema,
+  the provenance entry and the documentation are generated — then the off-limits set would shrink
+  to something a contributor never has to touch, the schema-handler mismatch in §2 would become
+  impossible, and the drifting category map would have no separate copy to drift from. That is a
+  substantial refactor of the largest files in the platform, and it is the one that pays for
+  itself in every other finding here.</p>
+</section>
+
+<section id="s7">
+  <h2><span class="num">§7</span>A sandbox for unguarded queries</h2>
+  <p class="lede">The good news is that this has largely been designed and built already, in
+  chemcat, and the local ingredients exist on the beamline host. The work is porting, not
+  inventing.</p>
+
+  <p>The requirement: the control system should be able to hand a hard analysis question to
+  something that may run arbitrary Python and reach the web, without that something being able to
+  touch hardware, disturb an ongoing collection, or hold any credential that matters. Two
+  existing pieces answer most of it.</p>
+
+  <p>chemcat's agent sandbox is the pattern. A second settings file keeps the deny spine — no
+  web, no git, no curl, no remote shell, no environment-prefix smuggling, no write branch, no
+  database, no messaging — and adds arbitrary Python plus writes confined to three working
+  directories. The insight the design document states explicitly is the one to carry over:
+  moving execution somewhere a kernel can enforce the boundary is precisely what makes it safe to
+  widen the allowlist. The read-only workspace root is load-bearing, because a writable scope
+  file would let the agent widen its own containment.</p>
+
+  <p>The second piece is already running on the beamline host: the SPEC macro evaluator, a
+  small local service that spawns a fresh container per request with no network, one CPU, two
+  gigabytes, a hard timeout and automatic removal. That is the right shape for a local
+  disposable sandbox, and reusing its service contract means the calling side is a familiar tool
+  invocation rather than new infrastructure.</p>
+
+  <h3>What to build</h3>
+  <p>A local research-sandbox service on the same host, called through one new tool that takes a
+  question and returns a written report with its figures. Concretely:</p>
+  <ul>
+    <li><strong>Isolate by absence, not by permission.</strong> No SPEC variables, no transport
+    configuration, no database URL, no Slack token in the container environment — built by
+    allowlist as chemcat does, never inherited. This is what makes the §4 finding about unenforced
+    network policy survivable there, and it is the property to copy first.</li>
+    <li><strong>Mount one experiment's scan directory read-only</strong> plus a writable scratch
+    for figures and notes. The sandbox reads data; it never writes where the collection writes.</li>
+    <li><strong>Allow web search and fetch, with egress restricted to the gateway and
+    outbound HTTPS only.</strong> Note that chemcat deliberately left these denied pending an
+    exfiltration review. The calculus is different here and worth writing down: what is
+    reachable is one experiment's own scans, visible to the staff asking the question, rather
+    than another user's private data. That makes it defensible, but the decision should be
+    recorded rather than inherited by accident.</li>
+    <li><strong>Give it a real budget.</strong> Wall clock, turn count, and token spend, enforced
+    by the service. §3 notes the control system has none of these today; an arbitrary-Python
+    agent with web access is the wrong place to discover that.</li>
+    <li><strong>Audit the question and the answer</strong> into the same log as everything else,
+    so a sandbox consultation appears in the experiment record alongside the actions it informed.</li>
+    <li><strong>Make it a tool, not a delegate.</strong> The calling agent gets a report back and
+    remains the only thing that can act. Nothing in the sandbox should be able to enqueue a
+    motor move, directly or by writing somewhere the control system reads.</li>
+  </ul>
+
+  <h3>Runtimes worth evaluating</h3>
+  <div class="scroll">
+  <table>
+    <caption>Ordered by how much new operational surface each adds to a machine that is already
+    running a beamline.</caption>
+    <thead><tr><th>Option</th><th>Isolation</th><th>Cost to adopt</th><th>Read</th></tr></thead>
+    <tbody>
+      <tr><td>Rootless Podman or Docker, hardened flags</td><td class="n">Namespaces + seccomp</td><td class="n">Lowest</td>
+        <td>Same mechanism the macro evaluator already uses on this host, plus the pod flags chemcat
+        settled on. Start here; it is very likely sufficient.</td></tr>
+      <tr><td>gVisor or Kata as the runtime</td><td class="n">Syscall interposition / lightweight VM</td><td class="n">Moderate</td>
+        <td>A drop-in runtime change if a kernel-escape from untrusted analysis code is in scope.
+        Worth it only if arbitrary web-fetched code will execute.</td></tr>
+      <tr><td>Firecracker microVM</td><td class="n">Hardware virtualisation</td><td class="n">High</td>
+        <td>Strongest boundary, its own image pipeline and networking to operate. Hard to justify
+        against a threat model of "the model writes bad Python".</td></tr>
+      <tr><td>bubblewrap or the agent's own native sandbox</td><td class="n">Namespaces, no image</td><td class="n">Low</td>
+        <td>No container image to maintain, but shares the host filesystem and Python
+        environment. Acceptable for a scratch calculation, not for a durable boundary.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>One caution that applies to all four: the settings-file allowlist is a pattern match, and
+  the agent auto-approves read-only shell commands regardless of it. Both chemcat settings files
+  say so in their own comments. Treat the file as the coarse filter and the container as the
+  boundary — never the reverse.</p>
+</section>
+
+<section id="s8">
+  <h2><span class="num">§8</span>Where to spend attention</h2>
+  <p>Ordered by consequence per hour of work, not by size.</p>
+  <div class="scroll">
+  <table>
+    <thead><tr><th>Do this</th><th>Where</th><th>Why now</th></tr></thead>
+    <tbody>
+      <tr><td>Rotate anything in the plaintext token file in the operations checkout</td><td class="n">chemcat-s3df</td><td>Credentials on disk outside a secret store, today.</td></tr>
+      <tr><td>Wire the safety switch to the file the dashboard writes, and fail closed on a corrupt file</td><td class="n">toolbelt + autonomous</td><td>An operator control that silently does nothing is worse than no control.</td></tr>
+      <tr><td>Regenerate the tool configuration, or delete it and let the library decide</td><td class="n">autonomous</td><td>Thirty tested tools, including all of X-ray Raman, are unreachable from the beamline.</td></tr>
+      <tr><td>Delete the phase-override claims from the agent prompts, or implement them</td><td class="n">autonomous</td><td>The prompt is the documentation people trust; it currently describes a mechanism that does not exist.</td></tr>
+      <tr><td>Add turn, time and spend caps before widening any capability</td><td class="n">autonomous</td><td>Prerequisite for §7, and cheap.</td></tr>
+      <tr><td>Declare mutation as a property of the tool, not as a required argument name</td><td class="n">toolbelt</td><td>Removes a one-string path from mutating tool to unrestricted branch.</td></tr>
+      <tr><td>Decide the two-beamline question: converge or diverge</td><td class="n">autonomous ×2</td><td>Every guardrail fix is currently two fixes, and one copy has no CI.</td></tr>
+      <tr><td>Generate tool registration from typed handlers</td><td class="n">toolbelt</td><td>The change that makes outside contribution to tools possible at all.</td></tr>
+      <tr><td>Port the sandbox pattern to a local service</td><td class="n">autonomous</td><td>Unblocks the capability you want, on ingredients you already run.</td></tr>
+      <tr><td>Update the two remaining old-path imports, then retire the shims</td><td class="n">playground</td><td>Last consumer of nineteen compatibility modules.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>A closing observation that the individual findings do not capture. Every serious problem
+  here is a place where two descriptions of the same fact were allowed to drift apart: a schema
+  and its handler, a tool list and the tools, a prompt and its enforcement, a switch and its
+  file, two portals, two beamlines. The platform's own best idea is the answer to all of them —
+  the science directory has one copy of each default, pinned by a test that fails when it moves.
+  Applying that discipline to the tool surface is the through-line of this report.</p>
+</section>
+
+</main>
+<footer>Architecture review · no code modified · beamtimehero_cli · autonomous · chemcat · playground · beamtimehero · autonomous_fourone</footer>
+</div>
+</body>
+</html>
