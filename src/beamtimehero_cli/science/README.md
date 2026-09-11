@@ -204,7 +204,10 @@ baseline model, which calibration. See `xas/descriptors.py` for the pattern.
 
 ## Moved from
 
-The old locations are re-export shims, so existing imports keep working:
+These modules moved into `science/` on 2026-09-04. The re-export shims that
+kept the old paths importable were **removed on 2026-09-11**, once the last
+consumer migrated — so an old path is now an `ImportError`, and this table is
+how you find where something went:
 
 | Old | New |
 |---|---|
@@ -228,5 +231,4 @@ The old locations are re-export shims, so existing imports keep working:
 | `spec_data/xrs_plotting.py` | `science/plots/xrs.py` |
 | `spec_data/plotting.py` (the 4 array/dict-taking figures) | `science/plots/{xas,scan}.py` |
 
-New code should use the new paths. The shims will be removed once the
-consuming applications have migrated.
+There is no compatibility layer left: the new path is the only path.

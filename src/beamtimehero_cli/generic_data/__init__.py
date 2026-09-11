@@ -1,14 +1,11 @@
-"""Mostly moved — the generic math now lives under ``science/``.
+"""Beam-diagnostic fitting that is not technique-specific.
 
-* ``generic_data.lcf``               -> ``science.xas.compare`` (shim)
-* ``generic_data.cosine_similarity`` -> ``science.fitting.similarity`` (shim)
+``fitter`` holds the knife-edge, aperture and emission-peak fits used during
+alignment. It stayed here rather than moving under ``science/`` because it is
+diagnostic geometry rather than spectroscopy — see ``science/README.md``.
 
-``generic_data.fitter`` holds the knife-edge, aperture and emission-peak fits.
+Everything else that once lived in this package moved:
+
+* ``lcf``               -> ``science.xas.compare``
+* ``cosine_similarity`` -> ``science.fitting.similarity``
 """
-
-# Keep `import beamtimehero_cli.generic_data as g; g.cosine_similarity` working
-# the way it did before the move.
-from beamtimehero_cli.generic_data import (  # noqa: F401,E402
-    cosine_similarity,
-    lcf,
-)

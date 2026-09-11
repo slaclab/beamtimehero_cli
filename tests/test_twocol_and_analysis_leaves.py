@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 from beamtimehero_cli import config as bl_config
-from beamtimehero_cli.analysis import xas
+from beamtimehero_cli.science.xas.compare import align_spectra, difference_spectrum
 from beamtimehero_cli.spec_data import local_data, scans, twocol_ascii
 
 
@@ -247,7 +247,7 @@ def test_lcf_warns_on_reference_e0_spread(scan_dir):
 def test_align_spectra_recovers_2ev_shift():
     mu = _xanes(_GRID, 5483.0)
     shifted = _xanes(_GRID, 5485.0)  # same shape, +2 eV
-    records = xas.align_spectra([(_GRID, mu), (_GRID, shifted)])
+    records = align_spectra([(_GRID, mu), (_GRID, shifted)])
     assert records[0]["shift_applied"] == pytest.approx(0.0, abs=0.01)
     assert records[1]["shift_applied"] == pytest.approx(-2.0, abs=0.3)
     assert not records[1]["refused"]
@@ -258,7 +258,7 @@ def test_align_spectra_refuses_15ev_shift():
     grid = np.arange(5440.0, 5580.0, 0.5)
     mu = _xanes(grid, 5483.0)
     far = _xanes(grid, 5498.0)  # +15 eV — beyond plausible mono drift
-    records = xas.align_spectra([(grid, mu), (grid, far)])
+    records = align_spectra([(grid, mu), (grid, far)])
     assert records[1]["refused"]
     assert records[1]["shift_applied"] == 0.0
     assert "glitch" in records[1]["note"]
@@ -267,7 +267,7 @@ def test_align_spectra_refuses_15ev_shift():
 
 def test_align_spectra_explicit_target_e0():
     mu = _xanes(_GRID, 5483.0)
-    records = xas.align_spectra([(_GRID, mu)], target_e0=5484.0)
+    records = align_spectra([(_GRID, mu)], target_e0=5484.0)
     assert records[0]["target_source"] == "explicit target_e0"
     assert records[0]["shift_applied"] == pytest.approx(
         5484.0 - records[0]["e0_before"], abs=1e-3)
@@ -308,8 +308,8 @@ def test_align_spectra_leaf_needs_two(scan_dir):
 def test_difference_of_shifted_identical_spectra_is_flat_after_align():
     mu_a = _xanes(_GRID, 5483.0)
     mu_b = _xanes(_GRID, 5485.0)
-    aligned = xas.difference_spectrum(_GRID, mu_a, _GRID, mu_b, align=True)
-    raw = xas.difference_spectrum(_GRID, mu_a, _GRID, mu_b, align=False)
+    aligned = difference_spectrum(_GRID, mu_a, _GRID, mu_b, align=True)
+    raw = difference_spectrum(_GRID, mu_a, _GRID, mu_b, align=False)
     # Aligned: shape-identical spectra difference to ~0; the raw difference
     # carries the derivative-shaped calibration artifact.
     assert aligned["stats"]["max_abs_delta"] < 0.05
@@ -321,7 +321,7 @@ def test_difference_spectrum_rejects_disjoint_ranges():
     lo = np.arange(5450.0, 5470.0, 0.5)
     hi = np.arange(5500.0, 5520.0, 0.5)
     with pytest.raises(ValueError, match="overlap"):
-        xas.difference_spectrum(lo, np.ones_like(lo), hi, np.ones_like(hi),
+        difference_spectrum(lo, np.ones_like(lo), hi, np.ones_like(hi),
                                 align=False)
 
 

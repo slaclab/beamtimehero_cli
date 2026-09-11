@@ -14,7 +14,9 @@ extensions below.**
 > | `interpretation/xrs_interpret.py` | `science/xrs/interpret.py` |
 > | `spec_data/xrs_plotting.py` | `science/plots/xrs.py` |
 >
-> The old paths still import — they are re-export shims. The physics, the
+> (Superseded 2026-09-11: the shims described here have been removed; the
+> `science/` paths are now the only ones.) The old paths still import — they
+> are re-export shims. The physics, the
 > phase table, and the reasoning below are unaffected. **Scope:** the tools so the agent can process, average,
 overlap, and *interpret* X-ray Raman (XRS / non-resonant inelastic X-ray
 scattering, NRIXS) spectra — a technique our XAS/HERFD/XES tools handled

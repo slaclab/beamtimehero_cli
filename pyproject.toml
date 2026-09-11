@@ -68,12 +68,5 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E9", "F"]
 
-[tool.ruff.lint.per-file-ignores]
-# The re-export shims exist to keep pre-science/ import paths working; every
-# name in them is unused by construction. They already carry `# noqa: F401`,
-# but list them here so a new shim does not need to remember.
-"src/beamtimehero_cli/analysis/*.py" = ["F401"]
-"src/beamtimehero_cli/interpretation/*.py" = ["F401"]
-"src/beamtimehero_cli/generic_data/__init__.py" = ["F401"]
-"src/beamtimehero_cli/spec_data/exafs_plotting.py" = ["F401"]
-"src/beamtimehero_cli/spec_data/xrs_plotting.py" = ["F401"]
+# No per-file lint ignores. The pre-science/ re-export shims that needed them
+# were removed on 2026-09-11; every import path now points at its real module.

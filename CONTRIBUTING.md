@@ -57,10 +57,10 @@ has a right answer to check against. By area:
 | The `science/` boundary itself | `tests/test_science_boundary.py` |
 
 `tests/test_interpretation.py` is the clearest model for the synthetic-spectrum
-pattern. Note that these files import through the **old** module paths
-(`beamtimehero_cli.interpretation`, `.analysis`) on purpose: that makes the
-suite double as a compatibility check on the re-export shims. **New tests
-should import from `beamtimehero_cli.science.*`.**
+pattern. Every test imports from `beamtimehero_cli.science.*` directly — the
+old `interpretation` / `analysis` / `generic_data` re-export shims were removed
+on 2026-09-11, so there is one import path per function and no compatibility
+layer to keep in mind.
 
 The scientific defaults are pinned, and changing one has a required second
 step. That contract — which defaults are guarded, which are not, and what you
@@ -205,7 +205,7 @@ instead — that is the boundary this repo is organized around.
   dict live in `science/plots/` (`exafs.py`, `xrs.py`, `xas.py`, `scan.py`).
   The six that load a scan by file name stay in `spec_data/plotting.py`. If
   your change is about what a plot looks like, `science/plots/` is almost
-  certainly the place; old import paths still work via shims.
+  certainly the place.
 
 - **Actions must be SHA-pinned.** `slaclab` enforces `sha_pinning_required`, so
   every `uses:` in `.github/workflows/` is a full 40-character commit SHA with

@@ -12,9 +12,13 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from beamtimehero_cli.analysis import exafs, xas
-from beamtimehero_cli.generic_data.lcf import compare_to_references
-from beamtimehero_cli.interpretation.normalize import pre_post_normalize
+from beamtimehero_cli.science.exafs.background import autobk_lite
+from beamtimehero_cli.science.exafs.fourier import first_shell_peak, ft_window, xftf
+from beamtimehero_cli.science.exafs.kspace import etok, ktoe
+from beamtimehero_cli.science.reduce.deadtime import deadtime_correct
+from beamtimehero_cli.science.reduce.reps import filter_short_reps
+from beamtimehero_cli.science.xas.compare import compare_to_references
+from beamtimehero_cli.science.xas.normalize import pre_post_normalize
 
 R_SHELL = 2.5  # apparent first-shell distance (Å) of the synthetic signal
 E0 = 7112.0
@@ -35,7 +39,7 @@ def _synthetic_mu(n=600, emax_above=500.0, noise=0.0, seed=0):
         np.linspace(E0 - 150, E0 - 5, 60),
         np.linspace(E0 - 5, E0 + emax_above, n),
     ])
-    k = exafs.etok(energy, E0)
+    k = etok(energy, E0)
     step = 1.0 / (1.0 + np.exp(-(energy - E0) / 1.5))
     osc = np.zeros_like(energy)
     nz = k > 0.5
@@ -50,12 +54,12 @@ def _synthetic_mu(n=600, emax_above=500.0, noise=0.0, seed=0):
 
 def test_etok_ktoe_roundtrip():
     k = np.linspace(0.0, 12.0, 50)
-    energy = exafs.ktoe(k, E0)
-    np.testing.assert_allclose(exafs.etok(energy, E0), k, atol=1e-10)
+    energy = ktoe(k, E0)
+    np.testing.assert_allclose(etok(energy, E0), k, atol=1e-10)
 
 
 def test_etok_clips_below_edge():
-    assert exafs.etok(np.array([E0 - 50.0]), E0)[0] == 0.0
+    assert etok(np.array([E0 - 50.0]), E0)[0] == 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +68,7 @@ def test_etok_clips_below_edge():
 
 def test_xftf_peak_at_known_distance():
     k, chi = _synthetic_chi()
-    ft = exafs.xftf(k, chi, kmin=2.0, kmax=11.0, kweight=2)
+    ft = xftf(k, chi, kmin=2.0, kmax=11.0, kweight=2)
     r, mag = ft["r"], ft["chir_mag"]
     sel = (r > 1.0) & (r < 4.0)
     r_peak = r[sel][np.argmax(mag[sel])]
@@ -73,7 +77,7 @@ def test_xftf_peak_at_known_distance():
 
 def test_xftf_provenance_and_truncation():
     k, chi = _synthetic_chi()
-    ft = exafs.xftf(k, chi, kmin=2.0, kmax=10.0, rmax_out=6.0)
+    ft = xftf(k, chi, kmin=2.0, kmax=10.0, rmax_out=6.0)
     assert ft["r"].max() <= 6.0
     assert ft["provenance"]["kweight"] == 2
     assert "phase-uncorrected" in ft["provenance"]["r_axis"]
@@ -81,8 +85,8 @@ def test_xftf_provenance_and_truncation():
 
 def test_first_shell_peak_parabola_refined():
     k, chi = _synthetic_chi()
-    ft = exafs.xftf(k, chi, kmin=2.0, kmax=11.0)
-    peak = exafs.first_shell_peak(ft["r"], ft["chir_mag"])
+    ft = xftf(k, chi, kmin=2.0, kmax=11.0)
+    peak = first_shell_peak(ft["r"], ft["chir_mag"])
     assert peak["found"]
     assert abs(peak["r_peak_ang"] - R_SHELL) < 0.1
     assert "caveat" in peak
@@ -90,7 +94,7 @@ def test_first_shell_peak_parabola_refined():
 
 def test_ft_window_shape():
     k = np.arange(0, 12, 0.05)
-    win = exafs.ft_window(k, 3.0, 9.0, dk=1.0)
+    win = ft_window(k, 3.0, 9.0, dk=1.0)
     assert win.max() == pytest.approx(1.0)
     assert win[k < 2.0].max() == 0.0
     # sill midpoints at half height
@@ -105,8 +109,8 @@ def test_autobk_lite_recovers_shell_from_mu():
     energy, mu = _synthetic_mu()
     flat, prov = pre_post_normalize(energy, mu, E0)
     assert prov["applied"]
-    bk = exafs.autobk_lite(energy, mu, E0, edge_step=prov["edge_step"], rbkg=1.0)
-    ft = exafs.xftf(bk["k"], bk["chi"], kmin=2.0, kmax=10.0, kweight=2)
+    bk = autobk_lite(energy, mu, E0, edge_step=prov["edge_step"], rbkg=1.0)
+    ft = xftf(bk["k"], bk["chi"], kmin=2.0, kmax=10.0, kweight=2)
     sel = (ft["r"] > 1.2) & (ft["r"] < 4.0)
     r_peak = ft["r"][sel][np.argmax(ft["chir_mag"][sel])]
     assert abs(r_peak - R_SHELL) < 0.15
@@ -116,7 +120,7 @@ def test_autobk_lite_recovers_shell_from_mu():
 def test_autobk_lite_rejects_no_edge_data():
     energy = np.linspace(E0 - 100, E0 - 10, 50)
     with pytest.raises(ValueError):
-        exafs.autobk_lite(energy, np.ones_like(energy), E0)
+        autobk_lite(energy, np.ones_like(energy), E0)
 
 
 # ---------------------------------------------------------------------------
@@ -149,7 +153,7 @@ def test_filter_short_reps_drops_aborted_sweep():
     full = pd.Series(np.ones(101), index=energy, name="S001")
     aborted = pd.Series([1.0] * 8 + [np.nan] * 93, index=energy, name="S002")
     combined = pd.concat([full, aborted], axis=1)
-    filtered, dropped = xas.filter_short_reps(combined)
+    filtered, dropped = filter_short_reps(combined)
     assert list(filtered.columns) == ["S001"]
     assert dropped == ["S002"]
 
@@ -157,7 +161,7 @@ def test_filter_short_reps_drops_aborted_sweep():
 def test_filter_short_reps_keeps_everything_when_uniform():
     energy = np.linspace(100.0, 200.0, 50)
     combined = pd.DataFrame({"S001": np.ones(50), "S002": np.ones(50)}, index=energy)
-    filtered, dropped = xas.filter_short_reps(combined)
+    filtered, dropped = filter_short_reps(combined)
     assert list(filtered.columns) == ["S001", "S002"]
     assert dropped == []
 
@@ -172,7 +176,7 @@ def test_deadtime_correct_boosts_hot_channel():
     icr = np.zeros((npts, nelem))
     icr[:, 1] = 2e5  # hot element: 200 kcps at tau=1us -> 20% dead
     ct = np.ones(npts)
-    out = xas.deadtime_correct(sca, icr, ct, tau=1e-6)
+    out = deadtime_correct(sca, icr, ct, tau=1e-6)
     np.testing.assert_allclose(out[:, 0], 1000.0)         # cold channel untouched
     np.testing.assert_allclose(out[:, 1], 1000.0 / 0.8)   # hot channel boosted
 
@@ -180,7 +184,7 @@ def test_deadtime_correct_boosts_hot_channel():
 def test_deadtime_correct_clips_pathological_icr():
     sca = np.full((5, 1), 100.0)
     icr = np.full((5, 1), 5e6)  # would give negative live time
-    out = xas.deadtime_correct(sca, icr, np.ones(5), tau=1e-6)
+    out = deadtime_correct(sca, icr, np.ones(5), tau=1e-6)
     np.testing.assert_allclose(out[:, 0], 100.0 / 0.05)  # floored at 5% live
 
 
@@ -211,7 +215,7 @@ def test_compare_to_references_accepts_legacy_loss_key():
 
 
 def test_xrs_wrapper_keeps_caveat():
-    from beamtimehero_cli.interpretation.xrs_interpret import compare_xrs_to_references
+    from beamtimehero_cli.science.xrs.interpret import compare_xrs_to_references
     x = np.linspace(0, 10, 100)
     a = np.exp(-((x - 5) / 1.0) ** 2)
     out = compare_xrs_to_references(x, a, [{"name": "A", "loss": x, "intensity": a}])

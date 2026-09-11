@@ -168,18 +168,19 @@ def test_load_mu_merges_and_drops_aborted(collector_dir):
 
 
 def test_load_mu_full_chain_to_first_shell(collector_dir):
-    from beamtimehero_cli.analysis import exafs
-    from beamtimehero_cli.interpretation import normalize as interp_norm
-    from beamtimehero_cli.interpretation.descriptors import find_e0
+    from beamtimehero_cli.science.exafs.background import autobk_lite
+    from beamtimehero_cli.science.exafs.fourier import first_shell_peak, xftf
+    from beamtimehero_cli.science.xas.normalize import pre_post_normalize
+    from beamtimehero_cli.science.xas.e0 import find_e0
 
     r = exafs_data.load_mu(file_name="05_test_sample_019", collector_dir=str(collector_dir))
     e0 = find_e0(r["energy"], r["mu"])["e0_ev"]
     assert abs(e0 - E0) < 3.0
-    _flat, prov = interp_norm.pre_post_normalize(r["energy"], r["mu"], e0)
+    _flat, prov = pre_post_normalize(r["energy"], r["mu"], e0)
     assert prov["applied"] and prov["edge_step"] > 0
-    bk = exafs.autobk_lite(r["energy"], r["mu"], e0, edge_step=prov["edge_step"])
-    ft = exafs.xftf(bk["k"], bk["chi"], kmin=2.0, kmax=bk["k"].max() - 0.5)
-    peak = exafs.first_shell_peak(ft["r"], ft["chir_mag"])
+    bk = autobk_lite(r["energy"], r["mu"], e0, edge_step=prov["edge_step"])
+    ft = xftf(bk["k"], bk["chi"], kmin=2.0, kmax=bk["k"].max() - 0.5)
+    peak = first_shell_peak(ft["r"], ft["chir_mag"])
     assert peak["found"]
     assert abs(peak["r_peak_ang"] - 2.0) < 0.25   # synthetic shell at 2.0 Å
 
