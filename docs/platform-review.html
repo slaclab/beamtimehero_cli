@@ -125,6 +125,25 @@
   <span>~87,000 lines of Python</span><span>No code changed</span></p>
 </header>
 
+<section id="s0" style="grid-column:1/-1;margin:0 0 8px">
+  <div class="find note" style="max-width:none">
+    <p class="chip">Status · 11 September 2026</p>
+    <p><span class="t">Three findings below have since been fixed.</span> The kill
+    switch (§2, §8) resolved its file from the package rather than the deployment,
+    so it was inert; it now resolves per deployment, fails closed on a corrupt
+    file, and is verified blocking a motor move. The phase-override claims in four
+    agent prompts (§3) are gone, and the bl-aligner motor list now matches the
+    code. The compatibility shims (§5) are removed, and every consumer imports
+    the real modules.</p>
+    <p>One finding was found while fixing those and is not described below:
+    autonomy's action log — the audit trail for every SPEC command — was writing
+    into the toolbelt's checkout rather than its own, for the same reason the
+    switch was inert. Fixed in the same commit. Two databases now hold parts of
+    that history, and which one survives is an open decision.</p>
+    <p>Everything else stands as written.</p>
+  </div>
+</section>
+
 <nav class="toc">
   <p>Contents</p>
   <ol>
