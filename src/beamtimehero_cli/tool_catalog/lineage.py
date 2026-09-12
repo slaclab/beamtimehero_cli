@@ -2296,6 +2296,43 @@ TOOL_LINEAGE: dict[str, dict] = {
         "source_detail": "Slack Web API via the lazily imported slack-sdk (the 'slack' extra).",
         "depends_on": ["list_channels"],
     },
+
+    # ---------- Research sandbox (tree=research) -----------------------------
+
+    "ask_question": {
+        "long_description": (
+            "Post a question to the local research-sandbox service, which "
+            "runs an agent with web access inside a locked-down container "
+            "and returns a Markdown report plus any figures it drew. The "
+            "report is untrusted third-party text: the sandbox reads the "
+            "open web, so the report can carry text written to be read by "
+            "whatever consumes it. The handler wraps it in an "
+            "<untrusted-report> envelope and writes a query-log row holding "
+            "the question, a SHA-256 of the report and the run's usage, so "
+            "what an agent was told is recoverable after the fact. Off "
+            "unless RESEARCH_SANDBOX_ENABLED=1; disabled and unreachable "
+            "both come back as ok=false rather than an exception."
+        ),
+        "python_func": "research_client.ask_question(question, experiment_id, scan_dir, wall_s, max_turns, max_tokens)",
+        "spec_command": None,
+        # False, and deliberately. It writes a query-log row and nothing
+        # else: no SPEC command, no hardware, no justification. Same class
+        # as write_summary, which also leaves a trace behind without being
+        # a beamline mutation.
+        "mutates": False,
+        "output": "Labelled <untrusted-report> envelope wrapping the report, with run_id, figures and usage",
+        "source": "tool_chain",
+        "source_detail": (
+            "POSTs to the research-sandbox API (default "
+            "http://127.0.0.1:5007, loopback-pinned) which launches one "
+            "disposable container per question behind an allowlisting "
+            "egress proxy. The service is the separate `research_docker` "
+            "repo, not part of this package. Override the URL with "
+            "RESEARCH_SANDBOX_URL; enable the tool with "
+            "RESEARCH_SANDBOX_ENABLED=1."
+        ),
+        "depends_on": [],
+    },
 }
 
 

@@ -22,6 +22,10 @@ EXPECTED_TREES = {
     "xrs",
     # dedicated EXAFS k-space analysis branch
     "exafs",
+    # the sandboxed research agent — one leaf, on its own branch so it can be
+    # granted to a single agent without being granted to everything that
+    # carries `tool`
+    "research",
     # bundled agent profiles (curated views over the catalog)
     "bl-aligner",
 }

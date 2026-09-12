@@ -35,6 +35,10 @@ _DOCS: dict[str, dict] = {
         "file": _DEFAULTS_DIR / "agent-surfaces.md",
         "description": "Declaring a restricted agent surface (`AgentSurface`/`build_surface`) and generating the parser, schemas, executor, permission pattern, prompt and manifest from it.",
     },
+    "research-sandbox": {
+        "file": _DEFAULTS_DIR / "research-sandbox.md",
+        "description": "The sandboxed research agent (`research ask-question`): why it is off by default, why its report is untrusted third-party text, and what the audit row records.",
+    },
     "counter-selection": {
         "file": _DEFAULTS_DIR / "counter-selection.md",
         "description": "Load-bearing convention: multi-scan tools must accept an explicit signal counter and normalization mode; why auto-select + edge-step fails off-XAS (e.g. XRS).",

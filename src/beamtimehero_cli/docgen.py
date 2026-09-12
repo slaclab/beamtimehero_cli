@@ -45,6 +45,7 @@ BRANCH_ORDER: list[tuple[str, ...]] = [
     ("s3df",),
     ("s3df", "psql"),
     ("slack",),
+    ("research",),
 ]
 
 # Human-facing blurb per branch. Richer than the argparse help strings —
@@ -94,6 +95,13 @@ BRANCH_NOTES: dict[tuple[str, ...], str] = {
     ),
     ("slack",): (
         "Slack messaging: post text and images to the experiment channel."
+    ),
+    ("research",): (
+        "The sandboxed research agent: one leaf, on a branch of its own so "
+        "it can be granted to one agent without being granted to every "
+        "agent that carries `tool`. Its output is untrusted third-party "
+        "text and comes back inside an <untrusted-report> envelope — see "
+        "beamtimehero ref research-sandbox."
     ),
 }
 
@@ -327,7 +335,7 @@ _CSS = """
   --c-tool: #6d5a10; --c-db: #58622a; --c-spec-read: #14636b;
   --c-spec-write: #a03016; --c-spec-file: #1d5a96; --c-xrs: #7b3d8f;
   --c-exafs: #316648; --c-s3df: #8a5a1f; --c-slack: #9c2b60;
-  --c-ref: #5c5c66; --c-profile: #4a5a83;
+  --c-ref: #5c5c66; --c-profile: #4a5a83; --c-research: #7a4a2c;
 }
 :root[data-theme="dark"] {
   --paper: #17130c; --panel: #201a11; --ink: #e9e1cf; --dim: #a2937a;
@@ -336,7 +344,7 @@ _CSS = """
   --c-tool: #d4b13c; --c-db: #b3c163; --c-spec-read: #58bcc7;
   --c-spec-write: #f08b64; --c-spec-file: #6aabe8; --c-xrs: #c98add;
   --c-exafs: #7cc39a; --c-s3df: #d9a659; --c-slack: #e577ab;
-  --c-ref: #b0b0bd; --c-profile: #97a9d9;
+  --c-ref: #b0b0bd; --c-profile: #97a9d9; --c-research: #d99f7c;
 }
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; }
@@ -429,6 +437,7 @@ h2 .no {
 .chip-exafs { --c: var(--c-exafs); } .chip-s3df, .chip-s3df-psql { --c: var(--c-s3df); }
 .chip-slack { --c: var(--c-slack); } .chip-ref { --c: var(--c-ref); }
 .chip-profile { --c: var(--c-profile); }
+.chip-research { --c: var(--c-research); }
 
 .toolbar {
   position: sticky; top: 0; z-index: 5; display: flex; gap: 10px; align-items: center;

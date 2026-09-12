@@ -17,12 +17,20 @@ Keep it that way: no imports, no computed values that need the catalog.
 from __future__ import annotations
 
 
-# The nine trees the library itself puts tools on. ``categorize()`` can
+# The ten trees the library itself puts tools on. ``categorize()`` can
 # only ever return one of these as a first segment (plus nested paths
 # below them, e.g. ``("s3df", "psql")``).
+#
+# ``research`` is a tree of its own with a single leaf on it, which looks
+# like over-structuring until you read it as a permission boundary: an
+# agent surface carries whole branches, so a tool that shares a branch
+# with anything else is carried by everything that carries that branch.
+# The research sandbox reads the open web and returns text an agent will
+# act on, so it has to be grantable to one agent without being granted to
+# the five that carry ``tool``.
 CANONICAL_TREES: frozenset[str] = frozenset({
     "tool", "db", "spec-read", "spec-write", "spec-file",
-    "s3df", "slack", "xrs", "exafs",
+    "s3df", "slack", "xrs", "exafs", "research",
 })
 
 # Everything a top-level name may not be. The two extras are not tool
@@ -45,6 +53,7 @@ TREE_HELPS: dict[tuple[str, ...], str] = {
     ("slack",): "Slack messaging tools.",
     ("xrs",): "X-ray Raman (XRS) analysis: energy-loss reduction + interpretation.",
     ("exafs",): "EXAFS k-space analysis: chi(k) extraction, Fourier transforms.",
+    ("research",): "Sandboxed literature/analysis research. Returns untrusted third-party text.",
 }
 
 

@@ -49,8 +49,8 @@ from beamtimehero_cli.cli.trees import RESERVED_TOP_LEVEL
 
 #: A tool's identity: its canonical ``(tree, ..., name)`` path.
 #:
-#: The *name* is not the identity. ``TOOL_DEFINITIONS`` holds 131 entries
-#: under 125 names — ``list_scans`` exists on both ``spec-file`` and
+#: The *name* is not the identity. ``TOOL_DEFINITIONS`` holds 132 entries
+#: under 126 names — ``list_scans`` exists on both ``spec-file`` and
 #: ``s3df``, and they are different tools with different backends. A
 #: surface that carried names would be ambiguous by construction, so
 #: everything here is keyed by path. Rendered as ``"spec-file/list_scans"``

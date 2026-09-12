@@ -8,7 +8,7 @@ with no lineage entry is absent from ``docs/tool_catalog.html`` while
 ``categorize.py`` silently falls back to ``{}`` and puts it in whatever branch
 the default rule picks.
 
-Both halves pass with no exemptions: every one of the 125 definitions has a
+Both halves pass with no exemptions: every one of the 126 definitions has a
 handler and a lineage entry. Keep it that way — an exemption list here would
 just recreate the gap.
 """
@@ -88,7 +88,7 @@ def test_every_lineage_entry_is_complete():
     a tool with no prerequisite, and ``spec_command`` is legitimately
     ``None`` — so both are checked for presence only. ``mutates`` is the
     one that made the copied-list version actively wrong: ``False`` is the
-    correct value for 85 of the 125 tools, and a truthiness test would
+    correct value for 86 of the 126 tools, and a truthiness test would
     have rejected every one of them.
     """
     problems: dict[str, list[str]] = {}

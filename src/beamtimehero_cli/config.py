@@ -132,6 +132,23 @@ SPEC_NAME = os.getenv("SPEC_NAME", "spec")
 SPEC_EVAL_URL = os.getenv("SPEC_EVAL_URL", "http://127.0.0.1:5006")
 
 # ---------------------------------------------------------------------------
+# Research sandbox — the `research ask-question` leaf.
+# ---------------------------------------------------------------------------
+# A local HTTP service that answers an analysis question by running an agent
+# with web access inside a locked-down container. Loopback-pinned in
+# `research_client.py` for the same reason spec-eval is: the request carries a
+# free-text question that the service turns into a container run.
+RESEARCH_SANDBOX_URL = os.getenv("RESEARCH_SANDBOX_URL", "http://127.0.0.1:5007")
+
+# Off unless explicitly switched on. The sandbox reads the open web and hands
+# back text that an agent will act on, so it is opt-in per deployment rather
+# than "on wherever the service happens to be listening". With the flag unset
+# the tool still parses and still answers — with an error explaining how to
+# enable it — because a tool that raises is a crash and a tool that is absent
+# is invisible.
+RESEARCH_SANDBOX_ENABLED = os.getenv("RESEARCH_SANDBOX_ENABLED", "0") == "1"
+
+# ---------------------------------------------------------------------------
 # Action log SQLite — independent of any external schema.
 # ---------------------------------------------------------------------------
 DB_PATH = os.environ.get("BEAMLINE_TOOLS_DB_PATH", str(DATA_DIR / "beamline_tools.db"))
