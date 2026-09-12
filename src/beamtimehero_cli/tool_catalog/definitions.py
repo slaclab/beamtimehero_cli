@@ -3222,7 +3222,7 @@ AUTONOMY_TOOL_DEFINITIONS = [
                 "measurements — the sandbox has no beamline connection and any "
                 "SPEC-shaped value in it is fabricated by a mock. "
                 "Requires the research-sandbox service on this machine and "
-                "RESEARCH_SANDBOX_ENABLED=1; without either the call returns "
+                "AGENT_SANDBOX_ENABLED=1; without either the call returns "
                 "ok=false explaining what is missing and nothing else is "
                 "affected. See `beamtimehero ref research-sandbox`."
             ),

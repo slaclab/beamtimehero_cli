@@ -5,7 +5,7 @@ rather than loudly broken when it regresses.
 
 1. **Loopback pin.** `ask_question` posts a free-text question to a service
    that turns it into a container run holding a model-gateway credential.
-   A non-loopback `RESEARCH_SANDBOX_URL` is refused *before* a request is
+   A non-loopback `AGENT_SANDBOX_URL` is refused *before* a request is
    built, so the test asserts no request was attempted rather than that one
    failed. The near-miss hostnames are in the table because they are what a
    substring check would let through.
@@ -65,7 +65,7 @@ def enabled(monkeypatch):
     """Switch the sandbox on for the duration of a test."""
     from beamtimehero_cli import config
 
-    monkeypatch.setattr(config, "RESEARCH_SANDBOX_ENABLED", True)
+    monkeypatch.setattr(config, "AGENT_SANDBOX_ENABLED", True)
 
 
 @pytest.fixture
@@ -146,7 +146,7 @@ def test_loopback_rejection_names_the_url_and_the_variable(enabled, no_post):
     # acceptable, and which variable to change.
     assert "research.example.com" in result["error"]
     assert "127.0.0.1" in result["error"]
-    assert "RESEARCH_SANDBOX_URL" in result["error"]
+    assert "AGENT_SANDBOX_URL" in result["error"]
 
 
 @pytest.mark.parametrize("url", [
@@ -183,13 +183,13 @@ def test_transport_error_says_what_is_missing(enabled, monkeypatch):
     )
     msg = research_client.ask_question("why?")["error"]
     assert msg.startswith("transport error")
-    assert "research_docker" in msg
+    assert "agent_sandbox" in msg
     assert "127.0.0.1:5007" in msg
     assert "ref research-sandbox" in msg
 
 
 # ---------------------------------------------------------------------------
-# 2 — off unless RESEARCH_SANDBOX_ENABLED=1
+# 2 — off unless AGENT_SANDBOX_ENABLED=1
 # ---------------------------------------------------------------------------
 
 def test_the_shipped_default_is_off(monkeypatch):
@@ -197,32 +197,32 @@ def test_the_shipped_default_is_off(monkeypatch):
     test that forgot to restore the flag cannot make this pass."""
     import importlib
 
-    monkeypatch.delenv("RESEARCH_SANDBOX_ENABLED", raising=False)
+    monkeypatch.delenv("AGENT_SANDBOX_ENABLED", raising=False)
     import beamtimehero_cli.config as cfg
-    assert importlib.reload(cfg).RESEARCH_SANDBOX_ENABLED is False
+    assert importlib.reload(cfg).AGENT_SANDBOX_ENABLED is False
 
 
 @pytest.mark.parametrize("value", ["0", "", "true", "yes", "TRUE", "on"])
 def test_only_the_literal_one_switches_it_on(value, monkeypatch):
     import importlib
 
-    monkeypatch.setenv("RESEARCH_SANDBOX_ENABLED", value)
+    monkeypatch.setenv("AGENT_SANDBOX_ENABLED", value)
     import beamtimehero_cli.config as cfg
-    assert importlib.reload(cfg).RESEARCH_SANDBOX_ENABLED is False
-    monkeypatch.setenv("RESEARCH_SANDBOX_ENABLED", "1")
-    assert importlib.reload(cfg).RESEARCH_SANDBOX_ENABLED is True
+    assert importlib.reload(cfg).AGENT_SANDBOX_ENABLED is False
+    monkeypatch.setenv("AGENT_SANDBOX_ENABLED", "1")
+    assert importlib.reload(cfg).AGENT_SANDBOX_ENABLED is True
 
 
 def test_disabled_makes_no_request_and_does_not_raise(monkeypatch, no_post):
     from beamtimehero_cli import config
 
-    monkeypatch.setattr(config, "RESEARCH_SANDBOX_ENABLED", False)
+    monkeypatch.setattr(config, "AGENT_SANDBOX_ENABLED", False)
     result = research_client.ask_question("why?")
     no_post.assert_not_called()
     assert result["ok"] is False
     # The message has to be the whole answer: which variable, and the fact
     # that the service is a separate thing that also has to be running.
-    assert "RESEARCH_SANDBOX_ENABLED=1" in result["error"]
+    assert "AGENT_SANDBOX_ENABLED=1" in result["error"]
     assert "ref research-sandbox" in result["error"]
 
 
@@ -231,10 +231,10 @@ def test_the_disabled_check_precedes_the_url_check(monkeypatch, no_post):
     URL should be told it is disabled, which is the thing to fix first."""
     from beamtimehero_cli import config
 
-    monkeypatch.setattr(config, "RESEARCH_SANDBOX_ENABLED", False)
+    monkeypatch.setattr(config, "AGENT_SANDBOX_ENABLED", False)
     result = research_client.ask_question("why?", api_url="http://evil.test")
     no_post.assert_not_called()
-    assert "RESEARCH_SANDBOX_ENABLED" in result["error"]
+    assert "AGENT_SANDBOX_ENABLED" in result["error"]
     assert "loopback" not in result["error"]
 
 
@@ -243,13 +243,13 @@ def test_the_handler_reports_the_disabled_state_as_ok_false(fresh_db, no_post,
     from beamtimehero_cli import config
     from beamtimehero_cli.tool_catalog.tools_core import t_ask_question
 
-    monkeypatch.setattr(config, "RESEARCH_SANDBOX_ENABLED", False)
+    monkeypatch.setattr(config, "AGENT_SANDBOX_ENABLED", False)
     text, images = t_ask_question({"question": "why?"})
     no_post.assert_not_called()
     assert images == []
     payload = json.loads(text)
     assert payload["ok"] is False
-    assert "RESEARCH_SANDBOX_ENABLED=1" in payload["error"]
+    assert "AGENT_SANDBOX_ENABLED=1" in payload["error"]
     # No envelope on a failure: there is no report to label.
     assert "<untrusted-report" not in text
 
@@ -260,9 +260,9 @@ def test_the_flag_is_read_at_call_time(monkeypatch, capture_post):
     test that patches it — is honoured."""
     from beamtimehero_cli import config
 
-    monkeypatch.setattr(config, "RESEARCH_SANDBOX_ENABLED", False)
+    monkeypatch.setattr(config, "AGENT_SANDBOX_ENABLED", False)
     assert research_client.ask_question("why?")["ok"] is False
-    monkeypatch.setattr(config, "RESEARCH_SANDBOX_ENABLED", True)
+    monkeypatch.setattr(config, "AGENT_SANDBOX_ENABLED", True)
     assert research_client.ask_question("why?")["ok"] is True
 
 
@@ -380,7 +380,7 @@ def test_the_tool_description_warns_before_the_first_call():
     assert "UNTRUSTED" in desc
     for fragment in (
         "untrusted-report", "evidence", "instructions",
-        "RESEARCH_SANDBOX_ENABLED=1", "ref research-sandbox",
+        "AGENT_SANDBOX_ENABLED=1", "ref research-sandbox",
     ):
         assert fragment in desc, fragment
 
@@ -391,7 +391,7 @@ def test_the_refdoc_is_registered_and_says_the_load_bearing_things():
     assert refdocs.has_doc("research-sandbox")
     doc = refdocs.get_doc("research-sandbox")
     for fragment in (
-        "RESEARCH_SANDBOX_ENABLED", "RESEARCH_SANDBOX_URL", "loopback",
+        "AGENT_SANDBOX_ENABLED", "AGENT_SANDBOX_URL", "loopback",
         "<untrusted-report", "research ask-question", "QueryLog",
     ):
         assert fragment in doc, fragment

@@ -2310,7 +2310,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "<untrusted-report> envelope and writes a query-log row holding "
             "the question, a SHA-256 of the report and the run's usage, so "
             "what an agent was told is recoverable after the fact. Off "
-            "unless RESEARCH_SANDBOX_ENABLED=1; disabled and unreachable "
+            "unless AGENT_SANDBOX_ENABLED=1; disabled and unreachable "
             "both come back as ok=false rather than an exception."
         ),
         "python_func": "research_client.ask_question(question, experiment_id, scan_dir, wall_s, max_turns, max_tokens)",
@@ -2325,11 +2325,12 @@ TOOL_LINEAGE: dict[str, dict] = {
         "source_detail": (
             "POSTs to the research-sandbox API (default "
             "http://127.0.0.1:5007, loopback-pinned) which launches one "
-            "disposable container per question behind an allowlisting "
-            "egress proxy. The service is the separate `research_docker` "
+            "disposable container per question behind a filtering egress "
+            "proxy (CONNECT on 443 only, private space denied). The "
+            "service is the separate `agent_sandbox` "
             "repo, not part of this package. Override the URL with "
-            "RESEARCH_SANDBOX_URL; enable the tool with "
-            "RESEARCH_SANDBOX_ENABLED=1."
+            "AGENT_SANDBOX_URL; enable the tool with "
+            "AGENT_SANDBOX_ENABLED=1."
         ),
         "depends_on": [],
     },

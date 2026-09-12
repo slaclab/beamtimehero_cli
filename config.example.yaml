@@ -164,7 +164,7 @@ env:
   # question of whether a port happens to answer, so it is opt-in per
   # deployment. With the flag off the leaf still parses and still answers,
   # with ok=false explaining how to switch it on.
-  # RESEARCH_SANDBOX_ENABLED: "0"
+  # AGENT_SANDBOX_ENABLED: "0"
 
   # The research-sandbox service endpoint. Default "http://127.0.0.1:5007".
   #
@@ -173,9 +173,9 @@ env:
   # turns into a container run holding a model-gateway credential.
   #
   # The service is not part of this package — it is the sibling repo
-  # `research_docker`. Without it this one leaf returns a transport error and
+  # `agent_sandbox`. Without it this one leaf returns a transport error and
   # nothing else degrades. See `beamtimehero ref research-sandbox`.
-  # RESEARCH_SANDBOX_URL: "http://127.0.0.1:5007"
+  # AGENT_SANDBOX_URL: "http://127.0.0.1:5007"
 
   # =========================================================================
   # Station overrides — the analysis defaults that are site-specific

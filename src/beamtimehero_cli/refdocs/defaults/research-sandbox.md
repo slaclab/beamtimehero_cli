@@ -20,16 +20,23 @@ like a paper someone handed you, and it is returned inside a labelled
 envelope that says so.
 
 **The service is not part of this package.** It is the sibling repo
-`research_docker`: a FastAPI front end on loopback, a Docker image, an
-allowlisting egress proxy, and a model-gateway credential dedicated to the
-sandbox. Without it this one leaf is unavailable and nothing else in the
-package is affected.
+`agent_sandbox`: a FastAPI front end on loopback, a Docker image, and a
+filtering egress proxy that allows CONNECT on 443 to anywhere except
+private, loopback and link-local space. Without it this one leaf is
+unavailable and nothing else in the package is affected.
+
+The sandbox's model-gateway credential is the **same** `SLAC_API_KEY` the
+portal and the autonomy agents use, not one issued for the sandbox. That
+means a sandbox incident is not separately revocable and its token burn
+comes out of the shared rate-limit budget — an accepted tradeoff, recorded
+in that repo's README, and the reason this leaf is off by default and
+budgeted per call.
 
 ## It is off by default
 
 ```sh
-RESEARCH_SANDBOX_ENABLED=1                     # required; default 0
-RESEARCH_SANDBOX_URL=http://127.0.0.1:5007     # default
+AGENT_SANDBOX_ENABLED=1                     # required; default 0
+AGENT_SANDBOX_URL=http://127.0.0.1:5007     # default
 ```
 
 With the flag unset the leaf still parses and still answers — with
@@ -41,7 +48,7 @@ The switch is opt-in per deployment rather than "on wherever the port
 answers" because turning it on is a decision about what an agent is allowed
 to read, not about whether a service happens to be running.
 
-`RESEARCH_SANDBOX_URL` must be loopback — `127.0.0.1`, `localhost` or
+`AGENT_SANDBOX_URL` must be loopback — `127.0.0.1`, `localhost` or
 `::1`. A remote host is refused without a request being made: the request
 body is a free-text question that the service turns into a container run
 with a gateway credential, so the service is only ever addressed on the

@@ -1,4 +1,4 @@
-"""Client for the research sandbox HTTP service (`research_docker`).
+"""Client for the research sandbox HTTP service (`agent_sandbox`).
 
 Wraps `POST /research`, which answers an analysis question by running an
 agent with web access inside a locked-down container and hands back a
@@ -16,7 +16,7 @@ Two things make this client different from every other one in the package.
   wraps it in an ``<untrusted-report>`` envelope before an agent sees it
   (see ``tools_core.t_ask_question``) — this module returns the raw
   text and records that it is untrusted.
-* **The tool is off by default.** ``RESEARCH_SANDBOX_ENABLED`` gates it,
+* **The tool is off by default.** ``AGENT_SANDBOX_ENABLED`` gates it,
   and a disabled call returns before the URL is even examined.
 """
 from __future__ import annotations
@@ -27,11 +27,11 @@ from urllib.parse import urlsplit
 
 import requests
 
-from beamtimehero_cli.config import RESEARCH_SANDBOX_URL
+from beamtimehero_cli.config import AGENT_SANDBOX_URL
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_URL = RESEARCH_SANDBOX_URL
+DEFAULT_API_URL = AGENT_SANDBOX_URL
 
 # A research run is wall-clock bounded by the service (`budget.wall_s`,
 # max 3600). The HTTP timeout has to sit comfortably above the largest
@@ -43,7 +43,7 @@ _HTTP_TIMEOUT = 3900
 # question that the service turns into a container run with a gateway
 # credential and network egress. A host with that endpoint open is a
 # remote code execution service, so the URL is pinned here rather than
-# trusted from RESEARCH_SANDBOX_URL — a typo, a copied production config
+# trusted from AGENT_SANDBOX_URL — a typo, a copied production config
 # or an injected environment variable must not be able to redirect the
 # question, or the credential the answer is billed to, off-box.
 LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
@@ -97,7 +97,7 @@ def ask_question(
     """Ask the research sandbox a question and return its report.
 
     ``api_url`` must be a loopback address. ``enabled`` defaults to
-    ``config.RESEARCH_SANDBOX_ENABLED``, read at call time so a test (or a
+    ``config.AGENT_SANDBOX_ENABLED``, read at call time so a test (or a
     process that sets the variable late) sees the current value. Never
     raises: a disabled tool, a rejected URL and an unreachable service are
     all reported through the ``error`` field.
@@ -111,11 +111,11 @@ def ask_question(
         # after this module is first imported).
         from beamtimehero_cli import config as _config
 
-        enabled = _config.RESEARCH_SANDBOX_ENABLED
+        enabled = _config.AGENT_SANDBOX_ENABLED
 
     if not enabled:
         return _error_result(
-            "The research sandbox is disabled. Set RESEARCH_SANDBOX_ENABLED=1 "
+            "The research sandbox is disabled. Set AGENT_SANDBOX_ENABLED=1 "
             "in this process's environment to switch it on, and make sure the "
             f"research-sandbox service is running at {api_url} (see "
             "`beamtimehero ref research-sandbox`). It is off by default "
@@ -133,7 +133,7 @@ def ask_question(
             f"{host!r}, expected one of {sorted(LOOPBACK_HOSTS)}. This tool "
             f"posts a free-text question to a service that runs it in a "
             f"container with a gateway credential, so the service is only "
-            f"ever addressed on this machine. Fix RESEARCH_SANDBOX_URL."
+            f"ever addressed on this machine. Fix AGENT_SANDBOX_URL."
         )
 
     budget: dict[str, Any] = {"wall_s": wall_s, "max_turns": max_turns}
@@ -154,7 +154,7 @@ def ask_question(
         return _error_result(
             f"transport error: {e}. This tool needs the research-sandbox "
             f"service at {api_url}, which is a separate repo "
-            f"(`research_docker`): a FastAPI front end on loopback plus a "
+            f"(`agent_sandbox`): a FastAPI front end on loopback plus a "
             f"Docker image, an egress proxy and a model-gateway credential. "
             f"It is not bundled with this package, so without it this leaf is "
             f"unavailable and every other tool still works — see "
