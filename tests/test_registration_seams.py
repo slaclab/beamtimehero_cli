@@ -207,6 +207,38 @@ def test_duplicate_name_on_a_new_branch_is_allowed(registry):
     assert tools_core.DISPATCH[("zz-branch", "list_scans")] is probe
 
 
+def test_register_tools_classifies_before_it_path_checks(registry):
+    """Two consumer tools sharing a name, on different trees, in one call.
+
+    ``register_definitions`` dedupes by ``categorize(d) + (name,)``, so the
+    order inside ``register_tools`` is load-bearing. One of these takes its
+    tree from the *incoming* lineage (``source: "autonomy_db"`` -> ``db``),
+    the other pins ``tree`` explicitly. Register definitions before that
+    lineage exists and the first one has no lineage to classify by, falls
+    through to ``("tool",)``, collides with the second, and the whole call
+    is refused with a duplicate it does not actually have.
+
+    ``autonomous`` is this shape: its lineage is what puts its four CAT-8
+    tools on ``db``, and it registers definitions and lineage together.
+    """
+    from beamtimehero_cli.tool_catalog import register_tools, tools_core
+    from beamtimehero_cli.tool_catalog.categorize import categorize
+
+    from_lineage = dict(PROBE_DEF)
+    explicit = {**PROBE_DEF, "tree": "tool"}
+
+    register_tools(
+        definitions=[from_lineage, explicit],
+        lineage=PROBE_LINEAGE,
+        handlers={("db", "zz_probe"): probe, ("tool", "zz_probe"): probe},
+    )
+
+    assert categorize(from_lineage) == ("db",), "lineage did not classify it"
+    assert categorize(explicit) == ("tool",), "explicit tree did not win"
+    assert tools_core.DISPATCH[("db", "zz_probe")] is probe
+    assert tools_core.DISPATCH[("tool", "zz_probe")] is probe
+
+
 def test_name_keyed_handler_overrides_only_the_unbranched_path(registry):
     """Override precedence is the existing rule, not a second one.
 

@@ -89,17 +89,26 @@ def register_tools(
     lineage: dict | None = None,
     handlers: dict | None = None,
 ) -> None:
-    """Register out-of-tree tools: definitions, lineage, handlers.
+    """Register out-of-tree tools: lineage, definitions, handlers.
 
     One call is the supported way to extend the catalog. Order is fixed
-    (definitions, lineage, handlers) and handlers go last because that is
-    the step that rebuilds ``DISPATCH``, so the table is built once,
-    against the final definition list and the final lineage.
+    (lineage, definitions, handlers) and both ends of it are load-bearing.
+
+    Lineage goes first because ``register_definitions`` dedupes by
+    ``categorize(d) + (name,)``, and ``categorize`` reads lineage for the
+    ``source == "autonomy_db"`` and ``mutates`` rules. Registering
+    definitions first would path-check a consumer tool whose tree comes
+    only from its lineage as ``("tool", name)`` — the wrong path, so the
+    duplicate guard would be approximate rather than exact.
+
+    Handlers go last because that is the step that rebuilds ``DISPATCH``,
+    so the table is built once, against the final definition list and the
+    final lineage.
     """
-    if definitions:
-        register_definitions(definitions)
     if lineage:
         register_lineage(lineage)
+    if definitions:
+        register_definitions(definitions)
     if handlers:
         from beamtimehero_cli.tool_catalog.tools_core import register_handlers
         register_handlers(handlers)
