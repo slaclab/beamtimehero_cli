@@ -219,6 +219,17 @@ Pass `executor=` to `run_tool_leaf`, `dispatch` or `main` to route calls
 through your own dispatch table — a restricted surface, a guard, an audit
 hook — instead of reassigning module attributes.
 
+If what you are composing is a *restricted* surface for one agent — a
+subset of the trees, a write allow-list, a motor allow-list — do not
+assemble it from these helpers by hand. Declare it as an `AgentSurface`
+and let `build_surface` generate the parser branch, the schemas, the
+dispatch table, the guarded executor, the shell-permission pattern, the
+prompt fragment and a checked-in manifest from the one declaration:
+
+```bash
+beamtimehero ref agent-surfaces
+```
+
 ## What an agent will hit first
 
 **No data.** There is no bundled sample data in this package. Set

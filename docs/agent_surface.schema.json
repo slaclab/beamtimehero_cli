@@ -1,0 +1,113 @@
+{
+  "additionalProperties": false,
+  "description": "The declaration of one agent's CLI surface.\n\nFrozen and ``extra=\"forbid\"``: a surface is a fact about a deployment\nthat generated artifacts are derived from, so a typo in a field name\nmust fail at import rather than silently widen (or narrow) what an\nagent can reach. A misspelled ``write_tool`` that was quietly ignored\nwould read, from the outside, exactly like a working allow-list.",
+  "properties": {
+    "aliases": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        ]
+      },
+      "default": {},
+      "title": "Aliases",
+      "type": "object"
+    },
+    "branches": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Branches",
+      "type": "array"
+    },
+    "description": {
+      "default": "",
+      "title": "Description",
+      "type": "string"
+    },
+    "exclusive": {
+      "default": false,
+      "title": "Exclusive",
+      "type": "boolean"
+    },
+    "include_ref": {
+      "default": true,
+      "title": "Include Ref",
+      "type": "boolean"
+    },
+    "layout": {
+      "default": "nested",
+      "enum": [
+        "nested",
+        "flat"
+      ],
+      "title": "Layout",
+      "type": "string"
+    },
+    "motors": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Motors",
+      "type": "array",
+      "uniqueItems": true
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "phase": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Phase"
+    },
+    "tools": {
+      "default": [],
+      "items": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        ]
+      },
+      "title": "Tools",
+      "type": "array"
+    },
+    "write_tools": {
+      "default": [],
+      "items": {
+        "type": "string"
+      },
+      "title": "Write Tools",
+      "type": "array",
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "name"
+  ],
+  "title": "AgentSurface",
+  "type": "object"
+}

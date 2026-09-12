@@ -1,0 +1,45 @@
+# Excerpt of a real SSRL SPEC config file (/usr/local/lib/spec.d/spec/config),
+# captured 12 Sep 2026 from the checked-in BL15-2 reference config, trimmed to
+# the head of the motor block plus the start of the counter block. Present so
+# spec_config.parse_known_motors() is tested against the real grammar — MOTPAR
+# lines, blank lines, variable column widths and a negative field included — on
+# a machine with no SPEC installation.
+STATE = OFF
+# CAMAC Slot Assignments
+#  CA_name_unit = slot [crate_number]
+# Motor    controller   steps sign  slew base back accl nada  flgs      mne  name
+MOT000 =   NONE:99/99    1000  1       1    1    0  125    0 0x003   dummy0  dummy0
+MOT001 =  MAC_MOT:2/0   10000  1    2000  200   50  125    0 0x003   energy  energy
+MOT002 = MAC_MOT:12/0    1000  1    2000  200   50  125    0 0x003    emiss  emiss
+MOT003 = MAC_MOT:14/0    1000  1    2000  200    0  125    0 0x003   filter  filter
+MOT004 =    GALIL:6/0     800  1    2000  200   50  125    0 0x003       Sx  Sx
+MOT005 =    GALIL:6/3    -800  1    2000  200  -50  125    0 0x003       Sy  Sy
+MOT006 =    GALIL:6/2    4000  1    2000  200  250  125    0 0x003       Sz  Sz
+MOT007 = EPICS_M2:8/8     -89  1     800   50  -10  250    0 0x003       Sr  Sr
+MOTPAR:misc_par_1 = MOTOR8
+MOT008 =  MAC_MOT:0/0    1500  1       1    1    0  125    0 0x003      gap  gap
+MOTPAR:read_mode = 7
+MOT009 =    GALIL:0/2    -253  1     100   50   10  125    0 0x003  montopj  montopj
+MOT010 =    GALIL:0/0     262  1      50   50   10  125    0 0x003  monbotj  monbotj
+MOT011 =    GALIL:0/1     189  1     100   50   10  125    0 0x003  monsrlj  monsrlj
+MOT012 =    GALIL:0/3    -189  1     100   50   10  125    0 0x003  monsprj  monsprj
+MOT013 =  MAC_MOT:3/0    2000  1    1000  200  400  125    0 0x003  monvtra  monvtra
+MOT014 =  MAC_MOT:3/1    1000  1    1000  200  400  125    0 0x003  monvgap  monvgap
+MOT015 =  MAC_MOT:4/0     400  1    1000  200   80  125    0 0x003  monhtra  monhtra
+MOT016 =  MAC_MOT:4/1     200  1    1000  200   80  125    0 0x003  monhgap  monhgap
+MOT017 =  MAC_MOT:1/0   10000  1    2000  200   50  125    0 0x003     mono  mono
+MOT018 =    GALIL:1/0  100000  1   10000  200 -25000  125    0 0x003  crystal  crystal
+MOTPAR:misc_par_1 = MOTOR1
+MOT019 =    GALIL:1/2    6568  1     100   70  -80  125    0 0x003  mongapa  mongapa
+MOT020 =    GALIL:1/3    6568  1     250   70   50  125    0 0x003  mongapb  mongapb
+MOT021 =    GALIL:1/1       1  1     500  200    0  125    0 0x003  montran  montran
+MOT022 =    GALIL:0/7     400  1    1000  200   80  125    0 0x003  mondiag  mondiag
+MOT023 =    GALIL:1/4       1  1    1000  200    0  125    0 0x003   pitcha  pitcha
+MOT024 =    GALIL:1/6       1  1    1000  200    0  125    0 0x003   pitchb  pitchb
+
+# Counter    ctrl   unit chan  scale  flgs      mne  name
+CNT000 =   NI63xx      0  0    10000 0x001      sec  sec
+CNT001 =   NI63xx      0  1        1 0x000       I0  I0
+CNT002 =   NI63xx      0  2        1 0x000       I1  I1
+CNT003 =   NI63xx      0  3        1 0x000       I2  I2
+CNT004 =   NI63xx      1  0        1 0x000       I3  I3

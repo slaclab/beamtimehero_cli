@@ -7,9 +7,16 @@ green suite — and since ``science/README.md`` tells a contributor the index is
 "generated from the source tree, so a new function appears by existing", stale
 is worse than absent: it is a promise the repo stopped keeping.
 
-These two tests close that. They compare bytes, so the failure message has to
+These tests close that. They compare bytes, so the failure message has to
 carry the remedy — nobody can read a diff of a 100 KB single-line-per-row HTML
 page and work out what to do.
+
+``docs/agent_surface.schema.json`` is held to the same rule for the same
+reason: a consumer checks a surface manifest into its own repo and a reviewer
+reads that schema to know what the fields mean, so a schema that lags the model
+is worse than no schema. Note that it is generated from ``AgentSurface`` by
+pydantic, so a pydantic release that changes schema output will fail this test
+— that is the intended signal, and the fix is to regenerate and commit.
 """
 from __future__ import annotations
 
@@ -18,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from beamtimehero_cli import docgen, docgen_science
+from beamtimehero_cli.agent_surface import schema as surface_schema
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -31,6 +39,11 @@ PAGES = [
         "docs/tool_catalog.html", docgen.render,
         "python -m beamtimehero_cli.docgen",
         id="tool_catalog",
+    ),
+    pytest.param(
+        "docs/agent_surface.schema.json", surface_schema.render,
+        "python -m beamtimehero_cli.agent_surface.schema",
+        id="agent_surface_schema",
     ),
 ]
 

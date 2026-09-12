@@ -257,11 +257,14 @@ instead — that is the boundary this repo is organized around.
   beamline unless you set it to `0`.
 - **Every mutating tool requires `--justification`** and writes to a SQLite
   audit trail. That is deliberate; don't route around it.
-- **Both HTML pages under `docs/` are generated, not hand-written.**
+- **Three files under `docs/` are generated, not hand-written.**
   `python -m beamtimehero_cli.docgen` writes `docs/tool_catalog.html`;
-  `python -m beamtimehero_cli.docgen_science` writes `docs/science_index.html`.
-  Regenerate and commit them rather than editing the HTML —
-  `tests/test_docs_fresh.py` compares both byte for byte.
+  `python -m beamtimehero_cli.docgen_science` writes `docs/science_index.html`;
+  `python -m beamtimehero_cli.agent_surface.schema` writes
+  `docs/agent_surface.schema.json`. Regenerate and commit them rather than
+  editing the output — `tests/test_docs_fresh.py` compares all three byte for
+  byte. Adding a reference doc changes `tool_catalog.html`; changing
+  `AgentSurface` changes the JSON schema.
 - **The plotting split is done.** Figures that take arrays or a descriptor
   dict live in `science/plots/` (`exafs.py`, `xrs.py`, `xas.py`, `scan.py`).
   The six that load a scan by file name stay in `spec_data/plotting.py`. If

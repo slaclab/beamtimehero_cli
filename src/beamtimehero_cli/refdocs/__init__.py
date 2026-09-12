@@ -31,6 +31,10 @@ _DOCS: dict[str, dict] = {
         "file": _DEFAULTS_DIR / "profiles.md",
         "description": "Agent profiles: curated per-agent CLI surfaces over the master catalog.",
     },
+    "agent-surfaces": {
+        "file": _DEFAULTS_DIR / "agent-surfaces.md",
+        "description": "Declaring a restricted agent surface (`AgentSurface`/`build_surface`) and generating the parser, schemas, executor, permission pattern, prompt and manifest from it.",
+    },
     "counter-selection": {
         "file": _DEFAULTS_DIR / "counter-selection.md",
         "description": "Load-bearing convention: multi-scan tools must accept an explicit signal counter and normalization mode; why auto-select + edge-step fails off-XAS (e.g. XRS).",
