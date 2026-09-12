@@ -18,6 +18,27 @@ Schema per entry:
         to the running SPEC session. ``None`` for tools that don't touch
         SPEC. Tools with a non-None value appear in the "SPEC-bound"
         section of the page.
+    spec_commands : list[str], optional
+        Only for the two handlers that choose their SPEC command at run
+        time from an argument (``set_gain``, ``post_scan_move``): the
+        registered command names they may issue. ``spec_command`` above
+        is prose for the page; this is the machine-readable set, and
+        ``tests/test_mutates.py`` requires it exactly when a handler's
+        ``audited_call`` first argument is not a literal.
+    mutates : bool
+        Whether the tool mutates the beamline: it issues at least one
+        SPEC command registered as ``action`` in ``spec_cmd``, so it
+        requires a ``justification`` and is written to the action log
+        before dispatch. This is the *declared* safety class and the
+        only thing ``categorize()`` and consumers' write filters read —
+        it is not inferred from the JSON schema.
+
+        "Mutates" means that and nothing broader. A tool that writes a
+        file (``write_summary``, ``write_macro``, ``save_plan``), a row
+        (``record_energy_calibration``) or a Slack message
+        (``post_slack_message``) changes state somewhere, and is still
+        ``False``: none of them can move hardware, and none of them is
+        audited as an action.
     output : str
         One-line description of what the tool returns.
     source : str
@@ -55,6 +76,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.list_processed_scans(limit=1) + read_processed_scan(...)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {file_name, scan_number, command, counters, data_preview}",
         "source": "spec_datafile",
         "source_detail": (
@@ -70,6 +92,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.list_processed_scans(limit=20)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON array: [{file_name, scan_number, command, counters, npoints, timestamp}, ...]",
         "source": "spec_datafile",
         "source_detail": "SPEC file headers (#S, #D, #T, #L, #P) cached in .scan_metadata_cache.json.",
@@ -83,6 +106,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.get_scan_metadata(file_name, scan_number) + read_processed_scan(...)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {metadata, counters, data: {col: [values]}}",
         "source": "spec_datafile",
         "source_detail": "Parses the #S block of the SPEC file via silx.io.specfile.",
@@ -96,6 +120,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_logs.log_reader.get_latest_log_entries(lines=100)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {log_file, lines: [str]}",
         "source": "spec_logfile",
         "source_detail": "Reads the newest file under BL_LOGS_DIR.",
@@ -109,6 +134,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_logs.log_reader.search_logs(query, max_results=50)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON array: [{log_file, line_number, line}, ...]",
         "source": "spec_logfile",
         "source_detail": "Scans all files under BL_LOGS_DIR via spec_logs.log_reader.",
@@ -121,6 +147,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_logs.log_reader.list_logs(limit=20)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON array: [{name, size, mtime}, ...]",
         "source": "spec_logfile",
         "source_detail": "Directory listing of BL_LOGS_DIR.",
@@ -134,6 +161,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.get_active_counter(file_name, scan_number)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {counter: str, reason: str}",
         "source": "spec_datafile",
         "source_detail": "Reads per-point counter values from the SPEC scan.",
@@ -147,6 +175,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.get_scan_deadtime(file_name, scan_number)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {wall_s, acq_s, dead_s, dead_pct}",
         "source": "spec_datafile",
         "source_detail": "Uses per-point timestamps and #T header from the SPEC scan.",
@@ -160,6 +189,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.edge_step_normalize_scan(file_name, scan_number, counter, normalize_by)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {x: [energy], y: [normalized], counter, normalize_by}",
         "source": "spec_datafile",
         "source_detail": "Reads counter + I0 arrays from the SPEC scan.",
@@ -173,6 +203,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.average_energy_scans(file_name)  |  average_latest_energy_scans()",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {x, mean, std, n_scans, file_name}",
         "source": "spec_datafile",
         "source_detail": "Iterates every #S block in the SPEC file.",
@@ -186,6 +217,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.fitting.similarity.analyze_scan_quality (via spec_data.scans.get_normalized_scan_arrays)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {per_scan_similarity, cumulative, std_error, verdict}",
         "source": "spec_datafile",
         "source_detail": "Same scan set used by average_scans.",
@@ -200,6 +232,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.statistics.efficiency.analyze_scan_efficiency (via spec_data.scans.get_normalized_scan_arrays)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {convergence, cv, poisson_ratio, recommended_n, verdict}",
         "source": "spec_datafile",
         "source_detail": "Superset of analyze_convergence.",
@@ -213,6 +246,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.plotting.plot_scan(file_name, scan_number, counter, normalize_by)",
         "spec_command": None,
+        "mutates": False,
         "output": "Base64 PNG + a one-line caption",
         "source": "spec_datafile",
         "source_detail": "Reads the scan via silx, renders with matplotlib.",
@@ -226,6 +260,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.plotting.plot_averaged_scans_overlay(file_names)",
         "spec_command": None,
+        "mutates": False,
         "output": "Base64 PNG + a short text summary",
         "source": "spec_datafile",
         "source_detail": "Multiple SPEC files under BL_SCAN_DIR.",
@@ -239,6 +274,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "matplotlib.pyplot (in-process, via spec_data.plotting)",
         "spec_command": None,
+        "mutates": False,
         "output": "Base64 PNG + a one-line caption",
         "source": "tool_chain",
         "source_detail": "Pure rendering — x/y arrays come from other tools or the conversation.",
@@ -251,6 +287,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.local_data.list_files(pattern)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON array: [{name, size, mtime}, ...]",
         "source": "filesystem",
         "source_detail": "Glob within BL_SCAN_DIR (excluding .dat SPEC files).",
@@ -263,6 +300,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.local_data.read_file(path)",
         "spec_command": None,
+        "mutates": False,
         "output": "Raw text file contents",
         "source": "filesystem",
         "source_detail": "Arbitrary text file under BL_SCAN_DIR.",
@@ -276,6 +314,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.local_data.write_file(beamtimehero_conversation_summary_<ts>.txt, content)",
         "spec_command": None,
+        "mutates": False,
         "output": "Relative path of the written file",
         "source": "filesystem",
         "source_detail": "Writes into BL_SCAN_DIR.",
@@ -289,6 +328,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.local_data.write_file(<original>_heroic_<date>.mac, content)",
         "spec_command": None,
+        "mutates": False,
         "output": "Relative path of the new .mac file",
         "source": "filesystem",
         "source_detail": "Writes into BL_SCAN_DIR alongside existing macros.",
@@ -306,6 +346,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "PLANS_DIR.joinpath(filename).write_text(content)  (with regex + path-confinement checks)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {ok, path, bytes, overwrote}",
         "source": "filesystem",
         "source_detail": "Writes into PLANS_DIR (./logs/plans/ under the project root).",
@@ -319,6 +360,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.spec_config.get_motor_config()",
         "spec_command": None,
+        "mutates": False,
         "output": "Plain-text table (one row per motor)",
         "source": "spec_config",
         "source_detail": "Parses the SPEC config file on disk.",
@@ -332,6 +374,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.spec_config.get_counter_config()",
         "spec_command": None,
+        "mutates": False,
         "output": "Plain-text table (one row per counter)",
         "source": "spec_config",
         "source_detail": "Parses the SPEC config file on disk.",
@@ -350,6 +393,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('align_beamline', [energy, xtal_chg, fine_x, fine_z], justification)",
         "spec_command": "align_the_beamline(<energy>, 0, <xtal_chg>, <fine_x>, <fine_z>)",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Writes action_log row before SPEC dispatch; blocks until SPEC prompt returns.",
@@ -363,6 +407,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('align_xes', [crystals, en_xes, en_mono], justification)",
         "spec_command": 'run_spec_align("<crystals>", <en_xes>, <en_mono>)',
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {crystals, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Gated to phase xes_alignment by the phase allow-list.",
@@ -375,6 +420,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('auto_sample_align', [], justification)",
         "spec_command": "auto_sample_align",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Gated to phase sample_alignment.",
@@ -387,6 +433,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('run_collection', [], justification)",
         "spec_command": "run_collection",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Gated to phase collection; emits SPEC data files into BL_SCAN_DIR.",
@@ -400,6 +447,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('select_element', [element], justification)",
         "spec_command": 'select_element("<element>")',
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {element, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Pulls the target geometry from the experiment plan.",
@@ -412,6 +460,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('peak_mono_pitch', [], justification)",
         "spec_command": "peak_mono_pitch",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Short macro; typically runs in seconds.",
@@ -426,6 +475,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('calibrate_mono', [tabulated_edge_ev], justification)",
         "spec_command": "calibrate_mono <tabulated_edge_ev>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {tabulated_ev, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Chained under the hood: dscan → find inflection → calibrate_mono → reset_gap.",
@@ -442,6 +492,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('umv', [motor, position], justification)",
         "spec_command": "umv <motor> <position>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {motor, target, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Synchronous — blocks until the motor reports done.",
@@ -455,6 +506,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('umvr', [motor, delta], justification)",
         "spec_command": "umvr <motor> <delta>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {motor, delta, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Synchronous motor move via the SPEC prompt.",
@@ -467,6 +519,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('p_motor', [motor], justification='')",
         "spec_command": "wm <motor>",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {value, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only query; logs to query_log, not action_log.",
@@ -479,6 +532,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('wa', [], justification='')",
         "spec_command": "wa",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {positions: {motor: value, ...}, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only; logs to query_log.",
@@ -494,6 +548,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('ascan', [motor, start, end, npoints, count_time], justification)",
         "spec_command": "ascan <motor> <start> <end> <npoints> <count_time>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {motor, start, end, npoints, count_time, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Produces a new #S block in the current SPEC data file.",
@@ -506,6 +561,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('dscan', [motor, delta_start, delta_end, npoints, count_time], justification)",
         "spec_command": "dscan <motor> <delta_start> <delta_end> <npoints> <count_time>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {motor, delta_start, delta_end, npoints, count_time, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Produces a new #S block; leaves motor at end position (or peak/cen if followed up).",
@@ -535,6 +591,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "d2scan <motor1> <delta_lo> <delta_hi> "
             "<motor2> <delta_lo> <delta_hi> <npoints> <count_time>"
         ),
+        "mutates": True,
         "output": (
             "JSON: {ok, kind, action_id, "
             "result: {motor1, delta_lo1, delta_hi1, motor2, delta_lo2, "
@@ -559,6 +616,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "spec_cmd.call('get_HERFD_energy', [scan_number?], justification)"
         ),
         "spec_command": "get_HERFD_energy [<scan_number>]",
+        "mutates": True,
         "output": (
             "JSON: {ok, kind, action_id, "
             "result: {emission_ev, raw, elapsed_s}, elapsed_s}"
@@ -580,6 +638,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('run_xas', [count_time, n_reps, emission_ev, filter], justification)",
         "spec_command": "run_xas <cntSec> <nbrScan> <emission> <nbrFilter>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {count_time, n_reps, emission_ev, filter, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Element-side dispatch lives in run_xas.mac; each rep writes its own #S block.",
@@ -592,6 +651,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('emiss_scan', [element, count_time, n_reps, emission_ev, filter], justification)",
         "spec_command": "<element>_cee <count_time> <n_reps> <emission_ev> <filter>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {element, count_time, n_reps, emission_ev, filter, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Similar guards to run_xas.",
@@ -609,6 +669,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('mv_energy', [energy_ev], justification)",
         "spec_command": "umv energy <energy_ev>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {target_ev, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Plain absolute-move on the energy motor; may block on gap ownership if tracking is already on.",
@@ -622,6 +683,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('shutter', [command, delay_s?], justification)",
         "spec_command": "<fsopen|fsclose|fson|fsoff> [<delay_s>]",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {command, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Immediate — no scan context required.",
@@ -635,6 +697,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('mv', ['filter', bitmask], justification)",
         "spec_command": "mv filter <bitmask>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {motor, target, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Internally a motor move.",
@@ -647,6 +710,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('safely_remove_filters', [], justification)",
         "spec_command": "safely_remove_filters",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Multi-second; issues a stepped set of filter moves.",
@@ -659,6 +723,8 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('set_i0_gain' | 'set_i1_gain' | 'set_i2_gain', [gain_setting], justification)",
         "spec_command": "set_i0_gain | set_i1_gain | set_i2_gain <setting>",
+        "spec_commands": ["set_i0_gain", "set_i1_gain", "set_i2_gain"],
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {gain, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "The macro chosen depends on the 'which' arg (i0|i1|i2).",
@@ -672,6 +738,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('set_vortex_roi', [args...], justification)",
         "spec_command": "vortex_roi auto <channel>  |  vortex_roi <channel> <lo_ev> <hi_ev>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {args, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Shapes the fluorescence window around the expected emission line.",
@@ -684,6 +751,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('newfile', [filename], justification)",
         "spec_command": "newfile <filename>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {filename, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Subsequent scans write into this file until a new one is opened.",
@@ -699,6 +767,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('plotselect', [counter], justification)",
         "spec_command": "plotselect <counter>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {counter, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Instantaneous SPEC command; no scan context required.",
@@ -716,6 +785,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('run_shortcut', [name], justification)",
         "spec_command": "<shortcut_name>  (one of vvv|hhh|m1m1|m2m2|ggg|bzbz|bxbx|dmm|beamx|beamz|cm1m1|cm2m2)",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {name, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Rejected if 'name' is not in the hard allow-list.",
@@ -730,6 +800,8 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('cen' | 'peak', [], justification)",
         "spec_command": "cen | peak",
+        "spec_commands": ["cen", "peak"],
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Uses SPEC's built-in CEN/PEAK detection on the last scan.",
@@ -746,6 +818,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('mvpinhole', [], justification)",
         "spec_command": "mvpinhole",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac via rdef; pose updates whenever update_pinhole_pos is called.",
@@ -759,6 +832,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('mvplastic', [], justification)",
         "spec_command": "mvplastic",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac via rdef.",
@@ -773,6 +847,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('mvknifeclear', [], justification)",
         "spec_command": "mvknifeclear",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac via rdef.",
@@ -787,6 +862,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('mvknifewayout', [], justification)",
         "spec_command": "mvknifewayout",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac via rdef; sets Sr=80 so the full diagnostic body clears the beam.",
@@ -803,6 +879,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('measure_beam_size', [mode_x, mode_z], justification)",
         "spec_command": "measure_beam_size <mode_x> <mode_z>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {mode_x, mode_z, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:250; chains center_knife_edge_x/z + beamx/beamz scans.",
@@ -817,6 +894,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('zero_pinhole', [], justification)",
         "spec_command": "zero_pinhole",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:467; chains find_pinhole + center_on_pinhole + table/sample/B-stage zeroing.",
@@ -831,6 +909,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('smallbeam', [], justification)",
         "spec_command": "smallbeam",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, mode: 'small', elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:68.",
@@ -845,6 +924,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('bigbeam', [], justification)",
         "spec_command": "bigbeam",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, mode: 'big', elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:78.",
@@ -861,6 +941,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('xtalalign', [], justification)",
         "spec_command": "xtalalign",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:87; valid_dscan crystal + peak + set crystal <old>.",
@@ -877,6 +958,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('reset_gap', [], justification)",
         "spec_command": "reset_gap",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:95; ggg + peak + set gap <old>.",
@@ -892,6 +974,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('m2_stripe', [energy_ev], justification)",
         "spec_command": "m2_stripe",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {energy_ev, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in beam_diagnostics.mac:103; dispatches to m2_Rh or m2_Si (umv m2vert).",
@@ -911,6 +994,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('get_anchor', [], justification='')",
         "spec_command": "get_anchor",
+        "mutates": False,
         "output": (
             "JSON: {ok, kind, result: {energy, m1vert, m1vert1, m1vert2, "
             "Tz, Tz1, Tz2, crystal, spear_steering, spear_drift, "
@@ -932,6 +1016,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('set_anchor', [], justification)",
         "spec_command": "set_anchor",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in tracking.mac:268; calls save_anchor → /usr/local/lib/spec.d/anchor.cfg + ANCHOR_DIR backup.",
@@ -949,6 +1034,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('tracking', ['0'|'1'], justification)",
         "spec_command": "tracking <0|1>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {enabled, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Defined in tracking.mac:139; flips global _TRACKING which gates the _track() hook on energy moves.",
@@ -966,6 +1052,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('wbeamsize', [], justification='')",
         "spec_command": "wbeamsize",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {horizontal_fwhm_mm, vertical_fwhm_mm, horizontal_mode, vertical_mode, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only. Defined in beam_diagnostics.mac; prints beamsize[] and beamsize_mode[] globals.",
@@ -979,6 +1066,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('beam_status', [], justification='')",
         "spec_command": "p beam_status()",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {spear_current_ma, beamline_state, gap_owned, beam_good, reason, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only. The SPEC side is a custom function (spec.d/check_beam.mac) that prints an associative array of SPEAR/BL15/gap state.",
@@ -991,6 +1079,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('ct', [count_time], justification='')",
         "spec_command": "ct <count_time>",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {counters: {name: value, ...}, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only; logs to query_log.",
@@ -1003,6 +1092,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('ct', [count_time], justification='') → filter by counter name",
         "spec_command": "ct <count_time>",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {value, counter, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only; logs to query_log.",
@@ -1015,6 +1105,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('gaprequest', [], justification)",
         "spec_command": "gaprequest",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id, result: {raw, granted, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Required before mv_energy when SPEAR is the gap owner.",
@@ -1030,6 +1121,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('p_element', [], justification='')",
         "spec_command": "p ELEMENT",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {element, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only. Prints the ELEMENT global variable.",
@@ -1042,6 +1134,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('scan_n', [], justification='')",
         "spec_command": "p SCAN_N",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {value, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only.",
@@ -1053,6 +1146,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('p_datafile', [], justification='')",
         "spec_command": "p DATAFILE",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {raw}}",
         "source": "spec_session",
         "source_detail": "Read-only.",
@@ -1069,6 +1163,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('plotselected', [], justification='')",
         "spec_command": "p cnt_mne(DET)",
+        "mutates": False,
         "output": "JSON: {ok, kind, result: {counter, raw}}",
         "source": "spec_session",
         "source_detail": "Read-only.",
@@ -1082,6 +1177,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_cmd.call('abort', [], justification)",
         "spec_command": "<Ctrl-C>",
+        "mutates": True,
         "output": "JSON: {ok, kind, action_id}",
         "source": "spec_session",
         "source_detail": "Writes to action_log before sending the interrupt.",
@@ -1098,6 +1194,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "action_log.db.recent_actions(limit, experiment_id)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON array: [{id, timestamp, phase, command, justification, success}, ...]",
         "source": "autonomy_db",
         "source_detail": "Every spec_cmd.call() writes an action_log row.",
@@ -1119,6 +1216,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_eval.evaluate_spec_macro(macro, preload, timeout_s)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {ok, exit_code, timed_out, log, duration_s, run_id, error}",
         "source": "tool_chain",
         "source_detail": (
@@ -1145,6 +1243,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "/snapshot.jpg', params={'resolution': 'low', 'quality': q})"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {ok, resolution, quality, size_bytes} + inline JPEG image",
         "source": "camera",
         "source_detail": (
@@ -1167,6 +1266,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "Path(reference_images / manifest[kind]['file']).read_bytes()"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {ok, kind, description, size_bytes} + inline JPEG image",
         "source": "filesystem",
         "source_detail": (
@@ -1193,6 +1293,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xas.compare.compare_to_references(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {components[{name,fraction}], fit_r2, residual_rms, reference_e0s_ev, ...} + fit plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1213,6 +1314,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "spec_data.scans.get_normalized_scan_arrays(...) loads"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: per-file {e0_before, shift_applied, e0_after, refused} + two-panel overlay plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1233,6 +1335,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "spec_data.scans.get_normalized_scan_arrays(...) loads"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {max_abs_delta, energy_of_max_abs_delta_ev, rms_delta, alignment, ...} + two-panel plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1260,6 +1363,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.tables.edges.classify_edge_family"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {element, edge, edge_energy_ev, family, detected|explicit, energy_window_ev, ambiguity}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1279,6 +1383,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.xas.e0.find_e0(...) over spec_data.scans.get_normalized_scan_arrays(...)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {e0_ev, e0_unc_ev, e0_half_step_ev, definition, grid_step_ev, element, edge}",
         "source": "spec_datafile",
         "source_detail": "Averaged, I0-divided reps from spec_data.scans.get_normalized_scan_arrays.",
@@ -1299,6 +1404,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "over spec_data.scans.get_normalized_scan_arrays(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {method, citation, window_ev, scale, degraded, reason, element, edge}",
         "source": "spec_datafile",
         "source_detail": "Averaged, I0-divided reps from spec_data.scans.get_normalized_scan_arrays.",
@@ -1319,6 +1425,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "spec_data.scans.get_normalized_scan_arrays(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {centroid_ev, integrated_intensity, n_components, bic, fit_ok, rebroadened{...}, provenance}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1340,6 +1447,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xas.policy.white_line_components_for(family)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {white_line{energy_ev, height, area}, components[...], fit_ok, provenance}",
         "source": "spec_datafile",
         "source_detail": "Averaged, I0-divided reps from spec_data.scans.get_normalized_scan_arrays.",
@@ -1360,6 +1468,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xas.annotated_descriptor_figure(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {e0, white_line, pre_edge, per_scan_trends, quality_flags, provenance} + annotated figure",
         "source": "spec_datafile",
         "source_detail": "Averaged, I0-divided reps from spec_data.scans.get_normalized_scan_arrays.",
@@ -1380,6 +1489,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "self_absorption_assessment}(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {n_glitches, saturated, n_pinned, self_absorption_risk, quality_flags, verdict}",
         "source": "spec_datafile",
         "source_detail": "Averaged, I0-divided reps from spec_data.scans.get_normalized_scan_arrays.",
@@ -1399,6 +1509,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "per-scan science.xas.{e0,fits} fits"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: per-descriptor {theil_sen_slope, kendall_tau, p_value, total_change, drifting}",
         "source": "spec_datafile",
         "source_detail": "One fit per scan from spec_data.scans.get_normalized_scan_arrays.",
@@ -1417,6 +1528,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.xas.interpret.interpret_oxidation_state(descriptors, calibration)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {verdict, basis, confidence, evidence, caveats, flags, calibration_context}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1437,6 +1549,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.xas.interpret.interpret_coordination_geometry(descriptors, calibration)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {verdict, basis, confidence, evidence, caveats, flags}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1457,6 +1570,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.xas.interpret.summarize_chemistry(descriptors, calibration)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {narration, oxidation, geometry, drift, quality, descriptors} + annotated figure",
         "source": "spec_datafile",
         "source_detail": (
@@ -1475,6 +1589,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "calibration_store.current_calibration()",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {calibrated, offset_ev, reference_element, reference_edge, recorded_at, age_s, drift_ev}",
         "source": "filesystem",
         "source_detail": (
@@ -1498,6 +1613,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "then calibration_store.record_calibration(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {offset_ev, measured_e0_ev, assigned_reference_ev, reference_element, reference_edge, recorded_at}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1525,6 +1641,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "spec_data.scans.get_normalized_scan_arrays(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {per_rep_values, running_mean, running_sem, final_sem_frac, final_drift_frac, verdict}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1549,6 +1666,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "features.heterogeneity_f_statistic(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {spots[{position, n_scans, convergence, efficiency}], f_statistic, verdict}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1568,6 +1686,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.scans.group_scans_by_spot(file_name, tol_mm)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {tol_mm, spots[{sx, sy, sz, scan_numbers}]}",
         "source": "spec_datafile",
         "source_detail": "Motor positions from the SPEC scan headers (#P lines) via the metadata cache.",
@@ -1584,6 +1703,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.plotting.plot_scan_stack(file_name, ...)",
         "spec_command": None,
+        "mutates": False,
         "output": "base64 PNG + JSON summary {n_reps, counter, normalization, window_ev}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1602,6 +1722,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.plotting.plot_running_average(file_name, ...)",
         "spec_command": None,
+        "mutates": False,
         "output": "base64 PNG + JSON summary {n_reps, final_sem, window_ev}",
         "source": "spec_datafile",
         "source_detail": "Loads by file name via spec_data.scans; figure built in spec_data/plotting.py.",
@@ -1618,6 +1739,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.plotting.plot_first_half_vs_second_half(file_name, ...)",
         "spec_command": None,
+        "mutates": False,
         "output": "base64 PNG + JSON summary {n_sigma_max, energy_of_max_ev, verdict}",
         "source": "spec_datafile",
         "source_detail": "Loads by file name via spec_data.scans; figure built in spec_data/plotting.py.",
@@ -1634,6 +1756,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.plotting.plot_feature_evolution(file_name, ...)",
         "spec_command": None,
+        "mutates": False,
         "output": "base64 PNG + JSON summary {per_rep_values, running_mean, running_sem}",
         "source": "spec_datafile",
         "source_detail": "Loads by file name via spec_data.scans; figure built in spec_data/plotting.py.",
@@ -1653,6 +1776,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.ssrl_backend.SSRLAsciiBackend(collector_dir).list_groups()",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {data_dir, groups[{name, scan_number, sweeps[...]}]}",
         "source": "filesystem",
         "source_detail": (
@@ -1676,6 +1800,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "-> science.xas.e0.find_e0(...) -> science.exafs.background.autobk_lite(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {e0_ev, edge_step, k, chi, provenance} + chi(k) extraction plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1700,6 +1825,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "artifact or a fresh extract_chi pipeline"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {r, chir_mag, first_shell_r_ang, provenance{convention, window, kweight, r_axis}} + |chi(R)| plot",
         "source": "tool_chain",
         "source_detail": (
@@ -1722,6 +1848,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "first_shell_peak(...) -> science.plots.exafs.{plot_chi_extraction,plot_chir}"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {e0_ev, edge_step, k, chi, r, chir_mag, first_shell_r_ang, provenance} + two plots",
         "source": "spec_datafile",
         "source_detail": (
@@ -1743,6 +1870,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "extract_chi pipeline per group -> science.plots.exafs.plot_chi_overlay(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {n_overlaid, reports[{file_name, e0_ev, edge_step, ...}]} + k-space overlay plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1773,6 +1901,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_elastic_fit(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {elastic_center_ev, fwhm_ev, fit_ok, method, recorded} + elastic-fit plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1796,6 +1925,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_loss_spectrum(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {loss, intensity, elastic_center_ev, elastic_center_source, axis, flags} + loss-spectrum plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1819,6 +1949,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_loss_spectrum(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {loss, mean, sem, n_reps, counter, counter_warning, elastic_center_ev} + loss-spectrum plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1842,6 +1973,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_background_subtraction(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {loss, subtracted, background, model, flank_windows_ev, fit_ok} + subtraction plot",
         "source": "spec_datafile",
         "source_detail": "Reps via spec_data.xrs_data.reduce_xrs; model default from science.xrs.policy.",
@@ -1862,6 +1994,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xrs.reduce.area_normalize(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {loss, normalized, area, model, normalization, fit_ok} + subtraction plot",
         "source": "spec_datafile",
         "source_detail": "Reps via spec_data.xrs_data.reduce_xrs.",
@@ -1881,6 +2014,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_overlay(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {n_overlaid, reports[{file_name, counter, elastic_center_ev, area}]} + overlay plot",
         "source": "spec_datafile",
         "source_detail": "One reduction per file through spec_data.xrs_data.reduce_xrs.",
@@ -1901,6 +2035,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_xrs_descriptors(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {onset, pre_edge, white_line, integrated_area, feature_snr, windows_ev} + annotated plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1923,6 +2058,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xrs.interpret.assess_xrs_quality(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {feature_snr, resolution_fwhm_ev, verdict, caveats, flags}",
         "source": "spec_datafile",
         "source_detail": "Reps via spec_data.xrs_data.reduce_xrs; resolution from the elastic calibration.",
@@ -1939,6 +2075,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.xrs.interpret.interpret_xrs_oxidation_state(descriptors, calibration)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {verdict, basis, confidence, onset_shift_ev, absolute|relative, evidence, caveats}",
         "source": "spec_datafile",
         "source_detail": (
@@ -1961,6 +2098,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xrs.interpret.compare_xrs_to_references(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {components[{name, fraction}], fit_r2, residual_rms, regime, caveats} + fit plot",
         "source": "spec_datafile",
         "source_detail": (
@@ -1983,6 +2121,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xrs.interpret.interpret_q_dependence(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {points[{q, value, regime}], trend, verdict, caveats, provenance}",
         "source": "tool_chain",
         "source_detail": (
@@ -2002,6 +2141,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "science.xrs.interpret.summarize_xrs_chemistry(descriptors, calibration)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {narration, oxidation, quality, descriptors} + annotated plot",
         "source": "spec_datafile",
         "source_detail": "Reps via spec_data.xrs_data.reduce_xrs; edge family from science.tables.xrs_edges.",
@@ -2024,6 +2164,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.plots.xrs.plot_crystal_sum(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {loss, summed, kept[...], rejected[...], n_channels} + crystal-sum plot",
         "source": "spec_datafile",
         "source_detail": "One counter column per channel via spec_data.xrs_data.load_scan_signal.",
@@ -2044,6 +2185,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xrs.reduce.reject_outlier_channels(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {channels[{counter, snr, dev_mad, keep}], grid_ev, n_kept, n_rejected}",
         "source": "spec_datafile",
         "source_detail": "One counter column per channel via spec_data.xrs_data.load_scan_signal.",
@@ -2063,6 +2205,7 @@ TOOL_LINEAGE: dict[str, dict] = {
             "science.xrs.policy.q_regime(...)"
         ),
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {crystals[{counter, two_theta_deg, q_inv_ang, regime}]}",
         "source": "tool_chain",
         "source_detail": (
@@ -2084,6 +2227,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "spec_data.postgres_backend.PostgresBackend.execute_readonly_sql(query, max_rows)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {columns[...], rows[[...]], row_count, truncated}",
         "source": "postgres",
         "source_detail": (
@@ -2100,6 +2244,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "notify.slack.list_channels()",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {channels[{id, name, is_member}]}",
         "source": "slack",
         "source_detail": (
@@ -2116,6 +2261,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "notify.slack.read_channel_messages(channel_id, limit, oldest)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {messages[{ts, user, text, thread_ts, reply_count}]}",
         "source": "slack",
         "source_detail": "Slack Web API via the lazily imported slack-sdk (the 'slack' extra).",
@@ -2129,6 +2275,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "notify.slack.read_thread_replies(channel_id, thread_ts)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {messages[{ts, user, text}]}",
         "source": "slack",
         "source_detail": "Slack Web API via the lazily imported slack-sdk (the 'slack' extra).",
@@ -2143,12 +2290,126 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "python_func": "notify.slack.post_message(channel_id, text, thread_ts)",
         "spec_command": None,
+        "mutates": False,
         "output": "JSON: {ok, channel, ts}",
         "source": "slack",
         "source_detail": "Slack Web API via the lazily imported slack-sdk (the 'slack' extra).",
         "depends_on": ["list_channels"],
     },
 }
+
+
+# Every key a complete entry carries. ``spec_commands`` is deliberately
+# absent: it is optional, and only the two run-time-dispatching handlers
+# have it. Consumers that register their own tools are validated against
+# this exact set, so a half-filled entry is rejected at registration
+# rather than rendering as blank fields on the catalog page — or, worse,
+# silently mis-classifying the tool because ``mutates`` is missing.
+LINEAGE_REQUIRED_KEYS: tuple[str, ...] = (
+    "long_description",
+    "python_func",
+    "spec_command",
+    "mutates",
+    "output",
+    "source",
+    "source_detail",
+    "depends_on",
+)
+
+# Keys allowed but not required.
+LINEAGE_OPTIONAL_KEYS: tuple[str, ...] = ("spec_commands",)
+
+_LINEAGE_SOURCES = frozenset({
+    "spec_datafile", "spec_session", "spec_logfile", "spec_config",
+    "autonomy_db", "filesystem", "tool_chain", "postgres", "camera",
+    "slack",
+})
+
+
+def validate_lineage_entry(name: str, entry: dict) -> list[str]:
+    """Return every problem with one lineage entry, as readable sentences.
+
+    A list rather than a raised exception so ``register_lineage`` can
+    report all of a consumer's entries at once — fixing a registration
+    one ``ValueError`` at a time is the slow way to find out you got the
+    shape wrong in twenty places.
+    """
+    problems: list[str] = []
+    if not isinstance(entry, dict):
+        return [f"{name}: entry is {type(entry).__name__}, expected a dict"]
+
+    for key in LINEAGE_REQUIRED_KEYS:
+        if key not in entry:
+            problems.append(f"{name}: missing key {key!r}")
+
+    if "mutates" in entry and not isinstance(entry["mutates"], bool):
+        problems.append(
+            f"{name}: 'mutates' is {type(entry['mutates']).__name__}, "
+            "expected a bool — categorize() reads it to place the tool on "
+            "spec-write, and a truthy string would place a read tool there"
+        )
+
+    for key in ("long_description", "python_func", "output", "source_detail"):
+        value = entry.get(key)
+        if key in entry and not (isinstance(value, str) and value.strip()):
+            problems.append(f"{name}: {key!r} must be a non-empty string")
+
+    if "source" in entry and entry["source"] not in _LINEAGE_SOURCES:
+        problems.append(
+            f"{name}: source {entry['source']!r} is not one of "
+            f"{sorted(_LINEAGE_SOURCES)} — add it to the enum in this "
+            "module's docstring first"
+        )
+
+    spec_command = entry.get("spec_command")
+    if "spec_command" in entry and spec_command is not None and not isinstance(spec_command, str):
+        problems.append(f"{name}: 'spec_command' must be a string or None")
+
+    if "depends_on" in entry and not isinstance(entry["depends_on"], list):
+        problems.append(f"{name}: 'depends_on' must be a list (possibly empty)")
+
+    if "spec_commands" in entry:
+        value = entry["spec_commands"]
+        if not (isinstance(value, list) and value
+                and all(isinstance(c, str) and c for c in value)):
+            problems.append(
+                f"{name}: 'spec_commands' must be a non-empty list of "
+                "registered command-name strings"
+            )
+
+    unknown = set(entry) - set(LINEAGE_REQUIRED_KEYS) - set(LINEAGE_OPTIONAL_KEYS)
+    if unknown:
+        problems.append(
+            f"{name}: unknown keys {sorted(unknown)} — the catalog page "
+            "renders none of them, so they are silently dropped"
+        )
+    return problems
+
+
+def register_lineage(mapping: dict[str, dict]) -> None:
+    """Merge out-of-tree lineage entries into ``TOOL_LINEAGE`` in place.
+
+    Validates every entry first and raises a single ``ValueError``
+    listing every problem, so nothing is half-merged.
+
+    The update is in place on purpose: ``categorize.py`` binds this dict
+    object at import, and so does every consumer that reads it. Rebinding
+    the module attribute instead is what forced consumers to monkey-patch
+    ``categorize.TOOL_LINEAGE`` to be seen at all.
+    """
+    if not mapping:
+        return
+    problems: list[str] = []
+    for name, entry in mapping.items():
+        problems.extend(validate_lineage_entry(name, entry))
+    if problems:
+        raise ValueError(
+            "invalid lineage entries ({}):\n  {}".format(
+                len(problems), "\n  ".join(problems)
+            )
+        )
+    TOOL_LINEAGE.update(mapping)
+
 
 def extract_inputs(tool_def: dict) -> list[dict]:
     """Flatten a tool's JSONSchema parameters into a UI-friendly list."""
@@ -2184,6 +2445,7 @@ def build_detailed_tool(tool_def: dict, category: str) -> dict:
         "python_func": lineage.get("python_func", ""),
         "spec_command": lineage.get("spec_command"),
         "sends_spec_command": lineage.get("spec_command") is not None,
+        "mutates": bool(lineage.get("mutates")),
         "output": lineage.get("output", ""),
         "source": lineage.get("source", ""),
         "source_detail": lineage.get("source_detail", ""),

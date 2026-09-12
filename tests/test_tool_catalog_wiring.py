@@ -17,7 +17,11 @@ from __future__ import annotations
 import pytest
 
 from beamtimehero_cli.tool_catalog import TOOL_DEFINITIONS
-from beamtimehero_cli.tool_catalog.lineage import TOOL_LINEAGE
+from beamtimehero_cli.tool_catalog.lineage import (
+    LINEAGE_REQUIRED_KEYS,
+    TOOL_LINEAGE,
+    validate_lineage_entry,
+)
 from beamtimehero_cli.tool_catalog.tools_core import DISPATCH, _HANDLERS
 
 
@@ -75,15 +79,49 @@ def test_every_lineage_source_is_a_documented_value():
 
 
 def test_every_lineage_entry_is_complete():
-    """A half-filled entry renders as blank fields on the catalog page."""
-    required = ("long_description", "python_func", "output", "source",
-                "source_detail", "depends_on")
-    incomplete = {
-        name: [f for f in required if not entry.get(f) and f != "depends_on"]
+    """A half-filled entry renders as blank fields on the catalog page.
+
+    Driven by ``LINEAGE_REQUIRED_KEYS`` rather than a list copied here, so
+    a new field cannot be added to the schema and left unchecked.
+
+    Two keys need their own rule. ``depends_on`` is legitimately empty for
+    a tool with no prerequisite, and ``spec_command`` is legitimately
+    ``None`` — so both are checked for presence only. ``mutates`` is the
+    one that made the copied-list version actively wrong: ``False`` is the
+    correct value for 85 of the 125 tools, and a truthiness test would
+    have rejected every one of them.
+    """
+    problems: dict[str, list[str]] = {}
+    for name, entry in TOOL_LINEAGE.items():
+        bad: list[str] = []
+        for field in LINEAGE_REQUIRED_KEYS:
+            if field not in entry:
+                bad.append(f"{field} (missing)")
+            elif field == "mutates":
+                if not isinstance(entry[field], bool):
+                    bad.append(f"mutates (not a bool: {entry[field]!r})")
+            elif field in ("depends_on", "spec_command"):
+                continue
+            elif not entry[field]:
+                bad.append(f"{field} (empty)")
+        if bad:
+            problems[name] = bad
+    assert not problems, f"incomplete lineage entries: {problems}"
+
+
+def test_validate_lineage_entry_agrees_with_the_shipped_catalog():
+    """The validator consumers are held to must accept what we ship.
+
+    Otherwise ``register_lineage`` enforces a shape the library itself
+    does not meet, and the first consumer to hit it has no way to tell
+    whether its entry or the validator is wrong.
+    """
+    problems = [
+        problem
         for name, entry in TOOL_LINEAGE.items()
-    }
-    incomplete = {k: v for k, v in incomplete.items() if v}
-    assert not incomplete, f"lineage entries with empty fields: {incomplete}"
+        for problem in validate_lineage_entry(name, entry)
+    ]
+    assert not problems, problems
 
 
 # Prerequisites that live in the consuming applications rather than this

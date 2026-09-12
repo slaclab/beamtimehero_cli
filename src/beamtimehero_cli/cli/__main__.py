@@ -30,14 +30,16 @@ from pathlib import Path
 
 from beamtimehero_cli import refdocs
 from beamtimehero_cli.cli.profiles import PROFILES
+from beamtimehero_cli.cli.trees import RESERVED_TOP_LEVEL, TREE_HELPS
 from beamtimehero_cli.tool_catalog import TOOL_DEFINITIONS, execute_tool
 from beamtimehero_cli.tool_catalog.categorize import categorize
 
 
-_CANONICAL_TREES = frozenset({
-    "ref", "catalog", "tool", "db", "spec-read", "spec-write",
-    "spec-file", "s3df", "slack", "xrs", "exafs",
-})
+# Names live in ``cli/trees.py`` now so a consumer can read them without
+# importing the parser. These two aliases are the old private spellings,
+# kept because out-of-tree code reads them.
+_CANONICAL_TREES = RESERVED_TOP_LEVEL
+_TREE_HELPS = TREE_HELPS
 
 
 # ---------------------------------------------------------------------------
@@ -205,28 +207,30 @@ def run_catalog(args: argparse.Namespace) -> int:
     return 0
 
 
-_TREE_HELPS: dict[tuple[str, ...], str] = {
-    ("tool",): "Non-SPEC tools: data queries, analysis, plotting, file I/O.",
-    ("db",): "Action-log queries.",
-    ("spec-read",): "SPEC-bound reads (motor positions, beam status). No mutation.",
-    ("spec-write",): "SPEC-bound mutations. Every leaf requires --justification.",
-    ("spec-file",): "Scan tools that read SPEC files directly (file-cache backend).",
-    ("s3df",): "S3DF-deployment tools (Postgres metadata + pickle scan data).",
-    ("s3df", "psql"): "Direct Postgres queries (raw SQL, command/log queries).",
-    ("slack",): "Slack messaging tools.",
-    ("xrs",): "X-ray Raman (XRS) analysis: energy-loss reduction + interpretation.",
-    ("exafs",): "EXAFS k-space analysis: chi(k) extraction, Fourier transforms.",
-}
-
-
 def build_catalog_subtrees(
     subs: argparse._SubParsersAction,
     tool_defs: list[dict],
-) -> None:
+    *,
+    agent_role: str | None = None,
+    trees: "frozenset[tuple[str, ...]] | set[tuple[str, ...]] | None" = None,
+) -> dict[tuple[str, ...], argparse._SubParsersAction]:
     """Register every tool under its categorized tree (and sub-trees).
 
     Each tool's tree comes from ``categorize(tdef)`` and may be a multi-
     segment tuple for nested branches (e.g. ``("s3df", "psql")``).
+
+    Returns ``{branch path: that branch's add_subparsers action}`` so a
+    caller can hang further children off a branch it did not build.
+
+    ``agent_role``, when given, is stamped on every leaf as ``_agent_role``.
+    A restricted surface needs that on *every* leaf it carries, and doing
+    it here means it cannot be missed — walking argparse privates after
+    the fact is how the four-of-nine-branches gap happened.
+
+    ``trees`` limits which ``TREE_HELPS`` buckets are pre-created; the
+    default pre-creates all of them, which is the byte-identical original
+    behaviour. Tools still create their own branch on demand, so passing a
+    subset only affects which empty branches show up in ``--help``.
     """
     # parent path → its add_subparsers() action
     bucket: dict[tuple[str, ...], argparse._SubParsersAction] = {}
@@ -239,7 +243,7 @@ def build_catalog_subtrees(
         parent = path[:-1]
         parent_subs = subs if parent == () else _ensure_bucket(parent)
         node = parent_subs.add_parser(
-            path[-1], help=_TREE_HELPS.get(path, "").strip() or None,
+            path[-1], help=TREE_HELPS.get(path, "").strip() or None,
         )
         nodes[path] = node
         bucket[path] = node.add_subparsers(
@@ -249,8 +253,9 @@ def build_catalog_subtrees(
 
     # Pre-create the known trees so they always appear in --help even if no
     # tools are registered there yet.
-    for path in _TREE_HELPS:
-        _ensure_bucket(path)
+    for path in TREE_HELPS:
+        if trees is None or path in trees:
+            _ensure_bucket(path)
 
     for tdef in tool_defs:
         fn = tdef.get("function") or {}
@@ -265,9 +270,19 @@ def build_catalog_subtrees(
 
         cli_name = name.replace("_", "-")
         leaf = _ensure_bucket(category).add_parser(cli_name, help=description)
-        leaf.set_defaults(_tool_name=name, _tool_category=category)
+        # Only set _agent_role when there is one: an unconditional
+        # ``_agent_role=None`` would put a key on every Namespace the
+        # unrestricted parser produces, which is not byte-identical.
+        if agent_role is None:
+            leaf.set_defaults(_tool_name=name, _tool_category=category)
+        else:
+            leaf.set_defaults(
+                _tool_name=name, _tool_category=category, _agent_role=agent_role,
+            )
         for key, prop in properties.items():
             add_arg(leaf, key, prop or {}, key in required)
+
+    return bucket
 
 
 def _dest_for(path: tuple[str, ...]) -> str:
@@ -415,19 +430,33 @@ def run_ref(args: argparse.Namespace) -> int:
         return 1
 
 
-def run_tool_leaf(args: argparse.Namespace) -> int:
+def run_tool_leaf(args: argparse.Namespace, *, executor=None) -> int:
+    """Dispatch a catalog-leaf invocation.
+
+    ``executor`` replaces ``execute_tool`` for this call — that is how a
+    restricted surface gets its own guarded dispatch table without
+    reassigning this module's global, which is what consumers used to do.
+    Resolved here rather than as a default argument so the module-level
+    ``execute_tool`` is still read at call time.
+    """
+    fn = executor or execute_tool
     name = args._tool_name
     category = getattr(args, "_tool_category", ("tool",))
     payload: dict = {}
     for k, v in vars(args).items():
-        if k in {"tree", "_tool_name", "_tool_category", "list_profiles"} or k.startswith("leaf"):
+        # Parser bookkeeping, not tool arguments: the tree/leaf dests, the
+        # top-level flags, the ``subtree`` dest a nested agent branch uses,
+        # and every ``_``-prefixed default (``_tool_name``,
+        # ``_tool_category``, ``_agent_role``). No tool property is spelled
+        # with a leading underscore.
+        if k in {"tree", "subtree", "list_profiles"} or k.startswith(("leaf", "_")):
             continue
         if v is None:
             continue
         payload[k] = v
 
     try:
-        text, images = execute_tool(category, name, payload)
+        text, images = fn(category, name, payload)
     except Exception as e:  # noqa: BLE001
         traceback.print_exc(file=sys.stderr)
         print(json.dumps({"ok": False, "error": str(e)}, default=str))
@@ -534,7 +563,12 @@ def _print_profile_index() -> int:
     return 0
 
 
-def dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
+def dispatch(
+    parser: argparse.ArgumentParser,
+    args: argparse.Namespace,
+    *,
+    executor=None,
+) -> int:
     if getattr(args, "list_profiles", False):
         return _print_profile_index()
     if not getattr(args, "tree", None):
@@ -557,7 +591,7 @@ def dispatch(parser: argparse.ArgumentParser, args: argparse.Namespace) -> int:
         argv.append("--help")
         parser.parse_args(argv)
         return 0
-    return run_tool_leaf(args)
+    return run_tool_leaf(args, executor=executor)
 
 
 def run_with(
@@ -646,8 +680,14 @@ def run_with(
     return rc
 
 
-def main(argv: list[str] | None = None) -> int:
-    return run_with(build_parser, dispatch, argv)
+def main(argv: list[str] | None = None, *, executor=None) -> int:
+    if executor is None:
+        return run_with(build_parser, dispatch, argv)
+    return run_with(
+        build_parser,
+        lambda parser, args: dispatch(parser, args, executor=executor),
+        argv,
+    )
 
 
 if __name__ == "__main__":

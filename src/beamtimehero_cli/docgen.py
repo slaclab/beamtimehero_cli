@@ -125,10 +125,11 @@ def collect() -> dict:
         detail = build_detailed_tool(tdef, "/".join(tree))
         detail["tree"] = tree
         detail["summary"] = first_sentence(detail["description"])
-        params = (tdef.get("function") or {}).get("parameters") or {}
-        detail["needs_justification"] = "justification" in set(
-            params.get("required") or []
-        )
+        # From the declared ``mutates`` flag, not from the schema: the
+        # page should say what the catalogue claims about a tool, so that
+        # a lineage entry and a page that disagree is a bug someone can
+        # see (tests/test_mutates.py holds the two together).
+        detail["needs_justification"] = detail["mutates"]
         tools.append(detail)
 
     by_branch: dict[tuple[str, ...], list[dict]] = {}

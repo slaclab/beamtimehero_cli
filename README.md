@@ -185,29 +185,39 @@ string `"True"` and goes live.
 ## Extending the CLI
 
 Consumers can compose their own subtrees on top of the upstream parser instead
-of forking it. The helpers in `beamtimehero_cli.cli.__main__` are public:
+of forking it. Import the helpers from `beamtimehero_cli.cli.api`, which
+re-exports them from `cli.__main__` under a name that says they are the
+contract. Branch names live in `beamtimehero_cli.cli.trees`
+(`CANONICAL_TREES`, `RESERVED_TOP_LEVEL`, `TREE_HELPS`), which imports
+nothing — so a name check costs no import of `config`.
 
 | Name | Purpose |
 |---|---|
 | `build_parser()` | Build the default top-level parser (all canonical trees plus registered profiles). |
 | `build_ref_subtree(subs)` | Mount only the `ref` subtree on an existing `_SubParsersAction`. |
-| `build_catalog_subtrees(subs, tool_defs)` | Mount the catalog subtrees (`tool`, `db`, `spec-read`, `spec-write`, `spec-file`, `xrs`, `exafs`, `s3df`, `slack`, …) from a tool-definitions list (filtered or unfiltered). |
+| `build_catalog_subtrees(subs, tool_defs, *, agent_role=None, trees=None)` | Mount the catalog subtrees (`tool`, `db`, `spec-read`, `spec-write`, `spec-file`, `xrs`, `exafs`, `s3df`, `slack`, …) from a tool-definitions list (filtered or unfiltered). Returns `{branch path: subparsers action}`. `agent_role` stamps `_agent_role` on every leaf; `trees` limits which empty branches are pre-created. Both default to the unrestricted behaviour. |
 | `categorize(tool_def)` | Data-driven tree path for a tool def (e.g. `("spec-file",)`, `("s3df", "psql")`). |
 | `add_arg(parser, key, prop, required)` | JSON-schema property → argparse flag. |
 | `ToolParser` | `ArgumentParser` subclass that emits `{"ok": false, ...}` JSON on parse errors. |
 | `run_ref(args)` | Dispatch a `ref` invocation. |
-| `run_tool_leaf(args)` | Dispatch a catalog-leaf invocation. |
-| `dispatch(parser, args)` | Top-level dispatcher (delegates to `run_ref` / `run_tool_leaf`). |
+| `run_tool_leaf(args, *, executor=None)` | Dispatch a catalog-leaf invocation, optionally through your own executor. |
+| `dispatch(parser, args, *, executor=None)` | Top-level dispatcher (delegates to `run_ref` / `run_tool_leaf`). |
 | `TeeStdout` | Stdout wrapper that captures a bounded tail (used by `main()` for CLI logging). |
 | `run_with(parser_builder, dispatcher, argv=None, *, known_trees=None)` | Wrap a custom parser-builder + dispatcher with the same stdout-tee tail capture and `record_cli_invocation` CLI logging that `main()` provides. |
-| `main(argv=None)` | Full standalone entry point — same as the `beamtimehero` console-script. |
+| `main(argv=None, *, executor=None)` | Full standalone entry point — same as the `beamtimehero` console-script. |
+
+To add tools rather than re-arrange them, call
+`tool_catalog.register_tools(definitions=..., lineage=..., handlers=...)`;
+see `CONTRIBUTING.md` and `beamtimehero ref agent-integration`. Every
+registry is updated in place, so registration order and import order do
+not interact.
 
 Minimal composition example:
 
 ```python
 import sys
 from beamtimehero_cli import refdocs
-from beamtimehero_cli.cli.__main__ import build_parser, dispatch
+from beamtimehero_cli.cli.api import build_parser, dispatch
 
 def main() -> int:
     refdocs.register_doc("my-procedure", "/path/to/my_doc.md", "Project-specific procedure")

@@ -4,17 +4,26 @@ Each tool lives in a tree branch (``tool``, ``spec-read``, ``spec-write``,
 ``db``, plus the deployment-specific ``s3df``/``s3df psql``, ``spec-file``,
 and ``slack`` branches added in Phase 2).
 
-The classification follows this precedence:
+The classification follows this precedence, first match wins:
 
-1. ``CATEGORY_OVERRIDES`` — an explicit per-tool-name override (used to
+1. The tool definition's own ``"tree"`` field (a string like ``"s3df"``
+   or a dotted path like ``"s3df.psql"`` for sub-branches). The most
+   specific signal, and the only one that lets two definitions sharing a
+   name sit on different branches.
+2. ``CATEGORY_OVERRIDES`` — an explicit per-tool-name override (used to
    move file-cache scan tools out of ``tool`` and into ``spec-file``
    without touching every definition entry).
-2. The tool definition's own ``"tree"`` field (a string like ``"s3df"``
-   or a dotted path like ``"s3df.psql"`` for sub-branches).
-3. Lineage-driven rules (preserved from the original implementation):
-   ``autonomy_db`` source → ``db``; requires ``justification`` →
-   ``spec-write``; ``spec_command`` set → ``spec-read``; otherwise →
-   ``tool``.
+3. Lineage-driven rules: ``source == "autonomy_db"`` → ``db``;
+   ``mutates`` → ``spec-write``; ``spec_command`` set → ``spec-read``;
+   otherwise → ``tool``.
+
+``mutates`` is a declared field on the lineage entry, not an inference
+from the JSON schema. The rule used to read "requires ``justification``",
+which meant the safety class of a tool was a side effect of how its
+arguments happened to be spelled: dropping the flag from a schema moved a
+motor-moving tool onto ``spec-read``. It also gave consumers no way to
+mark a tool mutating without a ``justification`` argument. See
+``lineage.py`` for what ``mutates`` does and does not cover.
 
 Lives in ``tool_catalog/`` (not ``cli/``) so both the CLI parser and the
 DISPATCH builder can import without a circular dependency.
@@ -119,13 +128,14 @@ def categorize(tool_def: dict) -> tuple[str, ...]:
     if name in CATEGORY_OVERRIDES:
         return _split(CATEGORY_OVERRIDES[name])
 
+    # ``.get`` on both sides: a consumer may register a definition with no
+    # lineage entry at all, and that must fall through to the default
+    # branch rather than raise from inside the parser build.
     lineage = TOOL_LINEAGE.get(name) or {}
     if lineage.get("source") == "autonomy_db":
         return ("db",)
 
-    params = tool_def.get("function", {}).get("parameters", {}) or {}
-    required = set(params.get("required", []) or [])
-    if "justification" in required:
+    if lineage.get("mutates"):
         return ("spec-write",)
 
     if lineage.get("spec_command") is not None:

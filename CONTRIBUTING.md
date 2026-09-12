@@ -25,7 +25,7 @@ you do not need permission to change it.
 ```bash
 python3 -m venv venv && source venv/bin/activate
 pip install -e '.[dev]'
-python -m pytest                          # 653 tests, ~25s
+python -m pytest                          # 938 tests, ~30s
 python -m pytest tests/test_interpretation.py -q     # the science tests
 ruff check src tests                      # CI gates on this too, before pytest
 ```
@@ -115,15 +115,33 @@ belongs in `science/`.
 Additive, so it needs no permission — but it does touch two of the three files
 above, and there are five steps rather than the obvious two:
 
-1. **`tool_catalog/lineage.py`** — a `TOOL_LINEAGE` entry. Seven fields, and
-   `tests/test_tool_catalog_wiring.py` requires six of them to be non-empty:
-   `long_description`, `python_func` (the call chain, so an operator can trace
-   a call to its implementation), `output`, `source`, `source_detail`, and a
-   `depends_on` key (which may be an empty list). `spec_command` is the
-   seventh — `None` if it never touches SPEC. This feeds
-   `docs/tool_catalog.html` *and* the fallback classification rules in
-   `categorize.py`, so a tool without one is invisible on the catalog page and
-   lands in whatever branch the default rule picks.
+1. **`tool_catalog/lineage.py`** — a `TOOL_LINEAGE` entry. Eight fields,
+   listed in `LINEAGE_REQUIRED_KEYS`, and all eight must be present.
+   `tests/test_tool_catalog_wiring.py` additionally requires four of them to be
+   non-empty: `long_description`, `python_func` (the call chain, so an operator
+   can trace a call to its implementation), `output` and `source_detail`, plus
+   `source` from a fixed enum. Three carry a legal empty value: `depends_on`
+   may be `[]`, `spec_command` may be `None` if the tool never touches SPEC,
+   and `mutates` is a bool where `False` is the common case.
+
+   **`mutates` is the one to get right.** It means "issues a SPEC command
+   registered as an action, so it requires a `--justification` and is
+   written to the action log before dispatch" — and nothing broader.
+   Writing a file, a row or a Slack message is not mutating; only hardware
+   is. It is the sole input to the `spec-write` classification and to every
+   consumer's write filter, so a wrong value is a safety-class error, not a
+   documentation error. `tests/test_mutates.py` checks it against what your
+   handler actually passes to `audited_call`, so a mismatch fails the suite
+   rather than shipping.
+
+   One optional ninth field, `spec_commands`, applies only if your handler
+   picks its SPEC command at run time from an argument (today: `set_gain`,
+   `post_scan_move`). List the command names it may issue; the static check
+   cannot read them off the AST and will fail without it.
+
+   This entry feeds `docs/tool_catalog.html` *and* the classification rules
+   in `categorize.py`, so a tool without one is invisible on the catalog
+   page and lands in whatever branch the default rule picks.
 2. **`tool_catalog/definitions.py`** — the JSON schema the agent sees. Read
    every scientific default from the relevant `policy.py` rather than writing
    the literal (see `_exafs_policy.DEFAULT_KMIN` in the `fourier_transform_chi`
@@ -141,7 +159,16 @@ above, and there are five steps rather than the obvious two:
    the handler's JSON error envelope rather than catching it deeper.
 4. **`tool_catalog/categorize.py`** — only if the tool needs a branch the
    precedence rules would not give it. Prefer a `"tree"` field on the
-   definition over an entry in `CATEGORY_OVERRIDES`.
+   definition over an entry in `CATEGORY_OVERRIDES`. The rules, first match
+   wins: explicit `tree` → `CATEGORY_OVERRIDES` → `source == "autonomy_db"`
+   → `mutates` → `spec_command is not None` → `tool`.
+
+   Note what is *not* on that list: the JSON schema's `required`. A
+   `--justification` flag no longer classifies anything — `mutates` does.
+   Adding the flag to a read tool's schema will not move it to
+   `spec-write`, and removing it from a write tool's schema will not move
+   it off (it will fail `tests/test_mutates.py` instead, which is the
+   point).
 5. **Regenerate both pages and commit them.** `tests/test_docs_fresh.py`
    byte-compares each against its generator:
 
@@ -157,6 +184,40 @@ above, and there are five steps rather than the obvious two:
 handler and a complete lineage entry, every `source` is a documented enum
 value, and every `depends_on` names a tool that actually exists. A half-wired
 tool fails the suite rather than returning "Unknown tool" at runtime.
+
+### Adding a tool from another repository
+
+The five steps above are for a tool that belongs in this catalog. A tool
+that belongs to *one* consuming application should not be added here at
+all — register it from there:
+
+```python
+from beamtimehero_cli.tool_catalog import register_tools
+
+register_tools(
+    definitions=[MY_TOOL_DEF],          # appended to TOOL_DEFINITIONS
+    lineage={"my_tool": {...}},         # validated against LINEAGE_REQUIRED_KEYS
+    handlers={"my_tool": t_my_tool},    # str key -> _HANDLERS
+)                                       # tuple key -> _BRANCH_HANDLERS
+```
+
+Steps 1-4 above still apply in full; step 5 belongs to whoever owns the
+page. `register_lineage` enforces the lineage half at the call itself:
+one `ValueError` listing every problem across every entry, rather than a
+tool that quietly lands on the wrong branch because `mutates` was
+missing.
+
+Every registry is updated **in place**. That is load-bearing:
+`categorize.py` binds `TOOL_LINEAGE` at import and `executor.py` reads
+`tools_core.DISPATCH`, so rebinding a module attribute is invisible to
+half the readers — which is why consumers used to monkey-patch library
+modules instead. Do not reassign `TOOL_LINEAGE`, `TOOL_DEFINITIONS` or
+`DISPATCH`; call the register functions.
+
+Import from `beamtimehero_cli.cli.api` (parser helpers) and
+`beamtimehero_cli.cli.trees` (branch names, imports nothing) rather than
+from `cli.__main__`. Anything in `__main__` and not re-exported by
+`cli.api` is internal and may move.
 
 ## Commits
 

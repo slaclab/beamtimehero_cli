@@ -2883,20 +2883,32 @@ _BRANCH_HANDLERS: dict[tuple[str, ...], callable] = {
 }
 
 
-def _build_dispatch() -> dict[tuple[str, ...], "callable"]:
-    """Build the ``(tree, ..., name) -> handler`` dispatch table at import.
+def _build_dispatch(
+    definitions: "list[dict] | None" = None,
+) -> dict[tuple[str, ...], "callable"]:
+    """Build the ``(tree, ..., name) -> handler`` dispatch table.
 
     For each definition: categorize() decides the tree, then we pick the
     handler from ``_BRANCH_HANDLERS[(tree, name)]`` if present, else fall
     back to ``_HANDLERS[name]``. Tools without any handler are skipped —
     that happens for plan-aware tools described in the catalog but
     dispatched through the autonomous repo's own executor.
+
+    ``definitions`` defaults to the library's own definitions plus
+    anything a consumer passed to ``tool_catalog.register_definitions``.
+    Iterating the library list alone was the bug: a consumer could
+    register a handler and a definition and still get no dispatch key,
+    because the loop never saw its definition.
     """
     from beamtimehero_cli.tool_catalog.categorize import categorize
     from beamtimehero_cli.tool_catalog.definitions import AUTONOMY_TOOL_DEFINITIONS
 
+    if definitions is None:
+        from beamtimehero_cli.tool_catalog import _REGISTERED_DEFINITIONS
+        definitions = list(AUTONOMY_TOOL_DEFINITIONS) + list(_REGISTERED_DEFINITIONS)
+
     out: dict[tuple[str, ...], "callable"] = {}
-    for tdef in AUTONOMY_TOOL_DEFINITIONS:
+    for tdef in definitions:
         name = tdef.get("function", {}).get("name")
         if not name:
             continue
@@ -2910,3 +2922,56 @@ def _build_dispatch() -> dict[tuple[str, ...], "callable"]:
 
 
 DISPATCH: dict[tuple[str, ...], "callable"] = _build_dispatch()
+
+
+def register_handlers(mapping: "dict") -> None:
+    """Register out-of-tree tool handlers, then rebuild ``DISPATCH``.
+
+    Key shape decides which table the handler lands in, matching the two
+    that already exist:
+
+    * ``str`` — a bare tool name, into ``_HANDLERS``. Applies on whatever
+      branch ``categorize()`` puts the definition on.
+    * ``tuple`` — a full ``(tree, ..., name)`` path, into
+      ``_BRANCH_HANDLERS``. Use this when the same leaf name needs a
+      different backend per branch.
+
+    Override precedence therefore falls out of ``_build_dispatch`` rather
+    than being a second set of rules: ``_BRANCH_HANDLERS`` wins for its
+    exact path, ``_HANDLERS`` covers every other path for that name. So a
+    name-keyed ``list_scans`` replaces ``("spec-file", "list_scans")`` and
+    leaves ``("s3df", "list_scans")`` alone, because s3df's is branch-keyed.
+
+    ``DISPATCH`` is cleared and refilled rather than rebound: the module
+    attribute is read by ``executor.py`` and captured by consumers, and
+    rebinding it is what left stale tables behind.
+    """
+    if not mapping:
+        return
+    # Validate the whole mapping first: a half-applied registration leaves
+    # DISPATCH holding some of a consumer's handlers and not others, which
+    # is harder to diagnose than a refusal.
+    problems: list[str] = []
+    for key, handler in mapping.items():
+        if not isinstance(key, (str, tuple)):
+            problems.append(
+                f"key {key!r}: must be a tool name (str) or a "
+                "(tree, ..., name) tuple"
+            )
+        if not callable(handler):
+            problems.append(f"handler for {key!r} is not callable")
+    if problems:
+        raise ValueError(
+            "cannot register handlers ({}):\n  {}".format(
+                len(problems), "\n  ".join(problems)
+            )
+        )
+
+    for key, handler in mapping.items():
+        if isinstance(key, str):
+            _HANDLERS[key] = handler
+        else:
+            _BRANCH_HANDLERS[tuple(key)] = handler
+
+    DISPATCH.clear()
+    DISPATCH.update(_build_dispatch())

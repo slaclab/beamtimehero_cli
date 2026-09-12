@@ -151,6 +151,74 @@ data that cannot support the analysis, and the handlers turn that into a JSON
 `error` field — so an agent gets a sentence it can act on instead of an
 exception.
 
+### Which safety class a tool is in
+
+Ask the catalogue, not the schema. Each tool's lineage entry carries a
+`mutates` flag, and that is the one thing to filter on:
+
+```python
+from beamtimehero_cli.tool_catalog.lineage import TOOL_LINEAGE
+
+TOOL_LINEAGE["move_motor"]["mutates"]          # True  — moves hardware
+TOOL_LINEAGE["write_summary"]["mutates"]       # False — writes a file
+TOOL_LINEAGE["post_slack_message"]["mutates"]  # False — messages a human
+```
+
+`mutates` means "issues a SPEC command registered as an action, so it
+requires a `--justification` and is audited". Nothing broader: a tool that
+writes a file, a calibration row or a Slack message changes state
+somewhere and is still `False`, because none of them can touch the
+beamline. It is also what puts a tool on the `spec-write` branch, so the
+branch and the flag can never disagree.
+
+Do not infer the class from `"justification" in parameters.required`. The
+two agree today and a test keeps them agreeing, but only `mutates` is the
+declaration — a consumer registering its own tool can mark it mutating
+without a `justification` argument, and the inference would miss it.
+
+## Composing your own CLI
+
+A consumer that builds its own parser over this catalog imports from two
+modules, both stable:
+
+```python
+from beamtimehero_cli.cli.api import build_parser, dispatch, run_with
+from beamtimehero_cli.cli.trees import CANONICAL_TREES, RESERVED_TOP_LEVEL
+```
+
+`cli.api` re-exports the parser helpers (`ToolParser`, `build_ref_subtree`,
+`build_catalog_subtrees`, `add_arg`, `run_ref`, `run_tool_leaf`, `dispatch`,
+`run_with`, `main`). `cli.trees` holds the branch names and imports
+nothing at all, so you can check a name against `RESERVED_TOP_LEVEL`
+before anything reads `beamtimehero_cli.config`. Import from
+`cli.__main__` only for something neither module exposes, and expect it to
+move.
+
+To add your own tools rather than just re-arrange these ones, call
+`register_tools`:
+
+```python
+from beamtimehero_cli.tool_catalog import register_tools
+
+register_tools(
+    definitions=[MY_TOOL_DEF],
+    lineage={"my_tool": {...}},        # eight required keys, incl. mutates
+    handlers={"my_tool": t_my_tool},
+)
+```
+
+Every registry is updated in place, so it does not matter whether you
+register before or after importing the parser, and anything already
+holding `TOOL_LINEAGE` or `DISPATCH` sees your tools. To replace a
+handler rather than add one, register under the same key: a bare name
+covers every branch that tool sits on, a `(tree, ..., name)` tuple covers
+exactly one. `beamtimehero ref agent-integration` and `CONTRIBUTING.md`
+are the same contract from the two sides.
+
+Pass `executor=` to `run_tool_leaf`, `dispatch` or `main` to route calls
+through your own dispatch table — a restricted surface, a guard, an audit
+hook — instead of reassigning module attributes.
+
 ## What an agent will hit first
 
 **No data.** There is no bundled sample data in this package. Set
