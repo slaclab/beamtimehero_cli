@@ -39,3 +39,6 @@ data/
 # runtime artifacts from the metadata-cache file lock
 .scan_metadata_cache*.json.lock
 .scan_metadata_cache*.json
+
+# Agent worktrees created by the Claude Code harness.
+.claude/worktrees/

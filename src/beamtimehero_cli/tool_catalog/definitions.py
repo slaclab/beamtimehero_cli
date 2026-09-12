@@ -1768,6 +1768,11 @@ AUTONOMY_TOOL_DEFINITIONS = [
         "function": {
             "name": "evaluate_spec_macro",
             "description": (
+                "Requires a local spec-eval service: a Docker container with a licensed "
+                "SPEC install, on an Ubuntu host. This is the one tool the mock backend "
+                "cannot answer, so without that service every call returns a transport "
+                "error and nothing else in the package is affected; see `beamtimehero ref "
+                "agent-integration`. "
                 "Run a SPEC macro in a disposable, network-isolated sandbox container. "
                 "Returns JSON with an `output` key containing the clean command result "
                 "and a `log` key with the full session transcript (startup noise included). "
@@ -3223,7 +3228,7 @@ AUTONOMY_TOOL_CATEGORIES = [
     ("CAT-6 Beam", ["get_beam_size", "get_beam_status", "get_counts", "get_counter", "request_gap_ownership", "capture_sample_image", "get_reference_image"]),
     ("CAT-7 State", ["get_element", "get_scan_number", "get_current_datafile", "get_plotselected_counter", "abort_current_scan"]),
     ("CAT-8 Orchestration", [
-        "transition_phase", "request_human_intervention", "post_status_update",
+        "request_human_intervention", "post_status_update",
         "log_status_assessment",
         "update_plan", "record_sample_progress", "get_plan",
         "get_experiment_config",

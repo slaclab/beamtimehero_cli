@@ -31,7 +31,7 @@ def test_tool_definitions_are_core_only():
     from beamtimehero_cli.tool_catalog import TOOL_DEFINITIONS
     names = {d["function"]["name"] for d in TOOL_DEFINITIONS}
     forbidden = {
-        "transition_phase", "request_human_intervention", "post_status_update",
+        "request_human_intervention", "post_status_update",
         "update_plan", "record_sample_progress", "record_convergence_stats",
         "get_plan", "get_experiment_config", "get_remaining_beamtime",
         "set_experiment_end_time", "get_staff_guidance", "list_open_interventions",

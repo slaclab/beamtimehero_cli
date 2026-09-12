@@ -397,7 +397,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         "output": "JSON: {ok, kind, action_id, result: {raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Writes action_log row before SPEC dispatch; blocks until SPEC prompt returns.",
-        "depends_on": ["transition_phase"],
+        "depends_on": [],
     },
     "align_xes_spectrometer": {
         "long_description": (
@@ -411,7 +411,7 @@ TOOL_LINEAGE: dict[str, dict] = {
         "output": "JSON: {ok, kind, action_id, result: {crystals, raw, elapsed_s}, elapsed_s}",
         "source": "spec_session",
         "source_detail": "Gated to phase xes_alignment by the phase allow-list.",
-        "depends_on": ["align_beamline", "transition_phase"],
+        "depends_on": ["align_beamline"],
     },
     "run_sample_alignment": {
         "long_description": (
