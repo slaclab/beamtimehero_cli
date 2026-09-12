@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import logging
 from typing import Any, TypedDict
+from urllib.parse import urlsplit
 
 import requests
 
@@ -16,6 +17,15 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_API_URL = SPEC_EVAL_URL
 _HTTP_TIMEOUT = 600  # must comfortably exceed SPEC's own timeout
+
+# The spec-eval service takes arbitrary SPEC macro source and executes it.
+# That is only defensible because the service is on this machine, behind no
+# network, started by whoever runs the CLI. A remote host with that endpoint
+# open is a remote code execution service, so the URL is pinned to loopback
+# here rather than trusted from SPEC_EVAL_URL: a typo, a copied production
+# config, or an injected environment variable must not be able to redirect
+# macro source off-box.
+LOOPBACK_HOSTS = frozenset({"127.0.0.1", "localhost", "::1"})
 
 # Bypass the HTTP proxy for all spec-eval traffic (always localhost).
 _session = requests.Session()
@@ -59,9 +69,21 @@ def evaluate_spec_macro(
 ) -> SpecEvalResult:
     """Run a SPEC macro in a disposable sandbox container and return the log.
 
-    Never raises — failures are reported via the ``error`` field so the
+    ``api_url`` must be a loopback address. Never raises — failures,
+    including a rejected URL, are reported via the ``error`` field so the
     agent can handle outcomes inline.
     """
+    host = urlsplit(api_url).hostname
+    if host not in LOOPBACK_HOSTS:
+        # Return before building the request: nothing is sent to a
+        # non-loopback host, not even a connection attempt.
+        return _error_result(
+            f"spec-eval URL must be loopback: {api_url!r} has host {host!r}, "
+            f"expected one of {sorted(LOOPBACK_HOSTS)}. This tool posts SPEC "
+            f"macro source for execution, so the service is only ever "
+            f"addressed on this machine. Fix SPEC_EVAL_URL."
+        )
+
     payload: dict[str, Any] = {
         "macro": macro,
         "preload": preload or [],
@@ -74,7 +96,18 @@ def evaluate_spec_macro(
         resp = _session.post(url, json=payload, timeout=_HTTP_TIMEOUT)
     except requests.RequestException as e:
         logger.warning("spec-eval transport error: %s", e)
-        return _error_result(f"transport error: {e}")
+        # The "transport error: " prefix is a sentinel — spec_cmd.dispatch()
+        # matches the substring "transport error" to decide that a mock-mode
+        # call should fall back to the in-memory simulator. Keep it leading;
+        # the prose after it is for a human reading the tool's output.
+        return _error_result(
+            f"transport error: {e}. This is the one tool in the package that "
+            f"cannot answer from the mock: it needs a local spec-eval service "
+            f"at {api_url}, which is a Docker container running a licensed "
+            f"SPEC install on an Ubuntu host. If you have not set that up, "
+            f"this tool is unavailable and every other tool still works — see "
+            f"`beamtimehero ref agent-integration`."
+        )
 
     if resp.status_code >= 500:
         return _error_result(f"server error {resp.status_code}: {resp.text[:500]}")

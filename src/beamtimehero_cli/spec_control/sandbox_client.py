@@ -64,11 +64,24 @@ def clear_health_cache() -> None:
 # ---------------------------------------------------------------------------
 
 def dispatch(spec_string: str, *, timeout_s: float = 1800.0,
-             api_url: str | None = None) -> DispatchResult:
+             api_url: str | None = None,
+             mode: str | None = None) -> DispatchResult:
+    """Run one SPEC command through the spec-eval API.
+
+    ``mode`` selects the service endpoint: ``"screen"`` is ``/evaluate``,
+    which runs the macro in a fresh ``--network none`` container, and
+    ``"tcp"`` is ``/evaluate_tcp``, which talks to a long-lived spec server
+    over the network. ``None`` keeps the historical rule of deriving it from
+    ``SPEC_TRANSPORT``. Callers that are simulating rather than driving
+    hardware should pass ``"screen"`` explicitly: the endpoint is a property
+    of what the caller is doing, not of how this host happens to be
+    configured to reach a real SPEC.
+    """
     from beamtimehero_cli.spec_eval import evaluate_spec_macro
 
     url = api_url or SPEC_EVAL_URL
-    mode = "tcp" if SPEC_TRANSPORT == "tcp" else "screen"
+    if mode is None:
+        mode = "tcp" if SPEC_TRANSPORT == "tcp" else "screen"
     t0 = time.time()
     result = evaluate_spec_macro(
         macro=spec_string,

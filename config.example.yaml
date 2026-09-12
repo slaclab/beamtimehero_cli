@@ -110,7 +110,25 @@ env:
   # Live SPEC session — only when SPEC_MOCK=0
   # =========================================================================
 
-  # Transport: "tcp", "screen", or "sandbox". Default "tcp".
+  # How a SPEC command reaches SPEC. Default "tcp".
+  #
+  #   tcp      the spec server binary protocol, at SPEC_HOST:SPEC_PORT.
+  #   screen   stuff keystrokes into a GNU screen session named SPEC_NAME.
+  #   sandbox  HTTP to a local spec-eval service at SPEC_EVAL_URL, which runs
+  #            sim-mode SPEC in a disposable container. A simulation
+  #            deployment wants this one: it is the only value that needs no
+  #            beamline and no live session.
+  #
+  # This setting only selects the live path, so it is inert while SPEC_MOCK=1
+  # except as noted next. It is NOT a safety control — SPEC_MOCK is.
+  #
+  # Under SPEC_MOCK=1 the mock path probes the spec-eval service and uses it
+  # when it is up, for a more faithful simulation than the in-memory mock.
+  # That traffic is pinned to the service's /evaluate endpoint, whose
+  # container runs with --network none, regardless of what SPEC_TRANSPORT
+  # says. So configuring "tcp" here for an eventual live path cannot
+  # accidentally route simulated commands through /evaluate_tcp and give them
+  # a network.
   # SPEC_TRANSPORT: "tcp"
 
   # TCP transport target and port. Defaults "localhost" and "2033".
@@ -120,7 +138,18 @@ env:
   # SPEC session name, for the screen transport. Default "spec".
   # SPEC_NAME: "spec"
 
-  # Sandbox transport endpoint. Default "http://127.0.0.1:5006".
+  # Sandbox transport endpoint, and the service the `evaluate_spec_macro` tool
+  # talks to. Default "http://127.0.0.1:5006".
+  #
+  # Must be loopback — 127.0.0.1, localhost or ::1. A remote host is refused
+  # without a request being made, because the endpoint executes submitted SPEC
+  # macro source and is only ever spoken to on the machine running it.
+  #
+  # The service itself is not part of this package: it is a Docker container
+  # holding a licensed SPEC install, on a Linux host. `evaluate_spec_macro` is
+  # the one tool the mock backend cannot answer, so without the service that
+  # leaf returns a transport error and nothing else degrades. See
+  # `beamtimehero ref agent-integration`.
   # SPEC_EVAL_URL: "http://127.0.0.1:5006"
 
   # =========================================================================

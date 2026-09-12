@@ -143,7 +143,14 @@ def dispatch(spec_string: str, *, timeout_s: float = 1800.0) -> DispatchResult:
     if SPEC_MOCK:
         if sandbox_client.is_healthy():
             sim_string = f"check_beam_off; {spec_string}"
-            result = sandbox_client.dispatch(sim_string, timeout_s=timeout_s)
+            # mode="screen" pins the mock path to /evaluate, whose container
+            # runs --network none. SPEC_TRANSPORT is about how to reach a real
+            # SPEC, and under SPEC_MOCK=1 there is no real SPEC to reach; a
+            # deployment that sets SPEC_TRANSPORT=tcp for its live path must
+            # not thereby route simulated commands onto /evaluate_tcp, which
+            # gives the container a network and a long-lived spec server.
+            result = sandbox_client.dispatch(sim_string, timeout_s=timeout_s,
+                                             mode="screen")
             # Fall back to _MockScreen only on API-level failures (transport
             # error, server error).  SPEC-level failures (non-zero exit,
             # macro timeout) are valid sandbox results — return them.

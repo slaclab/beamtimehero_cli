@@ -127,9 +127,11 @@ def test_validate_lineage_entry_agrees_with_the_shipped_catalog():
 # Prerequisites that live in the consuming applications rather than this
 # catalog. The orchestrator tools are deliberately absent here — test_smoke.py
 # asserts they never leak in — but a tool whose real precondition is "the app
-# has transitioned into this phase" should still say so, so these are allowed
-# by name rather than silently dropped.
-CONSUMER_APP_TOOLS = {"transition_phase", "get_plan"}
+# already holds a plan" should still say so, so these are allowed by name
+# rather than silently dropped. Keep this set as small as the depends_on
+# entries require: every name in it is a promise that some consumer really
+# ships that tool, and nothing here can verify it.
+CONSUMER_APP_TOOLS = {"get_plan"}
 
 
 def test_depends_on_names_a_real_tool_or_a_known_consumer_tool():

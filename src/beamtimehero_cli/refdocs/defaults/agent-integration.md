@@ -44,7 +44,8 @@ this without supervising every call:
   on a laptop cannot move a motor. Note the check is `SPEC_MOCK == "1"`
   exactly: `0` disables the mock, but so does any other value, including an
   empty string and a YAML `true` that arrives as `"True"`. Quote it in config
-  files.
+  files. One tool is outside this — see "The one tool the mock does not
+  cover" below.
 - **Mutations require a reason.** Every leaf under `spec-write` requires
   `--justification`, and refuses to run without it.
 - **Everything is recorded.** Each invocation is written to a SQLite action
@@ -61,6 +62,39 @@ this without supervising every call:
   So parse tool results as text, not JSON, and do not use the exit code to
   decide whether a tool succeeded. The message itself is written to be
   actionable; the envelope around it is not yet uniform.
+
+### The one tool the mock does not cover
+
+`evaluate_spec_macro` is the single exception to "every SPEC command answers
+from the mock backend". It does not simulate SPEC — it posts your macro source
+to a **spec-eval service** that runs real SPEC in sim mode inside a disposable
+container, because the only thing that can tell you whether a macro parses is
+SPEC itself. That service is not part of this package and is not bundled:
+
+- It is a Docker container running a **licensed SPEC install** (SPEC is
+  commercial software from Certified Scientific Software), so the image cannot
+  be redistributed and you have to build it on a host that holds the licence.
+- The host must be **Linux**; an Ubuntu host is what this is run on.
+- The CLI addresses it at `SPEC_EVAL_URL`, default `http://127.0.0.1:5006`.
+  The URL is pinned to loopback — `127.0.0.1`, `localhost`, `::1` — and a
+  non-loopback value is refused without a request being made. The endpoint
+  executes submitted macro source, so it is only ever spoken to on the machine
+  that is running it.
+
+Without that service the tool returns
+`transport error: ... needs a local spec-eval service at ...` on every call.
+Nothing else degrades: this is one leaf of 131, and every other tool still
+answers from the mock. If you are standing up a fresh clone and see only that
+error, you have not broken your install — you have simply not built the one
+optional out-of-tree dependency.
+
+One note for anyone wiring the sandbox in as a transport
+(`SPEC_TRANSPORT=sandbox`) rather than using the tool directly. It has two
+endpoints: `/evaluate`
+runs each command in a fresh `--network none` container, and `/evaluate_tcp`
+talks to a long-lived spec server over a network. Mock-mode traffic is pinned
+to `/evaluate` regardless of `SPEC_TRANSPORT`, so setting `tcp` for a live path
+cannot quietly give simulated commands a network.
 
 ## Mode 1: subprocess
 
@@ -304,5 +338,7 @@ see verbatim on a working install with no configuration.
 | `{"ok": false, "error": "argparse: invalid choice: ..."}` | The leaf is on a different branch. `beamtimehero catalog --names-only` lists every tool; note the CLI spells them with hyphens (`list-scans`) while tool descriptions cite them with underscores (`list_scans`). |
 | A read returns `[]` or `Scan not found.` | Almost always `BL_SCAN_DIR` unset rather than genuinely empty — see "No data" above. |
 | `Tool error (...)` on stdout, exit 0 | The tool ran and failed. Read the message; the exit code will not tell you. |
-| Every SPEC call takes ~2 s | `SPEC_EVAL_URL` points at a sandbox that isn't running. The mock path probes it first and waits out the timeout. Unset it for pure off-beamline use. |
+| Every SPEC call takes ~2 s | `SPEC_EVAL_URL` points at a sandbox that isn't running. The mock path probes it first and waits out the timeout. Unset it for pure off-beamline use — see "The one tool the mock does not cover" above. |
+| `evaluate-spec-macro` returns `transport error: ...` | Expected on any install without the spec-eval service, which is the one out-of-tree dependency the mock cannot stand in for. Nothing else is affected. See "The one tool the mock does not cover" above. |
+| `evaluate-spec-macro` returns `spec-eval URL must be loopback` | `SPEC_EVAL_URL` names a remote host. The tool submits macro source for execution, so it will only address `127.0.0.1`, `localhost` or `::1`. No request was sent. |
 | A `spec-write` leaf says "Only in phase ..." | Descriptive only. Phase gating lives in the consuming application, not this package; the phase is recorded in the audit log and nothing here blocks the call. |
