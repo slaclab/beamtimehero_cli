@@ -1,6 +1,6 @@
 # `science/` — the scientific and mathematical core
 
-This is where the physics lives. If you are a scientist contributing to this
+If you are a scientist contributing to this
 project, **this directory is your working area**, and you should not need to
 read the toolbelt machinery to work in it.
 
@@ -25,7 +25,7 @@ corollaries double as a routing rule:
 
 For plotting specifically: a figure function that takes **arrays or a descriptor
 dict** belongs in `science/plots/`; one that takes a **file name** belongs in
-`spec_data/`. That split is now actually in place: the array-taking figures live
+`spec_data/`. The array-taking figures live
 here, and the six that load a scan by file name (`plot_scan`,
 `plot_averaged_scans_overlay`, `plot_scan_stack`,
 `plot_first_half_vs_second_half`, `plot_running_average`,
@@ -34,8 +34,7 @@ plotting module left outside this package.
 
 ## The layout
 
-Organized by **technique, then pipeline stage** — the order you'd look something
-up in, not the order the code was written.
+Organized by **technique, then pipeline stage**
 
 ```
 science/
@@ -202,33 +201,3 @@ baseline model, which calibration. See `xas/descriptors.py` for the pattern.
   these into one error path, so don't turn them into flags. See
   `xas/policy.check_overlap` and `exafs/policy.check_exafs_points`.
 
-## Moved from
-
-These modules moved into `science/` on 2026-09-04. The re-export shims that
-kept the old paths importable were **removed on 2026-09-11**, once the last
-consumer migrated — so an old path is now an `ImportError`, and this table is
-how you find where something went:
-
-| Old | New |
-|---|---|
-| `analysis/xas.py` | `science/reduce/{counters,normalize,reps,deadtime}.py`, `science/xas/compare.py` |
-| `analysis/exafs.py` | `science/exafs/{kspace,background,fourier}.py` |
-| `analysis/xrs.py` | `science/xrs/{calibrate,reduce}.py` |
-| `analysis/render.py` | `science/plots/scan.py` |
-| `interpretation/descriptors.py` | `science/xas/{e0,fits,descriptors}.py` |
-| `interpretation/normalize.py` | `science/xas/normalize.py`, `science/tables/emission_lines.py` |
-| `interpretation/{edges,calibrations,xrs_edges}.py` | `science/tables/` |
-| `interpretation/quality.py` | `science/reduce/artifacts.py` |
-| `interpretation/interpret.py` | `science/xas/interpret.py` |
-| `interpretation/xrs_*.py` | `science/xrs/` |
-| `interpretation/plotting.py` | `science/plots/xas.py` |
-| `interpretation/calibration_store.py` | `beamtimehero_cli/calibration_store.py` (session state, not science) |
-| `generic_data/lcf.py` | `science/xas/compare.py` |
-| `generic_data/cosine_similarity.py` | `science/fitting/similarity.py` |
-| `experiment_planning/scan_features.py` | `science/statistics/features.py` |
-| `experiment_planning/scan_efficiency.py` | `science/statistics/efficiency.py` |
-| `spec_data/exafs_plotting.py` | `science/plots/exafs.py` |
-| `spec_data/xrs_plotting.py` | `science/plots/xrs.py` |
-| `spec_data/plotting.py` (the 4 array/dict-taking figures) | `science/plots/{xas,scan}.py` |
-
-There is no compatibility layer left: the new path is the only path.
