@@ -106,3 +106,13 @@ def test_stub_unpickler_never_imports_cherfd(tmp_path):
     assert "cherfd" not in sys.modules
     assert meta["available"] and meta["command"] == "cherfd 8968 9100 .4 100"
     assert meta["summary"] == {"vortex_mode": "TS"}
+
+
+def test_relative_data_root(tmp_path, monkeypatch):
+    """safe_subdir resolves paths; a relative root must still work (relative_to used to raise)."""
+    d = tmp_path / "beam"
+    d.mkdir()
+    _touch_sweep(d, "r", 1, "fwd", "2025-10-25_112814")
+    monkeypatch.chdir(tmp_path)
+    found = files.find_sweeps(Path("."), "beam")
+    assert len(found) == 1 and found[0].file_dir == "beam"

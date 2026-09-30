@@ -117,6 +117,7 @@ def list_data_dirs(data_root: Path) -> list[dict]:
 
 def find_sweeps(data_root: Path, file_dir: str | None = None, root: str | None = None,
                 include_partial: bool = False) -> list[SweepFile]:
+    data_root = data_root.resolve()   # safe_subdir resolves; the two must agree for relative_to
     base = safe_subdir(data_root, file_dir)
     found: list[SweepFile] = []
     paths = base.rglob("*scan_results_*_dataframe.pkl") if file_dir is None else base.glob("*scan_results_*_dataframe.pkl")
