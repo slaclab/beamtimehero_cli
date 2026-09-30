@@ -22,6 +22,8 @@ EXPECTED_TREES = {
     "xrs",
     # dedicated EXAFS k-space analysis branch
     "exafs",
+    # SSRL BL 6-2a Andor .sif images -> RIXS / HERFD / XES
+    "tender",
     # the sandboxed research agent — one leaf, on its own branch so it can be
     # granted to a single agent without being granted to everything that
     # carries `tool`

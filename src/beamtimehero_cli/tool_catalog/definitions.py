@@ -3285,6 +3285,13 @@ AUTONOMY_TOOL_DEFINITIONS = [
     },
 ]
 
+# CAT-TENDER · SSRL BL 6-2a Andor .sif images -> RIXS / HERFD / XES. The
+# definitions live beside their handlers in beamtimehero_cli/tender/ (the
+# [tender] extra); see `beamtimehero ref tender-analysis`.
+from beamtimehero_cli.tender.definitions import TOOL_DEFINITIONS as _TENDER_DEFINITIONS  # noqa: E402
+
+AUTONOMY_TOOL_DEFINITIONS.extend(_TENDER_DEFINITIONS)
+
 # Category map for the sidebar
 AUTONOMY_TOOL_CATEGORIES = [
     ("CAT-0 Procedures", [
@@ -3362,5 +3369,8 @@ AUTONOMY_TOOL_CATEGORIES = [
     ("CAT-EXAFS k-space processing", [
         "list_collector_scans", "extract_chi", "fourier_transform_chi",
         "exafs_products", "overlay_chi_spectra",
+    ]),
+    ("CAT-TENDER BL 6-2a images to RIXS/HERFD/XES", [
+        d["function"]["name"] for d in _TENDER_DEFINITIONS
     ]),
 ]

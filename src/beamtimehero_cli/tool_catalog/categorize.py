@@ -108,6 +108,14 @@ CATEGORY_OVERRIDES: dict[str, str] = {
     "fourier_transform_chi": "exafs",
     "exafs_products": "exafs",
     "overlay_chi_spectra": "exafs",
+    # CAT-TENDER · SSRL BL 6-2a Andor .sif images (beamtimehero_cli/tender/).
+    # Not SPEC data at all, so none of the spec-file tools can read it.
+    "tender_list_measurements": "tender",
+    "tender_inspect_measurement": "tender",
+    "tender_preview_image": "tender",
+    "tender_herfd": "tender",
+    "tender_xes": "tender",
+    "tender_results": "tender",
 }
 
 

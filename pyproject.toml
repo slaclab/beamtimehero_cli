@@ -43,6 +43,16 @@ postgres = [
     "psycopg2-binary",
 ]
 
+# Tender (SSRL BL 6-2a) Andor .sif reduction for the `tender` tree
+# (beamtimehero_cli/tender/). Pinned to the commit chemcat's worker, Live
+# service and notebook image run (chemcat pyproject [tender]): a chat
+# re-reduction must equal the job, so bump the two in lockstep. Needs
+# Python >= 3.10 (tender-analysis's floor). Without it the `tender` leaves
+# still register and answer with an error naming this extra.
+tender = [
+    "tender-analysis @ git+https://github.com/slaclab/tender-analysis@c9ab6fd",
+]
+
 [project.scripts]
 beamtimehero = "beamtimehero_cli.cli.__main__:main"
 

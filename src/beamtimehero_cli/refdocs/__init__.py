@@ -47,6 +47,10 @@ _DOCS: dict[str, dict] = {
         "file": _DEFAULTS_DIR / "xrs-analysis.md",
         "description": "X-ray Raman (XRS) analysis: the energy-loss reduction pipeline and interpretation tools on the dedicated `xrs` branch, and why the XAS tools are wrong for XRS by construction.",
     },
+    "tender-analysis": {
+        "file": _DEFAULTS_DIR / "tender-analysis.md",
+        "description": "Tender (SSRL BL 6-2a): Andor .sif detector images, how they are grouped into measurements, every reduction step to RIXS/HERFD/XES with its setting and pitfall (lit darks, the doublet ROI valley, short post-edges), and the `tender` tools.",
+    },
 }
 
 

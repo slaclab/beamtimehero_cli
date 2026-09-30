@@ -85,6 +85,13 @@ BRANCH_NOTES: dict[tuple[str, ...], str] = {
         "and overlays. Reads SPEC files or SSRL EXAFS Data Collector "
         "ASCII directories."
     ),
+    ("tender",): (
+        "SSRL BL 6-2a Andor .sif detector images: measurement discovery, "
+        "header and dark checks, one-image previews, and chat-sized "
+        "re-reductions to RIXS maps, HERFD and XES, plus the processed "
+        "record. Read-only; needs the [tender] extra. See `ref "
+        "tender-analysis`."
+    ),
     ("s3df",): (
         "S3DF-deployment backend: the same scan-read surface as "
         "spec-file, but served from Postgres metadata + pickled scan "

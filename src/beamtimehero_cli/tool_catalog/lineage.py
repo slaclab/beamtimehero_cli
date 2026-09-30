@@ -2336,6 +2336,11 @@ TOOL_LINEAGE: dict[str, dict] = {
     },
 }
 
+# CAT-TENDER lineage lives beside its handlers (beamtimehero_cli/tender/).
+from beamtimehero_cli.tender.definitions import LINEAGE as _TENDER_LINEAGE  # noqa: E402
+
+TOOL_LINEAGE.update(_TENDER_LINEAGE)
+
 
 # Every key a complete entry carries. ``spec_commands`` is deliberately
 # absent: it is optional, and only the two run-time-dispatching handlers

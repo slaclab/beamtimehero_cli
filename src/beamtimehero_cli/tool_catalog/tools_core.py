@@ -2975,6 +2975,15 @@ def t_s3df_psql_execute_readonly_sql(args):
 
 
 # ---------------------------------------------------------------------------
+# CAT-TENDER: the six `tender` leaves live beside their science in
+# beamtimehero_cli/tender/handlers.py (numpy/scipy at import, tender_analysis
+# only inside each call, so no extra is needed to register them). Added with
+# .update rather than inside the literal: tests/test_mutates.py reads the
+# literal's keys with ast. None of these issues a SPEC command.
+from beamtimehero_cli.tender.handlers import TENDER_HANDLERS as _TENDER_HANDLERS  # noqa: E402
+
+_HANDLERS.update(_TENDER_HANDLERS)
+
 # Slack adapter (lives below; both branches' handlers added below in _HANDLERS)
 # ---------------------------------------------------------------------------
 
