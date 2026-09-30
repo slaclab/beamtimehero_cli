@@ -46,6 +46,9 @@ BRANCH_ORDER: list[tuple[str, ...]] = [
     ("s3df", "psql"),
     ("slack",),
     ("research",),
+    ("cherfd",),
+    ("cherfd-read",),
+    ("cherfd-write",),
 ]
 
 # Human-facing blurb per branch. Richer than the argparse help strings —
@@ -109,6 +112,23 @@ BRANCH_NOTES: dict[tuple[str, ...], str] = {
         "agent that carries `tool`. Its output is untrusted third-party "
         "text and comes back inside an <untrusted-report> envelope — see "
         "beamtimehero ref research-sandbox."
+    ),
+    ("cherfd",): (
+        "CHERFD continuous-scan HERFD, offline: command validation and "
+        "building, the production motion-profile simulator, sweep discovery "
+        "and QC, rebinning/merging, fwd-vs-rev and drift analysis, export to "
+        "the spec-file XAS tools, and the controller logs. Touches no hardware."
+    ),
+    ("cherfd-read",): (
+        "Live state from the CHERFD control server and cscan_daq: controller "
+        "state, settings, undulator and table tracking, readiness pre-flight, "
+        "and wait-for-scan. Mocked unless CHERFD_MOCK=0."
+    ),
+    ("cherfd-write",): (
+        "CHERFD actions through audited_cherfd: start/stop scans, energy and "
+        "gap moves, tracking and calibration, counter counts. Every leaf needs "
+        "--justification and is action-logged before dispatch; stops bypass "
+        "the write safety switch."
     ),
 }
 

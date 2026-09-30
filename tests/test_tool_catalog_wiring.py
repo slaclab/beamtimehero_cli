@@ -65,6 +65,7 @@ def test_every_lineage_source_is_a_documented_value():
         "spec_datafile", "spec_session", "spec_logfile", "spec_config",
         "autonomy_db", "filesystem", "tool_chain", "postgres", "camera",
         "slack",
+        "cherfd_server", "cherfd_daq", "cherfd_datafile", "cherfd_simulator", "cherfd_logfile",
     }
     unknown = {}
     for name, entry in TOOL_LINEAGE.items():

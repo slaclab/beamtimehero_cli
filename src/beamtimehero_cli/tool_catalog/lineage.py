@@ -27,9 +27,11 @@ Schema per entry:
         ``audited_call`` first argument is not a literal.
     mutates : bool
         Whether the tool mutates the beamline: it issues at least one
-        SPEC command registered as ``action`` in ``spec_cmd``, so it
-        requires a ``justification`` and is written to the action log
-        before dispatch. This is the *declared* safety class and the
+        SPEC command registered as ``action`` in ``spec_cmd`` (via
+        ``audited_call``), or a CHERFD command registered as ``action`` or
+        ``stop`` in ``cherfd_control/commands.py`` (via ``audited_cherfd``),
+        so it requires a ``justification`` and is written to the action log
+        before dispatch. Those are the two audited hardware transports. This is the *declared* safety class and the
         only thing ``categorize()`` and consumers' write filters read —
         it is not inferred from the JSON schema.
 
@@ -54,6 +56,11 @@ Schema per entry:
           * ``postgres``       — reads the S3DF scan-metadata Postgres
           * ``camera``         — reads a beamline camera frame
           * ``slack``          — reads or posts to staff Slack
+          * ``cherfd_server``  — the CHERFD control server REST API
+          * ``cherfd_daq``     — the cscan_daq count app
+          * ``cherfd_datafile``— CHERFD sweep pickles under CHERFD_DATA_DIR
+          * ``cherfd_simulator`` — the production CHERFD motion-profile simulator
+          * ``cherfd_logfile`` — CHERFD controller log files
     source_detail : str
         Human-readable specifics about where the data comes from.
     depends_on : list[str]
@@ -2341,6 +2348,11 @@ from beamtimehero_cli.tender.definitions import LINEAGE as _TENDER_LINEAGE  # no
 
 TOOL_LINEAGE.update(_TENDER_LINEAGE)
 
+# CAT-CHERFD · the continuous-scan tools keep their lineage in their own module.
+from beamtimehero_cli.tool_catalog.lineage_cherfd import CHERFD_LINEAGE  # noqa: E402
+
+TOOL_LINEAGE.update(CHERFD_LINEAGE)
+
 
 # Every key a complete entry carries. ``spec_commands`` is deliberately
 # absent: it is optional, and only the two run-time-dispatching handlers
@@ -2366,6 +2378,7 @@ _LINEAGE_SOURCES = frozenset({
     "spec_datafile", "spec_session", "spec_logfile", "spec_config",
     "autonomy_db", "filesystem", "tool_chain", "postgres", "camera",
     "slack",
+    "cherfd_server", "cherfd_daq", "cherfd_datafile", "cherfd_simulator", "cherfd_logfile",
 })
 
 

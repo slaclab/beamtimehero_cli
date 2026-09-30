@@ -17,7 +17,7 @@ Keep it that way: no imports, no computed values that need the catalog.
 from __future__ import annotations
 
 
-# The ten trees the library itself puts tools on. ``categorize()`` can
+# The thirteen trees the library itself puts tools on. ``categorize()`` can
 # only ever return one of these as a first segment (plus nested paths
 # below them, e.g. ``("s3df", "psql")``).
 #
@@ -31,6 +31,7 @@ from __future__ import annotations
 CANONICAL_TREES: frozenset[str] = frozenset({
     "tool", "db", "spec-read", "spec-write", "spec-file",
     "s3df", "slack", "xrs", "exafs", "research",
+    "cherfd", "cherfd-read", "cherfd-write",
 })
 
 # Everything a top-level name may not be. The two extras are not tool
@@ -54,6 +55,9 @@ TREE_HELPS: dict[tuple[str, ...], str] = {
     ("xrs",): "X-ray Raman (XRS) analysis: energy-loss reduction + interpretation.",
     ("exafs",): "EXAFS k-space analysis: chi(k) extraction, Fourier transforms.",
     ("research",): "Sandboxed literature/analysis research. Returns untrusted third-party text.",
+    ("cherfd",): "CHERFD continuous scans, offline: planning, sweep data, reduction, analysis, logs.",
+    ("cherfd-read",): "CHERFD live state from the cherfd server / cscan_daq. No mutation.",
+    ("cherfd-write",): "CHERFD actions (scans, energy, gap, tracking). Every leaf requires --justification.",
 }
 
 

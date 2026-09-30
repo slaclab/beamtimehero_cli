@@ -98,11 +98,11 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <h1>Science index — <span class="thin">every function, and what uses it</span></h1>
 <p class="lede">The scientific core of the toolbelt: what each function does, what it is called by, and what it cites. Generated from the source tree, so a new function appears here by existing. Regenerate with <code>python -m beamtimehero_cli.docgen_science</code>.</p>
 <div class="statstrip">
-<div class="stat"><b>122</b><span>functions</span></div>
-<div class="stat"><b>93</b><span>public</span></div>
-<div class="stat"><b>34</b><span>modules</span></div>
-<div class="stat"><b>38</b><span>cited methods</span></div>
-<div class="stat"><b>55</b><span>attribution gaps</span></div>
+<div class="stat"><b>169</b><span>functions</span></div>
+<div class="stat"><b>134</b><span>public</span></div>
+<div class="stat"><b>41</b><span>modules</span></div>
+<div class="stat"><b>47</b><span>cited methods</span></div>
+<div class="stat"><b>60</b><span>attribution gaps</span></div>
 <button id="themetoggle">&#9689; theme</button></div></header>
 <div class="therule"><blockquote>Everything under <code>science/</code> takes <b>numbers in</b> and returns <b>numbers out</b>. No file paths, no environment variables, no SPEC, no database, no argparse.</blockquote></div>
 <h2><span class="no">01</span> Functions</h2>
@@ -124,15 +124,15 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>constants</b> <code>EDGE_ENERGY_SOURCE</code>, <code>_3D_Z</code>, <code>_4D_Z</code>, <code>_5D_K_Z</code>, <code>_MAIN_GROUP_K_Z</code>, <code>_LN_Z</code>, <code>_5D_Z</code>, <code>_AN_Z</code>, <code>_COMMON_ABSORBERS</code>, <code>_TOL_EV</code>, <code>_K_EDGE_BONUS</code>, <code>_COMMON_BONUS</code>, <code>_AMBIGUITY_MARGIN</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
 </div>
-<div class="fn" data-hay="classify_edge_family tables.edges classify (element, edge) into an interpretation family. spec-file assess-xas-quality spec-file detect-per-scan-drift spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
+<div class="fn" data-hay="classify_edge_family tables.edges classify (element, edge) into an interpretation family. cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command spec-file assess-xas-quality spec-file detect-per-scan-drift spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">classify_edge_family</span>(element, edge)</span>
 <p class="fdoc">Classify (element, edge) into an interpretation family.</p>
-<p class="users"><b>used by</b> spec-file assess-xas-quality, spec-file detect-per-scan-drift, spec-file extract-xas-descriptors, spec-file find-edge-e0, spec-file fit-xas-pre-edge, spec-file fit-xas-white-line +6 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, spec-file assess-xas-quality, spec-file detect-per-scan-drift, spec-file extract-xas-descriptors, spec-file find-edge-e0 +8 more</p>
 </div>
-<div class="fn" data-hay="get_edge_info tables.edges tabulated metadata for one absorption edge (offline lookup). spec-file assess-xas-quality spec-file detect-per-scan-drift spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
+<div class="fn" data-hay="get_edge_info tables.edges tabulated metadata for one absorption edge (offline lookup). cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command spec-file assess-xas-quality spec-file detect-per-scan-drift spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">get_edge_info</span>(element, edge)</span>
 <p class="fdoc">Tabulated metadata for one absorption edge (offline lookup).</p>
-<p class="users"><b>used by</b> spec-file assess-xas-quality, spec-file detect-per-scan-drift, spec-file extract-xas-descriptors, spec-file find-edge-e0, spec-file fit-xas-pre-edge, spec-file fit-xas-white-line +6 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, spec-file assess-xas-quality, spec-file detect-per-scan-drift, spec-file extract-xas-descriptors, spec-file find-edge-e0 +8 more</p>
 </div>
 <div class="fn" data-hay="suggest_edge tables.edges suggest the most plausible edge for a scan energy window. spec-file assess-xas-quality spec-file detect-per-scan-drift spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">suggest_edge</span>(e_min, e_max, e0_ev=...)</span>
@@ -403,24 +403,24 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>constants</b> <code>E0_DEFINITION</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
 </div>
-<div class="fn" data-hay="find_e0 xas.e0 edge position under both fixed definitions, with uncertainty. exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra spec-file align-spectra spec-file assess-xas-quality spec-file compare-xas-to-references spec-file detect-per-scan-drift spec-file difference-spectrum spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
+<div class="fn" data-hay="find_e0 xas.e0 edge position under both fixed definitions, with uncertainty. cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra spec-file align-spectra spec-file assess-xas-quality spec-file compare-xas-to-references spec-file detect-per-scan-drift spec-file difference-spectrum spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">find_e0</span>(energy, mu, smooth_span_ev=...)</span>
 <p class="fdoc">Edge position under both fixed definitions, with uncertainty.</p>
-<p class="users"><b>used by</b> exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi, exafs overlay-chi-spectra, spec-file align-spectra, spec-file assess-xas-quality +13 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions, exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi +16 more</p>
 </div>
 <div class="fn" data-hay="rebroaden xas.e0 convolve a herfd spectrum with a lorentzian of the core-hole width. spec-file extract-xas-descriptors spec-file fit-xas-pre-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">rebroaden</span>(energy, mu, fwhm_ev)</span>
 <p class="fdoc">Convolve a HERFD spectrum with a Lorentzian of the core-hole width.</p>
 <p class="users"><b>used by</b> spec-file extract-xas-descriptors, spec-file fit-xas-pre-edge, spec-file interpret-coordination-geometry, spec-file interpret-oxidation-state, spec-file summarize-sample-chemistry</p>
 </div>
-<div class="fn priv" data-hay="_uniform xas.e0 interpolate onto a uniform grid (median step) for filters/convolution. exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra spec-file align-spectra spec-file assess-xas-quality spec-file compare-xas-to-references spec-file detect-per-scan-drift spec-file difference-spectrum spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
+<div class="fn priv" data-hay="_uniform xas.e0 interpolate onto a uniform grid (median step) for filters/convolution. cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra spec-file align-spectra spec-file assess-xas-quality spec-file compare-xas-to-references spec-file detect-per-scan-drift spec-file difference-spectrum spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">_uniform</span>(energy, mu)</span>
 <p class="fdoc">Interpolate onto a uniform grid (median step) for filters/convolution.</p>
-<p class="users"><b>used by</b> exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi, exafs overlay-chi-spectra, spec-file align-spectra, spec-file assess-xas-quality +13 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions, exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi +16 more</p>
 </div>
-<div class="fn priv" data-hay="_odd_window_points xas.e0  exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra spec-file align-spectra spec-file assess-xas-quality spec-file compare-xas-to-references spec-file detect-per-scan-drift spec-file difference-spectrum spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
+<div class="fn priv" data-hay="_odd_window_points xas.e0  cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra spec-file align-spectra spec-file assess-xas-quality spec-file compare-xas-to-references spec-file detect-per-scan-drift spec-file difference-spectrum spec-file extract-xas-descriptors spec-file find-edge-e0 spec-file fit-xas-pre-edge spec-file fit-xas-white-line spec-file identify-edge spec-file interpret-coordination-geometry spec-file interpret-oxidation-state spec-file normalize-xas-intensity spec-file record-energy-calibration spec-file summarize-sample-chemistry">
 <span class="sig"><span class="fname">_odd_window_points</span>(step, span_ev, n)</span>
-<p class="users"><b>used by</b> exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi, exafs overlay-chi-spectra, spec-file align-spectra, spec-file assess-xas-quality +13 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions, exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi +16 more</p>
 </div>
 </div>
 <div class="modblock">
@@ -811,8 +811,39 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </details>
 <details class="dir" style="--c: var(--c-plots)" open>
-<summary><span class="dname">science/plots/</span><span class="chip" style="--c: var(--c-plots)">4 modules</span><span class="count">17 fns</span></summary>
+<summary><span class="dname">science/plots/</span><span class="chip" style="--c: var(--c-plots)">5 modules</span><span class="count">23 fns</span></summary>
 <p class="note">Figures over arrays and descriptor dicts. A figure that takes a file name belongs in spec_data/ instead.</p>
+<div class="modblock">
+<div class="modhead"><span class="mpath">plots.cherfd</span><span class="mdoc">Figures for CHERFD sweeps. Arrays/dicts in, matplotlib Figure out.</span></div>
+<div class="fn" data-hay="plot_sweeps plots.cherfd every sweep on the common grid, optionally stacked by ``offset``. cherfd cherfd-plot-sweeps">
+<span class="sig"><span class="fname">plot_sweeps</span>(binned, title=..., offset=...)</span>
+<p class="fdoc">Every sweep on the common grid, optionally stacked by ``offset``.</p>
+<p class="users"><b>used by</b> cherfd cherfd-plot-sweeps</p>
+</div>
+<div class="fn" data-hay="plot_merged plots.cherfd merged spectrum with a 1-sigma band; ``others`` overlays e.g. fwd vs rev. cherfd cherfd-compare-directions cherfd cherfd-merge-sweeps">
+<span class="sig"><span class="fname">plot_merged</span>(binned, title=..., others=...)</span>
+<p class="fdoc">Merged spectrum with a 1-sigma band; ``others`` overlays e.g. fwd vs rev.</p>
+<p class="users"><b>used by</b> cherfd cherfd-compare-directions, cherfd cherfd-merge-sweeps</p>
+</div>
+<div class="fn" data-hay="plot_diagnostics plots.cherfd energy/time, scan rate, gap tracking and signal for one cleaned sweep. cherfd cherfd-plot-sweep-diagnostics">
+<span class="sig"><span class="fname">plot_diagnostics</span>(arrays, signal, title=..., ideal_gap=...)</span>
+<p class="fdoc">Energy/time, scan rate, gap tracking and signal for one cleaned sweep.</p>
+<p class="users"><b>used by</b> cherfd cherfd-plot-sweep-diagnostics</p>
+</div>
+<div class="fn" data-hay="plot_profile plots.cherfd energy and scan rate vs time from a simulate_command result. cherfd cherfd-simulate-scan">
+<span class="sig"><span class="fname">plot_profile</span>(sim, title=...)</span>
+<p class="fdoc">Energy and scan rate vs time from a simulate_command result.</p>
+<p class="users"><b>used by</b> cherfd cherfd-simulate-scan</p>
+</div>
+<div class="fn" data-hay="plot_convergence plots.cherfd  cherfd cherfd-analyze-convergence">
+<span class="sig"><span class="fname">plot_convergence</span>(conv, title=...)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence</p>
+</div>
+<div class="fn priv" data-hay="_label plots.cherfd  cherfd cherfd-compare-directions cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweeps">
+<span class="sig"><span class="fname">_label</span>(signal, normalize_by)</span>
+<p class="users"><b>used by</b> cherfd cherfd-compare-directions, cherfd cherfd-merge-sweeps, cherfd cherfd-plot-sweeps</p>
+</div>
+</div>
 <div class="modblock">
 <div class="modhead"><span class="mpath">plots.exafs</span><span class="mdoc">Figures for the EXAFS pipeline (k- and R-space).</span></div>
 <div class="fn" data-hay="plot_chi_extraction plots.exafs two-panel extraction summary: normalized mu(e) and chi(k)·k^w. exafs exafs-products exafs extract-chi">
@@ -832,10 +863,10 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 <div class="modblock">
 <div class="modhead"><span class="mpath">plots.scan</span><span class="mdoc">Backend-agnostic figure rendering.</span></div>
-<div class="fn" data-hay="fig_to_base64 plots.scan convert a matplotlib figure to a base64-encoded png string. exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra s3df plot-scan spec-file align-spectra spec-file compare-xas-to-references spec-file difference-spectrum spec-file extract-xas-descriptors spec-file plot-averaged-scans spec-file plot-feature-evolution spec-file plot-first-half-vs-second-half spec-file plot-running-average spec-file plot-scan spec-file plot-scan-stack spec-file summarize-sample-chemistry tool plot-data xrs average-xrs-scans xrs build-loss-axis xrs calibrate-energy-loss xrs extract-xrs-descriptors xrs normalize-xrs xrs overlay-xrs-spectra xrs subtract-compton-background xrs sum-crystals xrs summarize-xrs-chemistry">
+<div class="fn" data-hay="fig_to_base64 plots.scan convert a matplotlib figure to a base64-encoded png string. cherfd cherfd-analyze-convergence cherfd cherfd-compare-directions cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-simulate-scan exafs exafs-products exafs extract-chi exafs fourier-transform-chi exafs overlay-chi-spectra s3df plot-scan spec-file align-spectra spec-file compare-xas-to-references spec-file difference-spectrum spec-file extract-xas-descriptors spec-file plot-averaged-scans spec-file plot-feature-evolution spec-file plot-first-half-vs-second-half spec-file plot-running-average spec-file plot-scan spec-file plot-scan-stack spec-file summarize-sample-chemistry tool plot-data xrs average-xrs-scans xrs build-loss-axis xrs calibrate-energy-loss xrs extract-xrs-descriptors xrs normalize-xrs xrs overlay-xrs-spectra xrs subtract-compton-background xrs sum-crystals xrs summarize-xrs-chemistry">
 <span class="sig"><span class="fname">fig_to_base64</span>(fig)</span>
 <p class="fdoc">Convert a matplotlib figure to a base64-encoded PNG string.</p>
-<p class="users"><b>used by</b> exafs exafs-products, exafs extract-chi, exafs fourier-transform-chi, exafs overlay-chi-spectra, s3df plot-scan, spec-file align-spectra +20 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-compare-directions, cherfd cherfd-merge-sweeps, cherfd cherfd-plot-sweep-diagnostics, cherfd cherfd-plot-sweeps, cherfd cherfd-simulate-scan +26 more</p>
 </div>
 <div class="fn" data-hay="render_scan plots.scan render one scan&#x27;s dataframe to a matplotlib figure. s3df plot-scan spec-file plot-scan">
 <span class="sig"><span class="fname">render_scan</span>(df, file_name, scan_number, counter=..., normalize_by=..., scan_command=...)</span>
@@ -905,9 +936,241 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </div>
 </details>
+<details class="dir" style="--c: var(--c-cherfd)" open>
+<summary><span class="dname">science/cherfd/</span><span class="chip" style="--c: var(--c-cherfd)">6 modules</span><span class="count">41 fns</span></summary>
+<div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.analysis</span><span class="mdoc">Run-level CHERFD analysis: direction offsets, sweep drift, energy calibration.</span></div>
+<div class="fn" data-hay="compare_directions cherfd.analysis  cherfd cherfd-compare-directions">
+<span class="sig"><span class="fname">compare_directions</span>(fwd, rev, *, signal, normalize_by, bin_ev, e_min=..., e_max=...)</span>
+<p class="users"><b>used by</b> cherfd cherfd-compare-directions</p>
+</div>
+<div class="fn" data-hay="apply_direction_correction cherfd.analysis shift fwd energies by +c/2 and rev by -c/2 (c = rev-minus-fwd feature shift). cherfd cherfd-analyze-convergence cherfd cherfd-assess-energy-calibration cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweeps">
+<span class="sig"><span class="fname">apply_direction_correction</span>(sweeps, correction_ev)</span>
+<p class="fdoc">Shift fwd energies by +c/2 and rev by -c/2 (c = rev-minus-fwd feature shift).</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-assess-energy-calibration, cherfd cherfd-export-merged, cherfd cherfd-merge-sweeps, cherfd cherfd-plot-sweeps</p>
+</div>
+<div class="fn" data-hay="sweep_drift cherfd.analysis per-sweep e0, shift against the first sweep, and mean level, with trends. cherfd cherfd-analyze-sweep-drift">
+<span class="sig"><span class="fname">sweep_drift</span>(sweeps, *, signal, normalize_by, bin_ev, e_min=..., e_max=...)</span>
+<p class="fdoc">Per-sweep E0, shift against the first sweep, and mean level, with trends.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift</p>
+</div>
+<div class="fn" data-hay="energy_calibration cherfd.analysis  cherfd cherfd-assess-energy-calibration">
+<span class="sig"><span class="fname">energy_calibration</span>(energy, values, reference_e0_ev, crystal=...)</span>
+<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration</p>
+</div>
+<div class="fn priv" data-hay="_e0 cherfd.analysis  cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions">
+<span class="sig"><span class="fname">_e0</span>(energy, values)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions</p>
+</div>
+</div>
+<div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.beamline</span><span class="mdoc">Mono, undulator and trigger physics for BL15-2 CHERFD. Pure functions.</span></div>
+<div class="fn const" data-hay="cherfd.beamline hc_ev_angstrom _rad_2_deg _deg_2_rad mono_dspacing lattice_factor mono_min_gap_mm mono_encoder_resolution">
+<p class="users"><b>constants</b> <code>HC_EV_ANGSTROM</code>, <code>_RAD_2_DEG</code>, <code>_DEG_2_RAD</code>, <code>MONO_DSPACING</code>, <code>LATTICE_FACTOR</code>, <code>MONO_MIN_GAP_MM</code>, <code>MONO_ENCODER_RESOLUTION</code></p>
+<p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
+</div>
+<div class="fn" data-hay="bragg_angle_deg cherfd.beamline bragg angle (deg) for a photon energy on crystal set a or b. cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-mono-convert cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">bragg_angle_deg</span>(energy_ev, crystal=...)</span>
+<p class="fdoc">Bragg angle (deg) for a photon energy on crystal set A or B.</p>
+<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-mono-convert, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness +1 more</p>
+</div>
+<div class="fn" data-hay="energy_from_bragg cherfd.beamline  cherfd cherfd-mono-convert">
+<span class="sig"><span class="fname">energy_from_bragg</span>(angle_deg, crystal=...)</span>
+<p class="users"><b>used by</b> cherfd cherfd-mono-convert</p>
+</div>
+<div class="fn" data-hay="angle_from_encoder cherfd.beamline encoder ticks to bragg angle, given the stored calibration offset. cherfd cherfd-mono-convert">
+<span class="sig"><span class="fname">angle_from_encoder</span>(encoder, calibration_offset_deg)</span>
+<p class="fdoc">Encoder ticks to Bragg angle, given the stored calibration offset.</p>
+<p class="users"><b>used by</b> cherfd cherfd-mono-convert</p>
+</div>
+<div class="fn" data-hay="encoder_calibration_offset cherfd.beamline offset that maps ``encoder`` onto ``angle_deg`` (utils/mono.set_mono_offset).">
+<span class="sig"><span class="fname">encoder_calibration_offset</span>(angle_deg, encoder)</span>
+<p class="fdoc">Offset that maps ``encoder`` onto ``angle_deg`` (utils/mono.set_mono_offset).</p>
+<p class="users"><span class="none">not reached from any catalog tool</span></p>
+</div>
+<div class="fn" data-hay="motor_steps cherfd.beamline signed motor steps between two energies (cscan_box/motion.get_num_steps). cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">motor_steps</span>(start_ev, end_ev, crystal=...)</span>
+<p class="fdoc">Signed motor steps between two energies (cscan_box/motion.get_num_steps).</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
+</div>
+<div class="fn" data-hay="ev_per_second cherfd.beamline cruise scan rate |de/dt| at a speed factor (ev/s). cherfd cherfd-build-command cherfd cherfd-mono-convert">
+<span class="sig"><span class="fname">ev_per_second</span>(energy_ev, speed_factor, crystal=...)</span>
+<p class="fdoc">Cruise scan rate |dE/dt| at a speed factor (eV/s).</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-mono-convert</p>
+</div>
+<div class="fn" data-hay="speed_for_points_per_ev cherfd.beamline speed factor that yields ``points_per_ev`` frames/ev at ``freq_hz`` (unclamped). cherfd cherfd-build-command cherfd cherfd-mono-convert">
+<span class="sig"><span class="fname">speed_for_points_per_ev</span>(energy_ev, freq_hz, points_per_ev, crystal=...)</span>
+<p class="fdoc">Speed factor that yields ``points_per_ev`` frames/eV at ``freq_hz`` (unclamped).</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-mono-convert</p>
+</div>
+<div class="fn" data-hay="region_cruise_time_s cherfd.beamline cruise time for one region: |delta theta| / angular velocity (no ramps). cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">region_cruise_time_s</span>(start_ev, end_ev, speed_factor, crystal=...)</span>
+<p class="fdoc">Cruise time for one region: |delta theta| / angular velocity (no ramps).</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
+</div>
+<div class="fn" data-hay="trigger_timing cherfd.beamline what the fpga will actually produce for a requested trigger rate. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-mono-convert cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">trigger_timing</span>(freq_hz, duration_s=...)</span>
+<p class="fdoc">What the FPGA will actually produce for a requested trigger rate.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking +11 more</p>
+</div>
+<div class="fn" data-hay="gap_for_harmonic cherfd.beamline  cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-estimate-acquisition-time cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-undulator-gap-for-energy cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-move-energy cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">gap_for_harmonic</span>(harmonic, energy_ev)</span>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-plot-sweep-diagnostics, cherfd cherfd-undulator-gap-for-energy, cherfd cherfd-validate-command +3 more</p>
+</div>
+<div class="fn" data-hay="harmonic_gap cherfd.beamline highest odd harmonic whose gap clears gap_min_mm (utils/undulator.find_harmonic_gap). cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-estimate-acquisition-time cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-undulator-gap-for-energy cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-move-energy cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">harmonic_gap</span>(energy_ev, calibration_offset_mm=...)</span>
+<p class="fdoc">Highest odd harmonic whose gap clears GAP_MIN_MM (utils/undulator.find_harmonic_gap).</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-plot-sweep-diagnostics, cherfd cherfd-undulator-gap-for-energy, cherfd cherfd-validate-command +3 more</p>
+</div>
+<div class="fn" data-hay="harmonic_changes cherfd.beamline energies inside a scan range where the tracking harmonic switches. cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-estimate-acquisition-time cherfd cherfd-undulator-gap-for-energy cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">harmonic_changes</span>(e_start, e_end, step_ev=...)</span>
+<p class="fdoc">Energies inside a scan range where the tracking harmonic switches.</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-undulator-gap-for-energy, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness +1 more</p>
+</div>
+<div class="fn" data-hay="beam_height_offset_mm cherfd.beamline beam-height change at the sample, 2*min_gap*(cos theta - cos theta_anchor). cherfd cherfd-mono-convert">
+<span class="sig"><span class="fname">beam_height_offset_mm</span>(energy_ev, anchor_ev, crystal=...)</span>
+<p class="fdoc">Beam-height change at the sample, 2*MIN_GAP*(cos theta - cos theta_anchor).</p>
+<p class="users"><b>used by</b> cherfd cherfd-mono-convert</p>
+</div>
+<div class="fn priv" data-hay="_crystal cherfd.beamline  cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-mono-convert cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">_crystal</span>(crystal)</span>
+<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-mono-convert, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness +1 more</p>
+</div>
+</div>
+<div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.command</span><span class="mdoc">The cherfd command string: parse, validate, reverse, build, time.</span></div>
+<div class="fn" data-hay="parse_command cherfd.command split a command into start, regions [(end_ev, speed)], freq. raises valueerror. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">parse_command</span>(command)</span>
+<p class="fdoc">Split a command into start, regions [(end_eV, speed)], freq. Raises ValueError.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking +10 more</p>
+</div>
+<div class="fn" data-hay="format_command cherfd.command inverse of parse_command. ``regions`` = [{&quot;end_ev&quot;, &quot;speed&quot;}]. cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">format_command</span>(start_ev, regions, freq_hz)</span>
+<p class="fdoc">Inverse of parse_command. ``regions`` = [{&quot;end_ev&quot;, &quot;speed&quot;}].</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
+</div>
+<div class="fn" data-hay="reverse_command cherfd.command the same regions traversed backwards (cscan_box/motion.reverse_cherfd_command). cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">reverse_command</span>(command)</span>
+<p class="fdoc">The same regions traversed backwards (cscan_box/motion.reverse_cherfd_command).</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
+</div>
+<div class="fn" data-hay="validate_command cherfd.command every refusal and every silent modification the command will meet. cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">validate_command</span>(command, crystal=...)</span>
+<p class="fdoc">Every refusal and every silent modification the command will meet.</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
+</div>
+<div class="fn" data-hay="build_command cherfd.command three-region xanes command: fast pre-edge, slow edge, fast post-edge. cherfd cherfd-build-command">
+<span class="sig"><span class="fname">build_command</span>(edge_ev, *, pre_edge_ev=..., edge_lo_ev=..., edge_hi_ev=..., post_edge_ev=..., edge_points_per_ev=..., outer_speed=..., freq_hz=..., crystal=...)</span>
+<p class="fdoc">Three-region XANES command: fast pre-edge, slow edge, fast post-edge.</p>
+<p class="users"><b>used by</b> cherfd cherfd-build-command</p>
+</div>
+<div class="fn" data-hay="estimate_acquisition_time cherfd.command wall time for a multi-sweep acquisition. cherfd cherfd-estimate-acquisition-time cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">estimate_acquisition_time</span>(motion_s_per_sweep, sweeps, reverse, overhead_s=...)</span>
+<p class="fdoc">Wall time for a multi-sweep acquisition.</p>
+<p class="users"><b>used by</b> cherfd cherfd-estimate-acquisition-time, cherfd-write cherfd-start-scan</p>
+</div>
+<div class="fn priv" data-hay="_tokens cherfd.command  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">_tokens</span>(command)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking +10 more</p>
+</div>
+</div>
+<div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.frames</span><span class="mdoc">From raw FPGA/detector frames to a clean, trigger-ordered sweep.</span></div>
+<div class="fn" data-hay="is_adc cherfd.frames  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<span class="sig"><span class="fname">is_adc</span>(name)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+</div>
+<div class="fn" data-hay="adc_signed cherfd.frames  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<span class="sig"><span class="fname">adc_signed</span>(values)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+</div>
+<div class="fn" data-hay="infer_period_us cherfd.frames trigger period in us: trig_2 (duration) is ~period-1ms; spacing of trig_1 is exact. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<span class="sig"><span class="fname">infer_period_us</span>(trig_1, trig_2=...)</span>
+<p class="fdoc">Trigger period in us: trig_2 (duration) is ~period-1ms; spacing of trig_1 is exact.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+</div>
+<div class="fn" data-hay="clean_sweep cherfd.frames return trigger-ordered arrays plus a qc ledger. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<span class="sig"><span class="fname">clean_sweep</span>(columns, *, detector=..., period_us=..., energy_range=..., align=..., detector_frame_offset=...)</span>
+<p class="fdoc">Return trigger-ordered arrays plus a QC ledger.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+</div>
+<div class="fn" data-hay="sweep_quality cherfd.frames verdict + issues for one cleaned sweep. cherfd cherfd-assess-run-quality cherfd cherfd-merge-sweeps">
+<span class="sig"><span class="fname">sweep_quality</span>(clean, *, signal, expected_range=..., expected_freq_hz=...)</span>
+<p class="fdoc">Verdict + issues for one cleaned sweep.</p>
+<p class="users"><b>used by</b> cherfd cherfd-assess-run-quality, cherfd cherfd-merge-sweeps</p>
+</div>
+<div class="fn" data-hay="gap_tracking cherfd.frames measured gap vs the ideal harmonic gap at each frame&#x27;s energy. cherfd cherfd-check-gap-tracking cherfd cherfd-plot-sweep-diagnostics">
+<span class="sig"><span class="fname">gap_tracking</span>(energy, gap_mm, ideal_gap_fn)</span>
+<p class="fdoc">Measured gap vs the ideal harmonic gap at each frame&#x27;s energy.</p>
+<p class="users"><b>used by</b> cherfd cherfd-check-gap-tracking, cherfd cherfd-plot-sweep-diagnostics</p>
+</div>
+</div>
+<div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.policy</span><span class="mdoc">Scientific and operational defaults for CHERFD, in one place.</span></div>
+<div class="fn const" data-hay="cherfd.policy speed_factor_min speed_factor_max speed_factor_hard_min energy_min_ev energy_max_ev freq_min_hz freq_max_hz freq_xspress_warn_hz sweeps_max min_region_steps_warn motor_step_deg full_speed_steps_per_s profile_settling_s default_crystal gap_min_mm gap_max_mm gap_tracking_warn_mm default_bin_ev default_signal adc_offset status_frame_bit detector_frame_offset energy_outlier_margin_ev run_gap_s per_sweep_overhead_s dropped_frame_warn_fraction direction_offset_warn_ev shift_search_ev shift_smooth_ev edge_drift_warn_ev intensity_drift_warn_fraction e0_smooth_span_ev build_pre_edge_ev build_edge_lo_ev build_edge_hi_ev build_post_edge_ev build_edge_points_per_ev build_outer_speed build_freq_hz">
+<p class="users"><b>constants</b> <code>SPEED_FACTOR_MIN</code>, <code>SPEED_FACTOR_MAX</code>, <code>SPEED_FACTOR_HARD_MIN</code>, <code>ENERGY_MIN_EV</code>, <code>ENERGY_MAX_EV</code>, <code>FREQ_MIN_HZ</code>, <code>FREQ_MAX_HZ</code>, <code>FREQ_XSPRESS_WARN_HZ</code>, <code>SWEEPS_MAX</code>, <code>MIN_REGION_STEPS_WARN</code>, <code>MOTOR_STEP_DEG</code>, <code>FULL_SPEED_STEPS_PER_S</code>, <code>PROFILE_SETTLING_S</code>, <code>DEFAULT_CRYSTAL</code>, <code>GAP_MIN_MM</code>, <code>GAP_MAX_MM</code>, <code>GAP_TRACKING_WARN_MM</code>, <code>DEFAULT_BIN_EV</code>, <code>DEFAULT_SIGNAL</code>, <code>ADC_OFFSET</code>, <code>STATUS_FRAME_BIT</code>, <code>DETECTOR_FRAME_OFFSET</code>, <code>ENERGY_OUTLIER_MARGIN_EV</code>, <code>RUN_GAP_S</code>, <code>PER_SWEEP_OVERHEAD_S</code>, <code>DROPPED_FRAME_WARN_FRACTION</code>, <code>DIRECTION_OFFSET_WARN_EV</code>, <code>SHIFT_SEARCH_EV</code>, <code>SHIFT_SMOOTH_EV</code>, <code>EDGE_DRIFT_WARN_EV</code>, <code>INTENSITY_DRIFT_WARN_FRACTION</code>, <code>E0_SMOOTH_SPAN_EV</code>, <code>BUILD_PRE_EDGE_EV</code>, <code>BUILD_EDGE_LO_EV</code>, <code>BUILD_EDGE_HI_EV</code>, <code>BUILD_POST_EDGE_EV</code>, <code>BUILD_EDGE_POINTS_PER_EV</code>, <code>BUILD_OUTER_SPEED</code>, <code>BUILD_FREQ_HZ</code></p>
+<p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
+</div>
+</div>
+<div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.reduce</span><span class="mdoc">Rebinning, sweep merging, and the statistics built on them. Pure.</span></div>
+<div class="fn" data-hay="make_grid cherfd.reduce bin edges on a fixed grid anchored at a multiple of bin_ev. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweeps">
+<span class="sig"><span class="fname">make_grid</span>(e_min, e_max, bin_ev)</span>
+<p class="fdoc">Bin edges on a fixed grid anchored at a multiple of bin_ev.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions, cherfd cherfd-export-merged, cherfd cherfd-merge-sweeps +1 more</p>
+</div>
+<div class="fn" data-hay="bin_sweeps cherfd.reduce put each sweep on one grid and merge. ``sweeps`` = [{&quot;label&quot;, &quot;arrays&quot;}]. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweeps">
+<span class="sig"><span class="fname">bin_sweeps</span>(sweeps, *, signal, normalize_by=..., bin_ev=..., e_min=..., e_max=..., per_sweep_scaling=...)</span>
+<p class="fdoc">Put each sweep on one grid and merge. ``sweeps`` = [{&quot;label&quot;, &quot;arrays&quot;}].</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions, cherfd cherfd-export-merged, cherfd cherfd-merge-sweeps +1 more</p>
+</div>
+<div class="fn" data-hay="noise_estimate cherfd.reduce white-noise sigma from the second difference: var(y[i-1]-2y[i]+y[i+1]) = 6 sigma^2. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-merge-sweeps">
+<span class="sig"><span class="fname">noise_estimate</span>(values)</span>
+<p class="fdoc">White-noise sigma from the second difference: var(y[i-1]-2y[i]+y[i+1]) = 6 sigma^2.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-merge-sweeps</p>
+</div>
+<div class="fn" data-hay="convergence cherfd.reduce noise of the running merge vs sweep count, and sweeps needed for a target. cherfd cherfd-analyze-convergence">
+<span class="sig"><span class="fname">convergence</span>(sweep_spectra, frames, target_relative_noise=...)</span>
+<p class="fdoc">Noise of the running merge vs sweep count, and sweeps needed for a target.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence</p>
+</div>
+<div class="fn" data-hay="best_shift cherfd.reduce energy shift delta minimizing |y_ref(e) - (a*y(e+delta) + b)|^2. cherfd cherfd-analyze-sweep-drift cherfd cherfd-compare-directions">
+<span class="sig"><span class="fname">best_shift</span>(e_ref, y_ref, e, y, search_ev=..., step_ev=..., smooth_ev=...)</span>
+<p class="fdoc">Energy shift delta minimizing |y_ref(E) - (a*y(E+delta) + b)|^2.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-compare-directions</p>
+</div>
+<div class="fn" data-hay="linear_trend cherfd.reduce  cherfd cherfd-analyze-sweep-drift">
+<span class="sig"><span class="fname">linear_trend</span>(x, y)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift</p>
+</div>
+<div class="fn" data-hay="minmax cherfd.reduce 0..1 rescale -- for locating features only, never for reporting intensity. cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions">
+<span class="sig"><span class="fname">minmax</span>(values)</span>
+<p class="fdoc">0..1 rescale -- for locating features only, never for reporting intensity.</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions</p>
+</div>
+<div class="fn priv" data-hay="_bin_sums cherfd.reduce  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweeps">
+<span class="sig"><span class="fname">_bin_sums</span>(energy, values, edges)</span>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-compare-directions, cherfd cherfd-export-merged, cherfd cherfd-merge-sweeps +1 more</p>
+</div>
+<div class="fn priv" data-hay="_smooth_uniform cherfd.reduce resample onto a uniform grid and gaussian-smooth (sigma = smooth_ev). cherfd cherfd-analyze-sweep-drift cherfd cherfd-compare-directions">
+<span class="sig"><span class="fname">_smooth_uniform</span>(e, y, smooth_ev)</span>
+<p class="fdoc">Resample onto a uniform grid and Gaussian-smooth (sigma = smooth_ev).</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift, cherfd cherfd-compare-directions</p>
+</div>
+</div>
+</details>
 <h2><span class="no">02</span> Bibliography</h2>
 <p class="sectionnote">Collected from every module's <code>CITATIONS</code> dict. Entries marked <span class="gap">needs a reference</span> are implemented but unattributed — filling one in is a welcome contribution.</p>
 <table><thead><tr><th>Method</th><th>Reference</th><th>Module</th></tr></thead><tbody>
+<tr><td>Bragg-angle calibration correction</td><td>Bragg&#x27;s law; cherfd_claude utils/mono.py</td><td class="mono">cherfd.analysis</td></tr>
+<tr><td>E0 as derivative maximum</td><td>science.xas.e0.find_e0</td><td class="mono">cherfd.analysis</td></tr>
+<tr><td>bragg</td><td>utils/mono.py xtal_from_mono / mono_from_xtal (cherfd_claude)</td><td class="mono">cherfd.beamline</td></tr>
+<tr><td>encoder</td><td>utils/mono.py enc_to_xtal: xtal = enc * MONO_ENCODER_RESOLUTION + offset</td><td class="mono">cherfd.beamline</td></tr>
+<tr><td>gap</td><td>utils/undulator.py get_gap / find_harmonic_gap (cherfd_claude)</td><td class="mono">cherfd.beamline</td></tr>
+<tr><td>table</td><td>utils/mono.py _calc_table_track; SPEC tracking.mac</td><td class="mono">cherfd.beamline</td></tr>
+<tr><td>triggers</td><td>cscan_box/triggers.py trigger_timing (cherfd_claude)</td><td class="mono">cherfd.beamline</td></tr>
+<tr><td>cherfd command grammar and limits</td><td>cherfd_claude cscan_box/motion.py parse_cherfd_command; spec/cherfd.mac validate_cherfd_command</td><td class="mono">cherfd.command</td></tr>
+<tr><td>DMA frame layout (trig_1 end time, status bit 31)</td><td>cherfd_claude cscan_box/references/DMA_structure_definition.txt</td><td class="mono">cherfd.frames</td></tr>
 <tr><td>AUTOBK-lite spline background removal</td><td>Reduced AUTOBK — cubic smoothing spline with the knot budget from the Nyquist criterion (2*rbkg*kmax/pi). Quick-look quality; cross-check against Larch/Ifeffit autobk before publication.</td><td class="mono">exafs.background</td></tr>
 <tr><td>chi(k) -&gt; chi(R) Fourier transform convention</td><td>Ifeffit convention: chi(R) = (kstep/sqrt(pi)) * FFT[chi * k^w * window].</td><td class="mono">exafs.fourier</td></tr>
 <tr><td>Energy &lt;-&gt; photoelectron wavenumber</td><td>k = sqrt((E - E0) / ETOK) with ETOK = hbar^2/2m_e = 3.8099821 eV*A^2.</td><td class="mono">exafs.kspace</td></tr>
@@ -946,6 +1209,11 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <tr><td>Momentum transfer from scattering angle</td><td>q = |k_i - k_s|, evaluated in the quasi-elastic limit |k_i| = |k_s| = 2*pi/lambda(E_incident).</td><td class="mono">xrs.calibrate</td></tr>
 <tr><td>q-dependence as a dipole vs monopole/quadrupole discriminator</td><td>Low q approximates the dipole (s-&gt;p, XANES-like) limit; intensity rising with q indicates monopole/quadrupole turn-on. Sahle 2015; Mizuno-Ohmura.</td><td class="mono">xrs.interpret</td></tr>
 <tr><td>Outlier-channel rejection by DER_SNR</td><td>DER_SNR estimator: Stoehr et al., &#x27;DER_SNR: A Simple &amp; General Spectroscopic Signal-to-Noise Measurement&#x27;, ASP Conf. Ser. 394 (2008).</td><td class="mono">xrs.reduce</td></tr>
+<tr><td>three-region XANES layout</td><td><span class="gap">needs a reference</span></td><td class="mono">cherfd.command</td></tr>
+<tr><td>trigger-number re-pairing of Xspress3 frames</td><td><span class="gap">needs a reference</span></td><td class="mono">cherfd.frames</td></tr>
+<tr><td>ratio-of-sums merge for Poisson counts</td><td><span class="gap">needs a reference</span></td><td class="mono">cherfd.reduce</td></tr>
+<tr><td>scale/offset-free least-squares energy shift</td><td><span class="gap">needs a reference</span></td><td class="mono">cherfd.reduce</td></tr>
+<tr><td>second-difference white-noise estimate</td><td><span class="gap">needs a reference</span></td><td class="mono">cherfd.reduce</td></tr>
 <tr><td>First-shell peak reporting</td><td><span class="gap">needs a reference</span></td><td class="mono">exafs.fourier</td></tr>
 <tr><td>Hanning-sill k-window</td><td><span class="gap">needs a reference</span></td><td class="mono">exafs.fourier</td></tr>
 <tr><td>Default AUTOBK R_bkg</td><td><span class="gap">needs a reference</span></td><td class="mono">exafs.policy</td></tr>

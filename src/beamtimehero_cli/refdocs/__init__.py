@@ -51,6 +51,14 @@ _DOCS: dict[str, dict] = {
         "file": _DEFAULTS_DIR / "tender-analysis.md",
         "description": "Tender (SSRL BL 6-2a): Andor .sif detector images, how they are grouped into measurements, every reduction step to RIXS/HERFD/XES with its setting and pitfall (lit darks, the doublet ROI valley, short post-edges), and the `tender` tools.",
     },
+    "cherfd-operations": {
+        "file": _DEFAULTS_DIR / "cherfd-operations.md",
+        "description": "CHERFD continuous scanning from an agent: the plan / pre-flight / acquire / check / reduce loop on the cherfd, cherfd-read and cherfd-write branches, and the safety model.",
+    },
+    "cherfd-data-format": {
+        "file": _DEFAULTS_DIR / "cherfd-data-format.md",
+        "description": "What is in a CHERFD sweep file, what is wrong with the raw table (row order, detector pairing, status frames), and what the tools fix.",
+    },
 }
 
 

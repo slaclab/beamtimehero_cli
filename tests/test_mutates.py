@@ -42,6 +42,12 @@ TOOLS_CORE = (
 #: thing a review should be forced to look at.
 MUTATING_COUNT = 40
 
+#: Same rule for the second audited transport: CHERFD actions and stops,
+#: sent through ``audited_cherfd`` and living on ``cherfd-write``.
+CHERFD_MUTATING_COUNT = 16
+
+TOOLS_CHERFD = TOOLS_CORE.with_name("tools_cherfd.py")
+
 
 def _requires_justification(tdef: dict) -> bool:
     params = (tdef.get("function") or {}).get("parameters") or {}
@@ -76,12 +82,17 @@ def test_mutates_matches_justification(name):
     )
 
 
-def test_mutating_set_is_the_spec_write_branch():
+def test_mutating_set_is_the_write_branches():
     on_branch = {
         d["function"]["name"] for d in TOOL_DEFINITIONS
         if categorize(d) == ("spec-write",)
     }
-    assert _mutating_names() == on_branch
+    on_cherfd = {
+        d["function"]["name"] for d in TOOL_DEFINITIONS
+        if categorize(d) == ("cherfd-write",)
+    }
+    assert _mutating_names() == on_branch | on_cherfd
+    assert len(on_cherfd) == CHERFD_MUTATING_COUNT
     assert len(on_branch) == MUTATING_COUNT, (
         f"{len(on_branch)} mutating tools, expected {MUTATING_COUNT}. If a "
         "tool was genuinely added or removed, update MUTATING_COUNT in the "
@@ -238,3 +249,49 @@ def test_mutating_tools_issue_action_commands(name):
             f"(kinds: {sorted(k for k in kinds if k)}). Either the flag is "
             "wrong or the handler stopped doing what it claims."
         )
+
+
+# ---------------------------------------------------------------------------
+# The same cross-check for the CHERFD transport (tools_cherfd.py)
+# ---------------------------------------------------------------------------
+
+def _cherfd_handler_commands() -> dict[str, set[str]]:
+    """Per tool name: the literal ``audited_cherfd`` commands its handler sends."""
+    tree = ast.parse(TOOLS_CHERFD.read_text())
+    funcs = {n.name: n for n in tree.body if isinstance(n, ast.FunctionDef)}
+    table = None
+    for node in tree.body:
+        if isinstance(node, ast.AnnAssign) and getattr(node.target, "id", None) == "HANDLERS":
+            table = node.value
+    assert isinstance(table, ast.Dict), "could not find the HANDLERS dict literal"
+    out: dict[str, set[str]] = {}
+    for key, value in zip(table.keys, table.values):
+        assert isinstance(value, ast.Name) and value.id in funcs, (
+            f"HANDLERS[{key.value!r}] must name a module-level function")
+        cmds: set[str] = set()
+        for call in ast.walk(funcs[value.id]):
+            if (isinstance(call, ast.Call) and isinstance(call.func, ast.Name)
+                    and call.func.id == "audited_cherfd" and call.args):
+                first = call.args[0]
+                assert isinstance(first, ast.Constant) and isinstance(first.value, str), (
+                    f"{key.value}: audited_cherfd must be called with a literal command")
+                cmds.add(first.value)
+        out[key.value] = cmds
+    return out
+
+
+_CHERFD = _cherfd_handler_commands()
+
+
+def test_cherfd_scan_found_the_handlers():
+    assert len(_CHERFD) == 48 and sum(1 for c in _CHERFD.values() if c) > 20
+
+
+@pytest.mark.parametrize("name", sorted(_CHERFD))
+def test_cherfd_mutates_matches_what_the_handler_sends(name):
+    from beamtimehero_cli.cherfd_control import commands as cherfd_commands
+    kinds = {cherfd_commands.get(c).kind for c in _CHERFD[name]}
+    sends_action = bool(kinds & {"action", "stop"})
+    assert TOOL_LINEAGE[name]["mutates"] == sends_action, (
+        f"{name}: mutates={TOOL_LINEAGE[name]['mutates']} but it sends {sorted(_CHERFD[name])}")
+

@@ -3374,3 +3374,13 @@ AUTONOMY_TOOL_CATEGORIES = [
         d["function"]["name"] for d in _TENDER_DEFINITIONS
     ]),
 ]
+
+
+# ---- CAT-CHERFD · continuous-scan HERFD (own module, own three branches) ----
+from beamtimehero_cli.tool_catalog.definitions_cherfd import (  # noqa: E402
+    CHERFD_TOOL_CATEGORIES,
+    CHERFD_TOOL_DEFINITIONS,
+)
+
+AUTONOMY_TOOL_DEFINITIONS.extend(CHERFD_TOOL_DEFINITIONS)
+AUTONOMY_TOOL_CATEGORIES.extend(CHERFD_TOOL_CATEGORIES)

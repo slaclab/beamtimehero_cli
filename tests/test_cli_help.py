@@ -28,6 +28,8 @@ EXPECTED_TREES = {
     # granted to a single agent without being granted to everything that
     # carries `tool`
     "research",
+    # CHERFD continuous scanning: offline, live reads, audited writes
+    "cherfd", "cherfd-read", "cherfd-write",
     # bundled agent profiles (curated views over the catalog)
     "bl-aligner",
 }

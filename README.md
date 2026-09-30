@@ -7,6 +7,7 @@ Provides:
 - **SPEC injection** — motor moves, scans, macro execution against a SPEC server (TCP, GNU screen, or sandbox/mock transports).
 - **Scan data reads** — direct silx-based SPEC file parsing, scan analysis, plotting.
 - **Spectroscopy analysis** — XAS/HERFD descriptors and interpretation, X-ray Raman (energy-loss) reduction, EXAFS chi(k)/Fourier-transform products.
+- **CHERFD continuous scanning** — plan, run and reduce continuous-sweep HERFD through the cherfd control server (`cherfd`, `cherfd-read`, `cherfd-write` trees; `beamtimehero ref cherfd-operations`). Mocked unless `CHERFD_MOCK=0`.
 - **Deployment backends** — the same scan-read surface served from S3DF Postgres + pickled scan data; Slack messaging.
 - **Log reads** — beamline control log parsing, search.
 - **Action logging** — every command writes to a local SQLite audit trail.
@@ -85,7 +86,7 @@ last of them stops holding, and carries a Claude Code allowlist.
 
 ## CLI surface
 
-Eleven top-level trees, each with its own leaves. `beamtimehero --help` prints
+Fourteen top-level trees, each with its own leaves. `beamtimehero --help` prints
 them with one-line descriptions, and `--help` works at any depth;
 `beamtimehero ref getting-started` is the same list as a page you can hand to
 someone. Agent profiles — curated alias views over the catalog, e.g.

@@ -253,3 +253,32 @@ env:
   # discovery; consuming apps set this to switch to the full per-tool schema
   # surface. See `beamtimehero ref agent-integration`.
   # TOOLS_MODE: "cli"
+
+  # =========================================================================
+  # CHERFD continuous scanning (the cherfd, cherfd-read, cherfd-write trees)
+  # =========================================================================
+  # Independent of SPEC_MOCK. See `beamtimehero ref cherfd-operations`.
+
+  # Mock unless EXACTLY "0" -- stricter than SPEC_MOCK: "1", "", "true",
+  # "False" all stay on the mock. Quote it.
+  # CHERFD_MOCK: "1"
+
+  # The cherfd_claude checkout: production motion simulator, data/, logs/.
+  # CHERFD_PROJECT_DIR: ""
+  # Interpreter for cscan_box/simulate.py. Default <project>/venv/bin/python.
+  # CHERFD_PYTHON: ""
+  # Sweep data root (<file_dir>/scan_results_*_dataframe.pkl). Default <project>/data.
+  # CHERFD_DATA_DIR: ""
+  # Controller logs. Default <project>/logs.
+  # CHERFD_LOGS_DIR: ""
+  # Where cherfd_export_merged writes. Default <BEAMTIMEHERO_DATA_DIR>/cherfd_exports.
+  # CHERFD_EXPORT_DIR: ""
+
+  # Mock session state and clock (0.01 = 100x faster mock sweeps).
+  # CHERFD_MOCK_STATE: ""
+  # CHERFD_MOCK_TIME_SCALE: "1.0"
+
+  # Live services, only read when CHERFD_MOCK=0.
+  # CHERFD_SERVER_URL: "http://127.0.0.1:5002"
+  # CHERFD_DAQ_URL: "http://127.0.0.1:5004"
+  # CHERFD_HTTP_TIMEOUT_S: "10"

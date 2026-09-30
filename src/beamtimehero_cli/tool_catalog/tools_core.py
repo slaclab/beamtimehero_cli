@@ -2858,6 +2858,12 @@ _HANDLERS: dict[str, callable] = {
     "list_channels": lambda args: _t_slack("list_channels", args, kw=()),
 }
 
+# CAT-CHERFD · continuous-scan handlers live in tools_cherfd.py (their own
+# transport); merged here so _build_dispatch sees one table.
+from beamtimehero_cli.tool_catalog.tools_cherfd import HANDLERS as _CHERFD_HANDLERS  # noqa: E402
+
+_HANDLERS.update(_CHERFD_HANDLERS)
+
 
 # ---------------------------------------------------------------------------
 # s3df (postgres-backed) handlers

@@ -70,6 +70,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 ALL_BRANCHES = (
     "tool", "db", "spec-read", "spec-write", "spec-file",
     "s3df", "slack", "xrs", "exafs", "research", "tender",
+    "cherfd", "cherfd-read", "cherfd-write",
 )
 
 
@@ -291,7 +292,7 @@ def test_the_write_filter_is_the_only_thing_that_drops_anything(catalogue):
     build = build_surface(_aligner(), catalogue)
     mutating = sum(1 for t in build.tools if t.mutates)
     assert mutating == 2
-    assert len(build.tools) == len(TOOL_DEFINITIONS) - 40 + 2
+    assert len(build.tools) == len(TOOL_DEFINITIONS) - (40 + 16) + 2
 
 
 def test_a_branch_carries_its_nested_children(catalogue):
@@ -388,7 +389,11 @@ def test_flat_attach_equals_build_profile_subtrees(catalogue):
 
 
 def test_every_leaf_carries_the_agent_role(catalogue):
-    """The gap this closes: four of nine branches used to be stamped."""
+    """The gap this closes: four of nine branches used to be stamped.
+
+    Every non-mutating tool plus the two listed writes (the aligner carries
+    every branch, cherfd ones included).
+    """
     parser, subs = _root()
     build_surface(_aligner(), catalogue).attach(subs)
 
@@ -402,7 +407,7 @@ def test_every_leaf_carries_the_agent_role(catalogue):
         leaf for leaf in leaves(snapshot_parser(parser))
         if leaf["defaults"].get("_tool_name")
     ]
-    assert len(stamped) == 100
+    assert len(stamped) == 186 - (40 + 16) + 2
     assert all(leaf["defaults"]["_agent_role"] == "blaligner" for leaf in stamped)
 
 
@@ -485,7 +490,7 @@ def test_a_nested_surface_precreates_only_its_own_branches(catalogue):
     assert set(bsubs.choices) == {"ref", "spec-read", "spec-file"}
     assert {path[0] for path in TREE_HELPS} - set(bsubs.choices) == {
         "tool", "db", "spec-write", "s3df", "slack", "xrs", "exafs",
-        "research",
+        "research", "cherfd", "cherfd-read", "cherfd-write",
     }
 
 
@@ -835,7 +840,7 @@ def test_snapshot_keeps_the_dispatch_defaults_and_strip_keys_removes_them():
 def test_names_are_not_unique_but_no_shared_name_mutates(catalogue):
     """Why `ToolPath` is the identity, and why name-keying is still safe.
 
-    138 definitions under 132 names: six names exist on two trees each.
+    186 definitions under 180 names: six names exist on two trees each.
     Lineage — and therefore `mutates()` and `write_tools` — is keyed by
     *name*, so a name on two trees has one safety class for both. That is
     only sound while no such name mutates: if one did, naming it in
@@ -850,8 +855,8 @@ def test_names_are_not_unique_but_no_shared_name_mutates(catalogue):
     names = Counter(
         (tdef.get("function") or {}).get("name") for tdef in TOOL_DEFINITIONS
     )
-    assert sum(names.values()) == 138
-    assert len(names) == 132
+    assert sum(names.values()) == 186
+    assert len(names) == 180
     duplicated = {name for name, n in names.items() if n > 1}
     assert duplicated == {
         "get_latest_scan", "list_scans", "read_scan",
@@ -861,16 +866,16 @@ def test_names_are_not_unique_but_no_shared_name_mutates(catalogue):
 
     # And the index really is keyed by path, so both of a pair survive.
     paths = {"/".join(p) for p in catalogue.index()}
-    assert len(paths) == 138
+    assert len(paths) == 186
     assert {"spec-file/list_scans", "s3df/list_scans"} <= paths
 
 
-def test_exactly_the_spec_write_branch_mutates(catalogue):
+def test_exactly_the_write_branches_mutate(catalogue):
     mutating = {
         "/".join(tool.path) for tool in catalogue.index().values() if tool.mutates
     }
-    assert len(mutating) == 40
-    assert {p.split("/")[0] for p in mutating} == {"spec-write"}
+    assert len(mutating) == 40 + 16
+    assert {p.split("/")[0] for p in mutating} == {"spec-write", "cherfd-write"}
 
 
 def test_importing_the_surface_api_does_not_import_config():
