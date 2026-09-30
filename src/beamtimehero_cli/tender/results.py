@@ -92,7 +92,9 @@ def outputs(sample: str | None = None, measurement: str | None = None) -> list[d
             continue
         for name in m.get("outputs") or []:
             f = job / name
-            if not f.is_file() or "/" in name or ".." in name:
+            # Spectra only: a tender-herfd job also writes its RIXS map
+            # (<label>_rixs_map.npz + .png) beside the CSV.
+            if not name.endswith(".csv") or not f.is_file() or "/" in name or ".." in name:
                 continue
             header, _ = read_csv(f)
             rows.append({"output": f"{job.name}:{name}", "job": job.name,

@@ -292,9 +292,13 @@ def _fake_job(proc, job, label, E, mu, **params):
                    rixs_map=np.empty((0, E.size)), meta={"background": "x"})
     name = f"{label}_herfd.csv"
     write_xas_csv(r, d / name)
+    # what chemcat's tender-herfd job writes beside the CSV since it gained the map
+    (d / f"{label}_rixs_map.npz").write_bytes(b"PK\x03\x04\x00binary")
+    (d / f"{label}_rixs_map.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (d / "manifest.json").write_text(json.dumps({
         "skill": "tender-herfd", "params": {"sample": NA2SO4, "measurement": label, **params},
-        "inputs": [], "outputs": [name], "summary": "s", "origin": "first-pass"}))
+        "inputs": [], "outputs": [name, f"{label}_rixs_map.npz", f"{label}_rixs_map.png"],
+        "summary": "s", "origin": "first-pass"}))
     return f"{job}:{name}"
 
 
