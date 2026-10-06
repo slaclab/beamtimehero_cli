@@ -22,7 +22,7 @@ from __future__ import annotations
 import logging
 import re
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from beamtimehero_cli import runtime_state
 from beamtimehero_cli.action_log.db import (
@@ -37,7 +37,8 @@ logger = logging.getLogger(__name__)
 
 
 _SCAN_EMITTING_COMMANDS = {
-    "ascan", "dscan", "run_xas", "emiss_scan", "run_shortcut",
+    "ascan", "dscan", "d2scan", "gscan", "kscan",
+    "run_xas", "emiss_scan", "run_shortcut",
 }
 
 
@@ -149,3 +150,72 @@ def audited_call(
     if "elapsed_s" in result:
         out["elapsed_s"] = result["elapsed_s"]
     return out
+
+
+def audited_device_call(
+    command: str,
+    args: list[str] | tuple[str, ...] | None,
+    justification: str,
+    run: Callable[[], dict],
+    *,
+    wire: str,
+    agent: str = "llm",
+    experiment_id: str | None = None,
+) -> dict:
+    """Audited write to beamline hardware that is not reached through SPEC.
+
+    For a station's own device paths — an EPICS IOC it writes directly, a
+    detector owned by another project's agent — that must still answer to
+    the same operator controls as a SPEC action:
+
+      * the justification is required;
+      * the SPEC-write safety switch is checked (STOP ALL turns it off), with
+        the same fail-closed rules and refusal text as ``spec_cmd.call``;
+      * an ``action_log`` row is written *before* ``run()`` is called, with
+        ``wire`` as the human-readable record of what was sent, and is
+        finalized with the outcome.
+
+    ``run`` does the I/O and returns a dict; ``{"ok": False, "error": ...}``
+    marks a failure, and an exception is caught and recorded as one.
+    Returns the same envelope shape as :func:`audited_call`.
+    """
+    args_list = [str(a) for a in (args or [])]
+    if not (justification or "").strip():
+        return {
+            "ok": False, "kind": "action",
+            "error": "justification is required for action commands",
+        }
+    safety_err = spec_cmd.safety_check("action")
+    if safety_err:
+        return {"ok": False, "kind": "action", "error": safety_err}
+
+    phase = runtime_state.get_phase()
+    exp_id = experiment_id or runtime_state.get_experiment_id()
+    row = start_action(
+        command=command,
+        args=args_list,
+        justification=justification,
+        phase=phase,
+        spec_string=wire,
+        experiment_id=exp_id,
+        agent=agent,
+    )
+    mark_action_started(row.id)
+    t0 = time.time()
+    try:
+        result = run() or {}
+    except Exception as e:  # noqa: BLE001 — recorded, never raised to the agent
+        logger.exception("device call %s failed", command)
+        result = {"ok": False, "error": f"{type(e).__name__}: {e}"}
+    elapsed = time.time() - t0
+    ok = bool(result.get("ok", True))
+    if not ok:
+        finish_action(row.id, success=False,
+                      error_message=str(result.get("error") or "device call failed"),
+                      result=result)
+        return {"ok": False, "kind": "action", "action_id": row.id,
+                "error": result.get("error") or "device call failed",
+                "result": result, "elapsed_s": elapsed}
+    finish_action(row.id, success=True, result=result)
+    return {"ok": True, "kind": "action", "action_id": row.id,
+            "result": result, "elapsed_s": elapsed}

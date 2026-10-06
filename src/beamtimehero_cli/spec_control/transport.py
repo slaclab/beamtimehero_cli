@@ -138,6 +138,30 @@ def _mock_default_positions() -> dict:
     return positions
 
 
+def _mock_counters() -> dict:
+    """Station counter set for the mock `ct`, from SPEC_MOCK_COUNTERS.
+
+    A JSON object of counter -> value. Unset (the default) keeps the
+    historical BL15-2 reply (I0, I1, vortDT, I2).
+    """
+    raw = os.environ.get("SPEC_MOCK_COUNTERS", "").strip()
+    if not raw:
+        return {}
+    try:
+        override = json.loads(raw)
+    except (ValueError, TypeError):
+        return {}
+    if not isinstance(override, dict):
+        return {}
+    out = {}
+    for k, v in override.items():
+        try:
+            out[str(k)] = float(v)
+        except (TypeError, ValueError):
+            continue
+    return out
+
+
 class _MockScreen:
     """In-memory stand-in that synthesizes believable SPEC output.
 
@@ -197,6 +221,10 @@ class _MockScreen:
         if low.startswith("wbeamsize"):
             return "Beam size (X, Z): 0.35, 0.12 mm\nBeam mode (X, Z): small, small"
         if low.startswith("p beam_status"):
+            from beamtimehero_cli.spec_control import spec_cmd
+            if not spec_cmd.beam_status_requires_gap():
+                # No-gap station (BL4-1): the macro prints two fields.
+                return '{"spear_current": 485.20, "bl_state": "OPEN"}'
             return "{'spear_current': 485.2, 'bl_state': 'OPEN', 'gap_owned': 1}"
         if low.startswith("p cnt_mne("):
             return "I1"
@@ -217,6 +245,9 @@ class _MockScreen:
         if low.startswith("p s"):
             return "[1.2e5, 8.9e4, 3.7e3, 2.1e2]  # I0, I1, vortDT, I2"
         if low.startswith("ct "):
+            counters = _mock_counters()
+            if counters:
+                return "  ".join(f"{k}={v:g}" for k, v in counters.items())
             return "I0=1.2e5  I1=8.9e4  vortDT=3.7e3  I2=2.1e2"
         if low.startswith(("umv ", "mv ", "umvr ")):
             tokens = cmd.split()

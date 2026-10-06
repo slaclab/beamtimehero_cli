@@ -28,10 +28,12 @@ Schema per entry:
     mutates : bool
         Whether the tool mutates the beamline: it issues at least one
         SPEC command registered as ``action`` in ``spec_cmd`` (via
-        ``audited_call``), or a CHERFD command registered as ``action`` or
+        ``audited_call``), a CHERFD command registered as ``action`` or
         ``stop`` in ``cherfd_control/commands.py`` (via ``audited_cherfd``),
-        so it requires a ``justification`` and is written to the action log
-        before dispatch. Those are the two audited hardware transports. This is the *declared* safety class and the
+        or a station's non-SPEC device write (via
+        ``audited_call.audited_device_call``), so it requires a
+        ``justification`` and is written to the action log before
+        dispatch. This is the *declared* safety class and the
         only thing ``categorize()`` and consumers' write filters read —
         it is not inferred from the JSON schema.
 
@@ -61,6 +63,10 @@ Schema per entry:
           * ``cherfd_datafile``— CHERFD sweep pickles under CHERFD_DATA_DIR
           * ``cherfd_simulator`` — the production CHERFD motion-profile simulator
           * ``cherfd_logfile`` — CHERFD controller log files
+          * ``epics_ioc``      — reads/writes a station EPICS IOC directly
+                                 (not through SPEC), e.g. a current-amp server
+          * ``external_agent`` — delegates to another project's agent, which
+                                 owns that device (e.g. a detector agent)
     source_detail : str
         Human-readable specifics about where the data comes from.
     depends_on : list[str]
@@ -2377,7 +2383,7 @@ LINEAGE_OPTIONAL_KEYS: tuple[str, ...] = ("spec_commands",)
 _LINEAGE_SOURCES = frozenset({
     "spec_datafile", "spec_session", "spec_logfile", "spec_config",
     "autonomy_db", "filesystem", "tool_chain", "postgres", "camera",
-    "slack",
+    "slack", "epics_ioc", "external_agent",
     "cherfd_server", "cherfd_daq", "cherfd_datafile", "cherfd_simulator", "cherfd_logfile",
 })
 

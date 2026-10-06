@@ -104,6 +104,91 @@ def _safety_check(kind: str) -> str | None:
     return None
 
 
+
+def safety_check(kind: str) -> str | None:
+    """Public form of the safety-switch check, for consumers' non-SPEC writes.
+
+    A station app that drives other beamline hardware (an EPICS IOC, a
+    detector server) under the same operator stop control calls this with
+    ``"action"`` before each write: the same file, the same fail-closed
+    rules, and the same refusal text as a SPEC action.
+    """
+    return _safety_check(kind)
+
+
+# ---------------------------------------------------------------------------
+# Station settings — additive, BL15-2 defaults.
+#
+# Two behaviours differ by station and are not expressible as a command
+# registration:
+#
+#   * Beam status. BL15-2's `beam_status()` reports ID gap ownership and a
+#     beam is only good when the gap is owned. A bending-magnet station
+#     (BL4-1) has no gap; its macro prints spear_current and bl_state only.
+#     With the gap requirement off, gap ownership is neither required nor
+#     reported as a reason.
+#   * Count-time cap. BL4-1 counts on the cscan box, which refuses counts
+#     longer than 67 s; BL15-2 has no cap.
+#
+# Both default to the BL15-2 behaviour. Env vars set the process default;
+# the setters let a consumer pin them in code.
+# ---------------------------------------------------------------------------
+
+def _flag(raw: str, default: bool) -> bool:
+    raw = (raw or "").strip().lower()
+    if not raw:
+        return default
+    return raw not in ("0", "false", "no", "off")
+
+
+def _positive_float(raw: str) -> Optional[float]:
+    raw = (raw or "").strip()
+    if not raw:
+        return None
+    try:
+        v = float(raw)
+    except ValueError:
+        logger.warning("ignoring count-time cap %r (not a number)", raw)
+        return None
+    return v if v > 0 else None
+
+
+_BEAM_STATUS_REQUIRES_GAP: bool = _flag(
+    os.environ.get("BTH_BEAM_STATUS_REQUIRES_GAP", ""), True)
+_MAX_COUNT_TIME_S: Optional[float] = _positive_float(
+    os.environ.get("BTH_MAX_COUNT_TIME_S", ""))
+
+
+def set_beam_status_requires_gap(required: bool) -> None:
+    """Whether a good beam needs `gap_owned` (BL15-2: yes; default)."""
+    global _BEAM_STATUS_REQUIRES_GAP
+    _BEAM_STATUS_REQUIRES_GAP = bool(required)
+
+
+def beam_status_requires_gap() -> bool:
+    return _BEAM_STATUS_REQUIRES_GAP
+
+
+def set_max_count_time(seconds: Optional[float]) -> None:
+    """Cap every per-point count time this process renders (None = no cap)."""
+    global _MAX_COUNT_TIME_S
+    _MAX_COUNT_TIME_S = float(seconds) if seconds else None
+
+
+def max_count_time() -> Optional[float]:
+    return _MAX_COUNT_TIME_S
+
+
+def _check_count_time(value) -> float:
+    """Return the count time as a float; raise ValueError above the cap."""
+    sec = float(value)
+    cap = _MAX_COUNT_TIME_S
+    if cap is not None and sec > cap:
+        raise ValueError(
+            f"count time {sec:g} s exceeds this station's limit of {cap:g} s"
+        )
+    return sec
+
 _JUSTIFICATION_MAX = 200
 
 
@@ -212,6 +297,18 @@ class CommandSpec:
 
 def _args_join(args: list[str]) -> str:
     return " ".join(args)
+
+
+def _ct_arg(value) -> str:
+    """A count-time argument, checked against the station cap.
+
+    Rendered verbatim when no cap is set, so BL15-2 wire strings are
+    byte-identical to what they were.
+    """
+    if _MAX_COUNT_TIME_S is None:
+        return str(value)
+    _check_count_time(value)
+    return str(value)
 
 
 # ---- Parsers -------------------------------------------------------------
@@ -406,9 +503,12 @@ def _parse_beam_status(out: str, _a) -> dict:
     current = float(sp.group(1)) if sp else None
     bl_state = bl.group(1) if bl else None
     gap_owned = bool(int(gap.group(1))) if gap else None
+    # A station without an ID gap (BL4-1) turns the gap requirement off;
+    # see set_beam_status_requires_gap. BL15-2 (the default) is unchanged.
+    gap_ok = gap_owned if _BEAM_STATUS_REQUIRES_GAP else True
     beam_good = (
         current is not None and current > 200 and
-        bl_state == "OPEN" and gap_owned
+        bl_state == "OPEN" and gap_ok
     )
     reason = None
     if not beam_good:
@@ -416,7 +516,7 @@ def _parse_beam_status(out: str, _a) -> dict:
             reason = f"SPEAR current low ({current} mA)"
         elif bl_state and bl_state != "OPEN":
             reason = f"beamline state is {bl_state}"
-        elif gap_owned is False:
+        elif _BEAM_STATUS_REQUIRES_GAP and gap_owned is False:
             reason = "gap not owned by BL15-2"
     return {
         "spear_current_ma": current,
@@ -440,7 +540,7 @@ _READ: dict[str, CommandSpec] = {
     "get_S": CommandSpec("get_S", "read", lambda a: "p S", lambda o, a: {"raw": o}),
     "ct": CommandSpec(
         "ct", "read",
-        lambda a: f"ct {a[0] if a else '1'}",
+        lambda a: f"ct {_ct_arg(a[0]) if a else '1'}",
         _parse_ct,
     ),
     "fon": CommandSpec("fon", "read", lambda a: "fon", lambda o, a: {"raw": o}),
@@ -506,7 +606,7 @@ _ACTION: dict[str, CommandSpec] = {
     ),
     "ascan": CommandSpec(
         "ascan", "action",
-        lambda a: f"ascan {a[0]} {a[1]} {a[2]} {a[3]} {a[4]}",
+        lambda a: f"ascan {a[0]} {a[1]} {a[2]} {a[3]} {_ct_arg(a[4])}",
         lambda o, a: {
             "motor": a[0], "start": float(a[1]), "end": float(a[2]),
             "npoints": int(a[3]), "count_time": float(a[4]), "raw": o,
@@ -515,7 +615,7 @@ _ACTION: dict[str, CommandSpec] = {
     ),
     "dscan": CommandSpec(
         "dscan", "action",
-        lambda a: f"dscan {a[0]} {a[1]} {a[2]} {a[3]} {a[4]}",
+        lambda a: f"dscan {a[0]} {a[1]} {a[2]} {a[3]} {_ct_arg(a[4])}",
         lambda o, a: {
             "motor": a[0], "delta_start": float(a[1]), "delta_end": float(a[2]),
             "npoints": int(a[3]), "count_time": float(a[4]), "raw": o,
@@ -524,7 +624,7 @@ _ACTION: dict[str, CommandSpec] = {
     ),
     "d2scan": CommandSpec(
         "d2scan", "action",
-        lambda a: f"d2scan {a[0]} {a[1]} {a[2]} {a[3]} {a[4]} {a[5]} {a[6]} {a[7]}",
+        lambda a: f"d2scan {a[0]} {a[1]} {a[2]} {a[3]} {a[4]} {a[5]} {a[6]} {_ct_arg(a[7])}",
         lambda o, a: {
             "motor1": a[0], "delta_lo1": float(a[1]), "delta_hi1": float(a[2]),
             "motor2": a[3], "delta_lo2": float(a[4]), "delta_hi2": float(a[5]),
@@ -826,6 +926,7 @@ def _render_gscan(a: list[str]) -> str:
     start, regions, sec = nums[0], nums[1:-1], nums[-1]
     if sec <= 0:
         raise ValueError(f"count time must be positive, got {sec}")
+    _check_count_time(sec)
     pos = start
     for i in range(0, len(regions), 2):
         end, step = regions[i], regions[i + 1]
@@ -854,11 +955,14 @@ def _render_kscan(a: list[str]) -> str:
         raise ValueError(f"invalid k region: k1={k1} k2={k2} kstep={kstep}")
     if ksec1 <= 0 or ksec2 <= 0:
         raise ValueError("k-region count times must be positive")
+    _check_count_time(ksec1)
+    _check_count_time(ksec2)
     pos = nums[0]
     for i in range(1, len(nums) - 7, 3):
         step, sec, end = nums[i], nums[i + 1], nums[i + 2]
         if sec <= 0:
             raise ValueError(f"count time must be positive, got {sec}")
+        _check_count_time(sec)
         if step == 0 or (end - pos) / step <= 0:
             raise ValueError(
                 f"kscan region {pos} -> {end} step {step} contains no points"
@@ -1052,6 +1156,36 @@ def call(
 # ---------------------------------------------------------------------------
 # Introspection for tests / UI
 # ---------------------------------------------------------------------------
+
+def register_command(spec: CommandSpec, *, replace: bool = False) -> None:
+    """Add a station command to the allowlist (or replace one).
+
+    The allowlist is the one place a SPEC command can be added, so a
+    station that needs a macro this package does not ship registers it
+    here instead of patching the private tables. ``spec.kind`` picks the
+    table. Registering a name that exists raises unless ``replace=True``,
+    so a station cannot silently shadow a shared command.
+    """
+    if spec.kind not in ("read", "action"):
+        raise ValueError(f"CommandSpec.kind must be 'read' or 'action', got {spec.kind!r}")
+    exists = spec.name in _READ or spec.name in _ACTION
+    if exists and not replace:
+        raise ValueError(f"command {spec.name!r} is already registered (pass replace=True)")
+    _READ.pop(spec.name, None)
+    _ACTION.pop(spec.name, None)
+    (_READ if spec.kind == "read" else _ACTION)[spec.name] = spec
+
+
+def unregister_command(name: str) -> Optional[CommandSpec]:
+    """Drop a command from this process's allowlist; returns what was removed.
+
+    For a station that has no hardware or macro behind a shared command
+    (BL4-1 has no ID gap, no filters, no Vortex): once unregistered,
+    ``call``/``render`` answer "unknown command" for it, whatever tool
+    asks. Process-local — the BL15-2 apps import their own copy.
+    """
+    return _READ.pop(name, None) or _ACTION.pop(name, None)
+
 
 def known_commands() -> dict[str, list[str]]:
     return {

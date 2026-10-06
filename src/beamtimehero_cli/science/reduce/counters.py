@@ -36,7 +36,9 @@ def pick_active_counter(
     2. Else if ``ppboff`` is a counter, it is the active counter.
     3. Else among ``vortDT, vortDT2, vortDT3, vortDT4``, the one with the
        highest max wins.
-    4. Otherwise default to ``I1``.
+    4. Else if ``xsum`` is a counter (BL4-1's 32-element Ge detector, sum
+       of the good elements), it is the active counter.
+    5. Otherwise default to ``I1``.
 
     .. warning::
 
@@ -64,6 +66,9 @@ def pick_active_counter(
     if available_vorts:
         best = max(available_vorts, key=lambda c: df[c].max())
         return best, f"highest max among {list(available_vorts)}"
+
+    if "xsum" in cols:
+        return "xsum", "xsum present (summed 32-element Ge fluorescence)"
 
     return "I1", "no ppboff or vortDT counters, defaulting to I1"
 

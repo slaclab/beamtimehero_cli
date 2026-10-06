@@ -47,6 +47,10 @@ env:
   # Default "/data/fifteen/mock".
   # SPEC_MOCK_PWD: "/data/fifteen/mock"
 
+  # Counter values the mock `ct` reports, as a JSON object of counter ->
+  # value. Default "" (I0, I1, vortDT, I2). Only affects SPEC_MOCK=1.
+  # SPEC_MOCK_COUNTERS: '{"I0": 120000, "I1": 89000, "xsum": 3700}'
+
   # =========================================================================
   # Beamline data on disk
   # =========================================================================
@@ -191,6 +195,19 @@ env:
   # Columns treated as plottable signal when a scan header is ambiguous.
   # Default "vortDT,I0,I1".
   # BTH_DEFAULT_Y_COLUMNS: "vortDT,I0,I1"
+
+  # Scan-command prefixes counted as energy scans when finding the latest
+  # file of repeated energy scans, comma-separated. Default "gscan energy".
+  # BTH_ENERGY_SCAN_PREFIXES: "gscan mono,kscan"
+
+  # Whether a good beam requires ID gap ownership in `beam_status()`.
+  # Default "1" (BL15-2). A station without an undulator gap sets "0": its
+  # macro reports spear_current and bl_state only.
+  # BTH_BEAM_STATUS_REQUIRES_GAP: "0"
+
+  # Upper limit (s) on every per-point count time the SPEC tools render
+  # (ct, ascan/dscan/d2scan, gscan, kscan). Default "" (no cap).
+  # BTH_MAX_COUNT_TIME_S: "67"
 
   # EPICS process variables for beam status. Defaults are BL15-2's.
   # BTH_EPICS_PV_SPEAR_CURRENT: "SPEAR:BeamCurrAvg"

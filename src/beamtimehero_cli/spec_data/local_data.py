@@ -654,9 +654,22 @@ def get_most_recent_file() -> str | None:
     return None
 
 
+def _energy_scan_prefixes() -> tuple[str, ...]:
+    """Scan-command prefixes that count as energy scans.
+
+    ``BTH_ENERGY_SCAN_PREFIXES`` is a comma-separated list; unset keeps the
+    BL15-2 default (``gscan energy``). A station whose energy motor is
+    ``mono`` sets e.g. ``gscan mono,kscan``.
+    """
+    raw = os.environ.get("BTH_ENERGY_SCAN_PREFIXES", "")
+    prefixes = tuple(p.strip() for p in raw.split(",") if p.strip())
+    return prefixes or ("gscan energy",)
+
+
 def average_latest_energy_scans_file() -> str | None:
     """Find latest file with >1 energy scan. Returns file_name or None."""
     cache = _load_cache()
+    prefixes = _energy_scan_prefixes()
 
     file_energy_counts: dict[str, tuple[int, str]] = {}
     for entry in cache.values():
@@ -664,7 +677,7 @@ def average_latest_energy_scans_file() -> str | None:
         if fn in ("alignment", "alignment_Fe"):
             continue
         cmd = entry.get("scan_command") or ""
-        if cmd.startswith("gscan energy"):
+        if cmd.startswith(prefixes):
             if fn not in file_energy_counts:
                 file_energy_counts[fn] = (0, "")
             count, max_dt = file_energy_counts[fn]
