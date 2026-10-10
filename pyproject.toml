@@ -53,7 +53,7 @@ postgres = [
 # Python >= 3.10 (tender-analysis's floor). Without it the `tender` leaves
 # still register and answer with an error naming this extra.
 tender = [
-    "tender-analysis @ git+https://github.com/slaclab/tender-analysis@c9ab6fd",
+    "tender-analysis @ git+https://github.com/slaclab/tender-analysis@dc53fd6",
 ]
 
 [project.scripts]

@@ -182,16 +182,29 @@ def test_xes_matches_the_job(synthetic_env):
         np.testing.assert_allclose(ours, job, rtol=1e-9, atol=1e-6)
 
 
-@pytest.mark.xfail(strict=True, reason=(
-    "tender_analysis c9ab6fd: CurvatureCorrection fits a quadratic through the few "
-    "dispersive bins that carry signal and extrapolates it over all 2048 columns; with a "
-    "narrow line the shift exceeds the detector and apply() raises. Library issue, see "
-    "PLAN-bth-integration.md 'Library issues'."))
-def test_library_curvature_narrow_line_hazard():
+def test_library_curvature_straightens_a_sideways_bend():
+    """The pinned library shifts along the DISPERSIVE axis (tender-analysis
+    b39b2a7, upstream jtbabicz/Tender_Analysis#1): a line whose column drifts
+    with row comes out straight, so the column-sum spectrum narrows. Before
+    the fix the correction moved counts within columns and could not change a
+    spectrum at all (on this frame it raised)."""
     from tender_analysis import CurvatureCorrection
-    frame = _frames(np.random.default_rng(7), 1, 1030, 600, line_width=30.0, diffuse=0)[0] - 900
-    frame[frame < 50] = 0
-    CurvatureCorrection().fit_apply(frame)
+    rng = np.random.default_rng(7)
+    rows = np.arange(H)
+    bend = 1030 + 20 * ((rows - 256) / 256) ** 2        # 20 px of sideways travel
+    img = np.zeros((H, W))
+    for r in rows:
+        for c in rng.normal(bend[r], 3.0, 40).round().astype(int):
+            img[r, c] += 1
+    out = CurvatureCorrection().fit_apply(img)[0]
+    assert out.sum() == pytest.approx(img.sum(), rel=0.01)
+
+    def width(spec):
+        x = np.arange(W)
+        m = (spec * x).sum() / spec.sum()
+        return np.sqrt((spec * (x - m) ** 2).sum() / spec.sum())
+
+    assert width(out.sum(axis=0)) < 0.6 * width(img.sum(axis=0))
 
 
 # ------------------------------------------------------------------ tools

@@ -39,10 +39,11 @@ from .settings import Reduction, Roi, background_rule
 
 
 # tender_analysis.curvature.CurvatureCorrection.apply indexes past the frame
-# when a poorly constrained fit (few signal bins, noisy offsets) extrapolates
-# to a row shift larger than the detector. The job would fail the same way.
+# when a poorly constrained fit (few signal-carrying rows, noisy offsets)
+# extrapolates to a sideways shift larger than the detector. The job would
+# fail the same way.
 _CURVATURE_FAILED = ("the library's curvature fit failed on this signal ({}): too few "
-                     "signal columns, or noise, made the fitted shift larger than the "
+                     "signal rows, or noise, made the fitted shift larger than the "
                      "detector. The tender-herfd/-xes job fails the same way. Check the "
                      "thresholds/background with tender_preview_image.")
 
@@ -120,8 +121,26 @@ class RixsMap:
         return order
 
 
+def _library_id() -> str:
+    """tender-analysis version + git commit, so a library bump that changes the
+    maths (e.g. the b39b2a7 curvature axis) never serves a map cached before
+    it. The version alone is not enough: it stayed 0.2.0 across that fix."""
+    from importlib import metadata
+    try:
+        dist = metadata.distribution("tender-analysis")
+    except metadata.PackageNotFoundError:
+        return ""
+    try:
+        info = json.loads(dist.read_text("direct_url.json") or "{}")
+        commit = (info.get("vcs_info") or {}).get("commit_id") or ""
+    except (OSError, ValueError):
+        commit = ""
+    return f"{dist.version}@{commit}"
+
+
 def _cache_key(m: dict, red: Reduction) -> str:
-    h = hashlib.sha1(json.dumps([m["files"], m["dark_files"]]).encode()).hexdigest()[:10]
+    h = hashlib.sha1(json.dumps([m["files"], m["dark_files"], _library_id()]).encode()
+                     ).hexdigest()[:10]
     return f"{m['label']}__{red.key()}__{h}"
 
 
