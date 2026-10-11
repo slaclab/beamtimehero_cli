@@ -26,6 +26,7 @@ from silx.io.specfile import SpecFile, is_specfile
 logger = logging.getLogger(__name__)
 
 from beamtimehero_cli import config as bl_config
+from beamtimehero_cli import station
 
 _metadata_cache: dict | None = None
 # file_path -> (mtime, size) at last successful parse
@@ -661,7 +662,7 @@ def _energy_scan_prefixes() -> tuple[str, ...]:
     BL15-2 default (``gscan energy``). A station whose energy motor is
     ``mono`` sets e.g. ``gscan mono,kscan``.
     """
-    raw = os.environ.get("BTH_ENERGY_SCAN_PREFIXES", "")
+    raw = os.environ.get("BTH_ENERGY_SCAN_PREFIXES") or station.default("BTH_ENERGY_SCAN_PREFIXES")
     prefixes = tuple(p.strip() for p in raw.split(",") if p.strip())
     return prefixes or ("gscan energy",)
 

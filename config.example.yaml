@@ -182,8 +182,24 @@ env:
   # AGENT_SANDBOX_URL: "http://127.0.0.1:5007"
 
   # =========================================================================
+  # Station — the one setting a deployment makes
+  # =========================================================================
+
+  # The endstation this deployment runs at: "bl15" (BL15-2, default) or
+  # "bl41" (BL4-1). It sets the defaults of every BTH_* station variable
+  # below (bl41: no gap requirement, 67 s count cap, "gscan mono,kscan",
+  # xsum-first counters and plot columns, BL04:State) and the CHERFD
+  # station profile: mono crystals and step size, the scan detector (BL15-2
+  # Vortex, BL4-1 24-element Ge) and its signal, undulator, cscan_daq. An
+  # explicitly set variable below still wins. An unknown name is an error,
+  # never a fallback. `beamtimehero cherfd-read get-station` shows the result.
+  # BTH_STATION: "bl15"
+
+  # =========================================================================
   # Station overrides — the analysis defaults that are site-specific
   # =========================================================================
+  # Each defaults to BTH_STATION's value (BL15-2's when unset). Set one only
+  # to depart from the station.
 
   # Counter auto-pick priority order, comma-separated, highest first. Default
   # "" (built-in order). Set this when your station's signal channel is not

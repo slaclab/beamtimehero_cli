@@ -4,22 +4,29 @@ Format (cscan_box/motion.py parse_cherfd_command)::
 
     cherfd start_eV end1_eV speed1 [end2_eV speed2 ...] freq_Hz
 
+(``cscan`` is accepted as the keyword too -- the BL4-1 UI's name for it.)
+
 Validation applies every layer a command can meet on its way to hardware --
 the SPEC macro's refusal rules, the controller's silent speed clamp, the
 FPGA's millisecond trigger quantization -- and reports each as an *error*
 (will be refused), or a *warning* (will run, but not as written). The
 production simulator (``bridge/simulate.py``) remains the authority on
-whether a motion profile fits the FPGA; this module is the fast, offline
-first pass that needs no cherfd_claude checkout.
+whether a motion profile fits the FPGA, and the live server's
+``/check_command`` is the authority on the mono's soft limits; this module is
+the fast, offline first pass that needs neither.
 """
 from __future__ import annotations
 
 from beamtimehero_cli.science.cherfd import beamline, policy
 
 
+#: Command keywords cherfd_claude accepts (cscan_box/motion.py COMMAND_KEYWORDS).
+COMMAND_KEYWORDS = ("cherfd", "cscan")
+
+
 def _tokens(command: str) -> list[str]:
     parts = (command or "").split()
-    if parts and parts[0].lower() == "cherfd":
+    if parts and parts[0].lower() in COMMAND_KEYWORDS:
         parts = parts[1:]
     return parts
 
@@ -69,8 +76,16 @@ def reverse_command(command: str) -> str:
     return format_command(energies[-1], rev_regions, p["freq_hz"])
 
 
-def validate_command(command: str, crystal: str | None = None) -> dict:
-    """Every refusal and every silent modification the command will meet."""
+def validate_command(command: str, crystal: str | None = None, *,
+                     station: policy.StationProfile,
+                     energy_range_ev: tuple[float, float] | None = None) -> dict:
+    """Every refusal and every silent modification the command will meet.
+
+    ``energy_range_ev`` is the mono's live reach (the server's
+    ``mono_energy_range_eV``, from MOTOR1's soft limits); without it the
+    station's offline window applies, and a station with none (BL4-1) is
+    bounded only by the Bragg cutoff here.
+    """
     errors: list[str] = []
     warnings: list[str] = []
     try:
@@ -79,16 +94,25 @@ def validate_command(command: str, crystal: str | None = None) -> dict:
         return {"ok": False, "command": command, "errors": [str(e)], "warnings": []}
 
     energies = [p["start_ev"]] + [r["end_ev"] for r in p["regions"]]
-    for e in energies:
-        if not policy.ENERGY_MIN_EV <= e <= policy.ENERGY_MAX_EV:
-            errors.append(
-                f"energy {e:g} eV outside {policy.ENERGY_MIN_EV:g}-{policy.ENERGY_MAX_EV:g} eV"
-            )
+    if energy_range_ev is not None:
+        lo, hi = sorted(energy_range_ev)
+        window = "the mono's soft limits"
+    else:
+        lo, hi = station.energy_min_ev, station.energy_max_ev
+        window = f"the {station.label} window"
+    if lo is not None and hi is not None:
+        for e in energies:
+            if not lo <= e <= hi:
+                errors.append(f"energy {e:g} eV outside {lo:g}-{hi:g} eV ({window})")
+    else:
+        warnings.append(f"no offline energy window at {station.label}: the mono's soft limits "
+                        "are checked live (cherfd_check_command)")
     diffs = [b - a for a, b in zip(energies, energies[1:])]
     if any(d == 0 for d in diffs):
         errors.append("zero-length region (two consecutive energies are equal)")
     elif not (all(d > 0 for d in diffs) or all(d < 0 for d in diffs)):
-        errors.append("energies must be monotonic (all increasing or all decreasing)")
+        errors.append("energies must be monotonic (all increasing or all decreasing): a "
+                      "profile has one direction; scan back with reverse")
 
     effective_regions = []
     for i, r in enumerate(p["regions"], start=1):
@@ -117,8 +141,9 @@ def validate_command(command: str, crystal: str | None = None) -> dict:
         e0 = p["start_ev"]
         for i, r in enumerate(effective_regions, start=1):
             try:
-                steps = abs(beamline.motor_steps(e0, r["end_ev"], crystal))
-                t = beamline.region_cruise_time_s(e0, r["end_ev"], r["speed"], crystal)
+                steps = abs(beamline.motor_steps(e0, r["end_ev"], crystal, station=station))
+                t = beamline.region_cruise_time_s(e0, r["end_ev"], r["speed"], crystal,
+                                                  station=station)
             except ValueError as ex:
                 errors.append(f"region {i}: {ex}")
                 break
@@ -146,13 +171,14 @@ def validate_command(command: str, crystal: str | None = None) -> dict:
         "effective_command": effective,
         "reverse_command": reverse_command(command) if not errors else None,
         "parsed": p,
-        "crystal": (crystal or policy.DEFAULT_CRYSTAL).upper(),
+        "station": station.name,
+        "crystal": (crystal or station.default_crystal).upper(),
         "trigger_timing": timing,
         "regions": regions_out,
         "estimated_motion_s": round(sum(r["cruise_time_s"] for r in regions_out), 3)
         if regions_out else None,
         "harmonic_changes": beamline.harmonic_changes(energies[0], energies[-1])
-        if not errors else [],
+        if not errors and station.undulator else [],
         "errors": errors,
         "warnings": warnings,
         "note": "Cruise-only estimate (no ramps). cherfd_simulate_scan runs the production "
@@ -171,6 +197,8 @@ def build_command(
     outer_speed: float = policy.BUILD_OUTER_SPEED,
     freq_hz: float = policy.BUILD_FREQ_HZ,
     crystal: str | None = None,
+    station: policy.StationProfile,
+    energy_range_ev: tuple[float, float] | None = None,
 ) -> dict:
     """Three-region XANES command: fast pre-edge, slow edge, fast post-edge.
 
@@ -185,11 +213,12 @@ def build_command(
         raise ValueError("need 0 < edge_hi_ev < post_edge_ev")
     timing = beamline.trigger_timing(freq_hz)
     raw = beamline.speed_for_points_per_ev(edge_ev, timing["real_freq_hz"],
-                                           edge_points_per_ev, crystal)
+                                           edge_points_per_ev, crystal, station=station)
     edge_speed = round(min(max(raw, policy.SPEED_FACTOR_MIN), policy.SPEED_FACTOR_MAX), 3)
     notes = []
     if edge_speed != round(raw, 3):
-        achieved = timing["real_freq_hz"] / beamline.ev_per_second(edge_ev, edge_speed, crystal)
+        achieved = timing["real_freq_hz"] / beamline.ev_per_second(edge_ev, edge_speed, crystal,
+                                                                   station=station)
         notes.append(
             f"edge speed {raw:.3f} clamped to {edge_speed}; edge density will be "
             f"{achieved:.2f} pts/eV, not {edge_points_per_ev:g} -- change freq_hz to reach it"
@@ -205,12 +234,12 @@ def build_command(
     cmd = format_command(start, regions, int(round(freq_hz)))
     return {"command": cmd, "edge_ev": edge_ev, "edge_speed": edge_speed,
             "requested_edge_points_per_ev": edge_points_per_ev, "notes": notes,
-            "validation": validate_command(cmd, crystal)}
+            "validation": validate_command(cmd, crystal, station=station,
+                                           energy_range_ev=energy_range_ev)}
 
 
 def estimate_acquisition_time(
-    motion_s_per_sweep: float, sweeps: int, reverse: bool,
-    overhead_s: float = policy.PER_SWEEP_OVERHEAD_S,
+    motion_s_per_sweep: float, sweeps: int, reverse: bool, overhead_s: float,
 ) -> dict:
     """Wall time for a multi-sweep acquisition.
 

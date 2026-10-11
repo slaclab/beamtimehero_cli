@@ -6,7 +6,8 @@ Layout written by cherfd_claude (``CherfdController.generate_filename`` /
     scan_data_<root>_<N>_<fwd|rev>_<YYYY-MM-DD_HHMMSS>.pkl              raw FPGA frames
     scan_results_<root>_<N>_<fwd|rev>_<ts>.pkl                          ScanResults object
     scan_results_<root>_<N>_<fwd|rev>_<ts>_dataframe.pkl                merged frames  <- analysed
-    vortex_<root>_<N>_<fwd|rev>_<ts+~1s>.pkl                            Xspress3 ROIs
+    vortex_<root>_<N>_<fwd|rev>_<ts+~1s>.pkl                            Vortex (BL15-2) ROIs
+    ge32_<root>_<N>_<fwd|rev>_<ts+~2s>.pkl  (+ .json)                   Ge detector (BL4-1)
 
 Stopped scans land in ``<data_root>/partial/<file_dir>/partial_scan_results_...``.
 
@@ -30,7 +31,12 @@ _DF_RE = re.compile(
     rf"^(?P<partial>partial_)?scan_results_(?:(?P<root>.+?)_)?(?P<n>\d+)_(?P<dir>fwd|rev)_"
     rf"(?P<ts>{_TS})_dataframe\.pkl$"
 )
-_VORTEX_RE = re.compile(rf"^vortex_(?:(?P<root>.+?)_)?(?P<n>\d+)_(?P<dir>fwd|rev)_(?P<ts>{_TS})\.pkl$")
+#: Per-sweep detector pickles, by file prefix: vortex_ (BL15-2 Xspress3,
+#: xspress/vortex.py) and ge32_ (BL4-1 Ge detector, xspress/ge32.py).
+DETECTOR_FILE_PREFIXES = ("vortex", "ge32")
+_DETECTOR_RE = re.compile(
+    rf"^(?P<kind>{'|'.join(DETECTOR_FILE_PREFIXES)})_(?:(?P<root>.+?)_)?(?P<n>\d+)_(?P<dir>fwd|rev)_"
+    rf"(?P<ts>{_TS})\.pkl$")
 
 
 def _parse_ts(ts: str) -> datetime:
@@ -216,18 +222,20 @@ def select_sweeps(run: dict, sweeps: list[int] | None = None, direction: str = "
     return out
 
 
-def find_vortex_file(sf: SweepFile, max_lag_s: float = 30.0) -> Path | None:
-    """The Xspress3 pickle for a sweep: same root/N/dir, timestamp 0..30 s later."""
+def find_detector_file(sf: SweepFile, max_lag_s: float = 30.0) -> Path | None:
+    """The detector pickle for a sweep (vortex_ or ge32_): same root/N/dir,
+    timestamp 0..30 s after the sweep's own."""
     folder = Path(sf.path).parent
-    head = f"vortex_{sf.root + '_' if sf.root else ''}{sf.sweep}_{sf.direction}_"
     best = None
-    for p in folder.glob(head + "*.pkl"):
-        m = _VORTEX_RE.match(p.name)
-        if not m or (m.group("root") or "") != sf.root:
-            continue
-        lag = (_parse_ts(m.group("ts")) - sf.time).total_seconds()
-        if -2.0 <= lag <= max_lag_s and (best is None or lag < best[0]):
-            best = (lag, p)
+    for kind in DETECTOR_FILE_PREFIXES:
+        head = f"{kind}_{sf.root + '_' if sf.root else ''}{sf.sweep}_{sf.direction}_"
+        for p in folder.glob(head + "*.pkl"):
+            m = _DETECTOR_RE.match(p.name)
+            if not m or (m.group("root") or "") != sf.root:
+                continue
+            lag = (_parse_ts(m.group("ts")) - sf.time).total_seconds()
+            if -2.0 <= lag <= max_lag_s and (best is None or lag < best[0]):
+                best = (lag, p)
     return best[1] if best else None
 
 

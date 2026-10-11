@@ -7,7 +7,7 @@ Provides:
 - **SPEC injection** — motor moves, scans, macro execution against a SPEC server (TCP, GNU screen, or sandbox/mock transports).
 - **Scan data reads** — direct silx-based SPEC file parsing, scan analysis, plotting.
 - **Spectroscopy analysis** — XAS/HERFD descriptors and interpretation, X-ray Raman (energy-loss) reduction, EXAFS chi(k)/Fourier-transform products.
-- **CHERFD continuous scanning** — plan, run and reduce continuous-sweep HERFD through the cherfd control server (`cherfd`, `cherfd-read`, `cherfd-write` trees; `beamtimehero ref cherfd-operations`). Mocked unless `CHERFD_MOCK=0`.
+- **CHERFD continuous scanning** — plan, run and reduce continuous scans on the cscan box through the cherfd control server, at BL15-2 (Vortex) and BL4-1 (24-element Ge) (`cherfd`, `cherfd-read`, `cherfd-write` trees; `beamtimehero ref cherfd-operations`). Mocked unless `CHERFD_MOCK=0`.
 - **Deployment backends** — the same scan-read surface served from S3DF Postgres + pickled scan data; Slack messaging.
 - **Log reads** — beamline control log parsing, search.
 - **Action logging** — every command writes to a local SQLite audit trail.
@@ -166,6 +166,11 @@ Point the CLI at a copy and it applies them:
 cp config.example.yaml config.yaml    # edit, then
 export BEAMTIMEHERO_CONFIG=$PWD/config.yaml
 ```
+
+A deployment picks its endstation with one variable, `BTH_STATION` (`bl15`,
+the default, or `bl41`); every station-specific default -- SPEC beam-status
+and count-time rules, counter priority, the CHERFD detector, crystals and
+undulator -- follows from it, and any single variable can still override it.
 
 Anything already exported wins over the file, so a checked-in baseline plus
 per-host overrides works. A `.env` file is also loaded, but it is resolved

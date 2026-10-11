@@ -90,6 +90,59 @@ def _status_body(res: dict) -> dict:
     return ((res.get("result") or {}).get("status") or {}) if res.get("ok") else {}
 
 
+def _station():
+    """This deployment's station profile (BTH_STATION)."""
+    return config.station()
+
+
+def _crystal(args) -> str:
+    """The crystal set for offline planning: the caller's, else the station's
+    (its crystal file when it has one, as cherfd_claude reads it)."""
+    return beamline.crystal_set(args.get("crystal") or config.station_crystal(), station=_station())
+
+
+def _server_station() -> dict | None:
+    """The live server's GET /station body, or None when unreachable."""
+    res = audited_cherfd("station")
+    return (res.get("result") or {}) if res.get("ok") else None
+
+
+def _energy_range(server: dict | None):
+    rng = (server or {}).get("mono_energy_range_eV")
+    return tuple(rng) if rng and len(rng) == 2 else None
+
+
+def _normalize_command(command: str) -> str:
+    command = (command or "").strip()
+    if not command.split()[:1] or command.split()[0].lower() not in cmd_sci.COMMAND_KEYWORDS:
+        command = "cherfd " + command
+    return command
+
+
+def _needs_undulator(what: str) -> None:
+    st = _station()
+    if not st.undulator:
+        raise ValueError(f"{st.label} has no undulator: {what} does not apply here")
+
+
+def _needs_daq(what: str) -> None:
+    st = _station()
+    if not st.daq_available:
+        raise ValueError(f"the cscan_daq app is not used at {st.label} ({what}); "
+                         "counts there go through SPEC (csct) or cscan_acq")
+
+
+def _station_mismatch(server: dict | None) -> str | None:
+    """Why the live server is not this deployment's station, or None."""
+    if not server or not server.get("station"):
+        return None
+    st = _station()
+    if server["station"] != st.name:
+        return (f"the cherfd server is station {server['station']!r} but this deployment is "
+                f"BTH_STATION={st.name!r}: refusing to plan or scan with the wrong beamline's settings")
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Control -- reads
 # ---------------------------------------------------------------------------
@@ -109,6 +162,53 @@ def t_get_status(args):
             "stop_latched": st.get("state") in ("Stopped", "error"),
         }
     return _as_json(res), []
+
+
+@_tool
+def t_get_station(args):
+    """The deployment's station profile, and what the live server says about it."""
+    st = _station()
+    profile = {
+        "station": st.name, "label": st.label,
+        "detector": st.detector, "detector_label": st.detector_label,
+        "default_signal": st.default_signal, "detector_setup": st.detector_setup,
+        "undulator": st.undulator, "cscan_daq": st.daq_available,
+        "crystals": st.crystal_names, "crystal_in_use_offline": config.station_crystal(st),
+        "motor_step_deg": st.motor_step_deg, "encoder_resolution_deg": st.encoder_resolution_deg,
+        "offline_energy_window_ev": ([st.energy_min_ev, st.energy_max_ev]
+                                     if st.energy_min_ev is not None else None),
+        "per_sweep_overhead_s": st.per_sweep_overhead_s,
+    }
+    server = _server_station()
+    det = audited_cherfd("detector")
+    det_body = (det.get("result") or {}) if det.get("ok") else {}
+    problems = []
+    mismatch = _station_mismatch(server)
+    if mismatch:
+        problems.append(mismatch)
+    if server and server.get("motor_step_degrees") not in (None, st.motor_step_deg):
+        problems.append(f"server motor_step_degrees {server['motor_step_degrees']} != "
+                        f"station profile {st.motor_step_deg}")
+    if det_body.get("detector") not in (None, st.detector, "none"):
+        problems.append(f"server scan detector is {det_body['detector']!r}; {st.label} uses "
+                        f"{st.detector!r}")
+    return _as_json({"ok": not problems, "profile": profile, "server": server,
+                     "server_detector": det_body.get("detector"),
+                     "server_reachable": server is not None, "problems": problems,
+                     "mock": config.mock_enabled()}), []
+
+
+@_tool
+def t_check_command(args):
+    """The server's own dry run of a command against the live mono (read-only)."""
+    command = _normalize_command(args["command"])
+    res = audited_cherfd("check_command", {"command": command})
+    if not res.get("ok"):
+        return _as_json(res), []
+    body = res.get("result") or {}
+    out = {k: v for k, v in body.items() if k != "success"}
+    out["transport"] = res.get("transport")
+    return _as_json(out), []
 
 
 @_tool
@@ -171,15 +271,24 @@ def t_wait_for_scan(args):
                              "state": st.get("state"), "current_scan": st.get("current_scan")}), []
         time.sleep(poll)
     st = _status_body(audited_cherfd("status"))
-    return _as_json({"ok": True, "done": True, "waited_s": round(time.time() - t0, 1),
-                     "polls": polls, "final_state": st.get("state"),
-                     "error_message": st.get("error_message"),
-                     "stopped": st.get("state") == "Stopped",
-                     "next": "cherfd_get_latest_run then cherfd_assess_run_quality"}), []
+    failed = st.get("state") == "error"
+    out = {"ok": not failed, "done": True, "waited_s": round(time.time() - t0, 1),
+           "polls": polls, "final_state": st.get("state"),
+           "error_message": st.get("error_message"),
+           "stopped": st.get("state") == "Stopped",
+           "next": "cherfd_get_latest_run then cherfd_assess_run_quality"}
+    if failed:
+        # the controller ends a sweep in ERROR on purpose: short detector
+        # frames, a profile cut short, the box triggers changed under it
+        out["error"] = f"the scan ended in error: {st.get('error_message')}"
+        out["next"] = ("read error_message; cherfd_clear_stop before the next scan. Data saved "
+                       "before the failure is still on disk (cherfd_get_latest_run)")
+    return _as_json(out), []
 
 
 @_tool
 def t_get_daq_status(args):
+    _needs_daq("cherfd_get_daq_status")
     return _as_json({"health": audited_cherfd("daq_health"),
                      "status": audited_cherfd("daq_status")}), []
 
@@ -188,6 +297,12 @@ def t_get_daq_status(args):
 def t_check_readiness(args):
     """Aggregate pre-flight for a scan. Read-only; says what blocks and what to fix."""
     blockers, warnings, info = [], [], {}
+    station = _station()
+    info["station"] = station.name
+    server = _server_station()
+    mismatch = _station_mismatch(server)
+    if mismatch:
+        blockers.append(mismatch)
     st = audited_cherfd("status")
     if not st.get("ok"):
         blockers.append(f"control server unreachable: {st.get('error')}")
@@ -206,11 +321,35 @@ def t_check_readiness(args):
         warnings.append("no data directory set: files go to the data root (cherfd_set_data_path)")
     if settings.get("ok") and sset.get("mono_enc") is None:
         warnings.append("no stored mono encoder calibration (cherfd_calibrate_encoder)")
-    und = audited_cherfd("undulator_status")
-    u = ((und.get("result") or {}).get("status") or {}) if und.get("ok") else {}
-    info["undulator"] = u
-    if und.get("ok") and not u.get("enabled"):
-        warnings.append("undulator control disabled: gap will not track the scan")
+    u = {}
+    if station.undulator:
+        und = audited_cherfd("undulator_status")
+        u = ((und.get("result") or {}).get("status") or {}) if und.get("ok") else {}
+        info["undulator"] = u
+        if und.get("ok") and not u.get("enabled"):
+            warnings.append("undulator control disabled: gap will not track the scan")
+    det = audited_cherfd("detector")
+    det_name = ((det.get("result") or {}).get("detector")) if det.get("ok") else None
+    info["detector"] = det_name
+    if det_name == "none":
+        warnings.append(f"scan detector is 'none': only the box channels are recorded "
+                        f"(transmission / TFY); the {station.detector} is not read")
+    elif det_name not in (None, station.detector):
+        blockers.append(f"scan detector is {det_name!r}; {station.label} uses {station.detector!r}")
+    box = audited_cherfd("box_status")
+    b = (box.get("result") or {}) if box.get("ok") else {}
+    if box.get("ok") and not b.get("motion_busy"):
+        info["box"] = {k: b.get(k) for k in ("trig", "armed_axes", "idle")}
+        if b.get("count_running"):
+            warnings.append("a count is running on the cscan box (SPEC ct?): the scan waits for it "
+                            "(up to ~70 s) before taking the box")
+        if b.get("triggers_enabled"):
+            blockers.append("cscan box TRIG is Enable with no cherfd scan running: another client "
+                            "(cscan_acq?) or a dead run holds the box; scans refuse")
+        if b.get("armed_axes"):
+            warnings.append(f"axes left armed: {b['armed_axes']}; the next scan disarms them first")
+        if b.get("error"):
+            warnings.append(f"cscan box status: {b['error']}")
     tt = audited_cherfd("table_tracking")
     t = tt.get("result") or {}
     info["table_tracking"] = {"enabled": t.get("enabled"), "anchor": t.get("anchor")}
@@ -220,11 +359,23 @@ def t_check_readiness(args):
         blockers.append(t["crystal_warning"])
     command = args.get("command")
     if command:
-        v = cmd_sci.validate_command(command)
+        command = _normalize_command(command)
+        crystal = (server or {}).get("crystal") or config.station_crystal(station)
+        v = cmd_sci.validate_command(command, crystal, station=station,
+                                     energy_range_ev=_energy_range(server))
         info["command_validation"] = {k: v[k] for k in ("ok", "effective_command", "errors",
                                                         "warnings", "harmonic_changes")}
         blockers += [f"command: {e}" for e in v["errors"]]
-        warnings += [f"command: {w}" for w in v["warnings"]]
+        warnings += [f"command: {w}" for w in v["warnings"] if "checked live" not in w]
+        if v["ok"]:
+            chk = audited_cherfd("check_command", {"command": command})
+            c = chk.get("result") or {}
+            info["live_check"] = {k: c.get(k) for k in ("ok", "error", "theta_start_deg",
+                                                        "theta_end_deg", "crystal")}
+            if chk.get("ok") and c.get("ok") is False:
+                blockers.append(f"command (server check): {c.get('error')}")
+            elif not chk.get("ok"):
+                warnings.append(f"server command check unavailable: {chk.get('error')}")
         if v.get("harmonic_changes") and u.get("enabled"):
             warnings.append("scan range crosses an undulator harmonic change "
                             f"{v['harmonic_changes']}; expect an intensity step there")
@@ -238,8 +389,8 @@ def t_check_readiness(args):
                 blockers.append(f"beam not good: {b.get('reason')}")
         else:
             warnings.append(f"beam status unavailable (spec-read beam_status): {beam.get('error')}")
-    warnings.append("detector ownership cannot be read from here: make sure SPEC has run "
-                    "`xtc 1` so cherfd owns the Xspress3 (else the vortex column is all zero)")
+    if det_name != "none":
+        warnings.append(f"cannot be checked from here: {station.detector_setup}")
     return _as_json({"ok": True, "ready": not blockers, "blockers": blockers,
                      "warnings": warnings, "info": info,
                      "mock": config.mock_enabled()}), []
@@ -251,13 +402,22 @@ def t_check_readiness(args):
 
 @_tool
 def t_start_scan(args):
-    command = (args.get("command") or "").strip()
-    if not command.lower().startswith("cherfd"):
-        command = "cherfd " + command
+    command = _normalize_command(args.get("command") or "")
+    station = _station()
     sweeps = int(args.get("sweeps", 1))
     if not 1 <= sweeps <= policy.SWEEPS_MAX:
         raise ValueError(f"sweeps must be 1..{policy.SWEEPS_MAX}")
-    v = cmd_sci.validate_command(command)
+    undulator_scan = args.get("undulator_scan")
+    undulator_scan = station.undulator if undulator_scan is None else bool(undulator_scan)
+    if undulator_scan and not station.undulator:
+        raise ValueError(f"{station.label} has no undulator: undulator_scan must be false")
+    server = _server_station()
+    mismatch = _station_mismatch(server)
+    if mismatch:
+        return _as_json({"ok": False, "refused": "station", "error": mismatch}), []
+    crystal = (server or {}).get("crystal") or config.station_crystal(station)
+    v = cmd_sci.validate_command(command, crystal, station=station,
+                                 energy_range_ev=_energy_range(server))
     if not v["ok"]:
         return _as_json({"ok": False, "refused": "validation", "errors": v["errors"],
                          "warnings": v["warnings"]}), []
@@ -268,7 +428,7 @@ def t_start_scan(args):
         return _as_json({"ok": False, "refused": "controller_not_idle", "state": pre.get("state"),
                          "hint": "cherfd_wait_for_scan, cherfd_stop_scan or cherfd_clear_stop"}), []
     body = {"command": command, "sweeps": sweeps, "reverse": bool(args.get("reverse", False)),
-            "undulator_scan": bool(args.get("undulator_scan", True)),
+            "undulator_scan": undulator_scan,
             "file_dir": args.get("file_dir"), "file_root": args.get("file_root")}
     res = audited_cherfd("start_acquisition", body, _j(args))
     if not res.get("ok"):
@@ -283,7 +443,7 @@ def t_start_scan(args):
     started = any(bool(s.get("acquisition_active")) or s.get("state") in running
                   for s in (embedded, post))
     per = v["estimated_motion_s"] + policy.PROFILE_SETTLING_S
-    est = cmd_sci.estimate_acquisition_time(per, sweeps, body["reverse"])
+    est = cmd_sci.estimate_acquisition_time(per, sweeps, body["reverse"], station.per_sweep_overhead_s)
     res.update({"started": started, "state_after": post.get("state"),
                 "error_message": post.get("error_message"),
                 "validation_warnings": v["warnings"], "estimate": est})
@@ -311,12 +471,16 @@ def t_reset_controller(args):
 
 @_tool
 def t_stop_gap(args):
+    _needs_undulator("cherfd_stop_gap")
     return _as_json(audited_cherfd("stop_gap", {}, _j(args))), []
 
 
 @_tool
 def t_daq_abort(args):
-    return _as_json(audited_cherfd("daq_abort", {}, _j(args))), []
+    """Abort a cscan_daq count and any ADC stream."""
+    _needs_daq("cherfd_daq_abort")
+    return _as_json({"count": audited_cherfd("daq_abort", {}, _j(args)),
+                     "stream": audited_cherfd("daq_stream_abort", {}, _j(args))}), []
 
 
 @_tool
@@ -332,17 +496,21 @@ def t_set_data_path(args):
 
 @_tool
 def t_set_undulator_tracking(args):
+    if args.get("enable"):
+        _needs_undulator("undulator tracking")
     return _as_json(audited_cherfd("set_undulator_enable", {"enable": args["enable"]}, _j(args))), []
 
 
 @_tool
 def t_set_gap_calibration_offset(args):
+    _needs_undulator("a gap calibration offset")
     return _as_json(audited_cherfd("set_gap_calibration_offset",
                                    {"offset": args["offset_mm"]}, _j(args))), []
 
 
 @_tool
 def t_set_gap_move_latency(args):
+    _needs_undulator("a gap move latency")
     return _as_json(audited_cherfd("set_gap_move_latency", {"latency": args["latency_s"]}, _j(args))), []
 
 
@@ -364,18 +532,28 @@ def t_set_table_anchor(args):
 @_tool
 def t_move_energy(args):
     e = float(args["energy_ev"])
-    if not policy.ENERGY_MIN_EV <= e <= policy.ENERGY_MAX_EV:
-        raise ValueError(f"energy {e} outside {policy.ENERGY_MIN_EV:g}-{policy.ENERGY_MAX_EV:g} eV")
+    station = _station()
+    server = _server_station()
+    mismatch = _station_mismatch(server)
+    if mismatch:
+        raise ValueError(mismatch)
+    rng = _energy_range(server)
+    if rng and not min(rng) <= e <= max(rng):
+        raise ValueError(f"energy {e} outside the mono's reach {min(rng):.0f}-{max(rng):.0f} eV "
+                         "(MOTOR1 soft limits)")
+    # the server answers 409 while a scan (or the gap between its sweeps) owns the mono
     res = audited_cherfd("move_energy", {"energy": e}, _j(args))
-    settings = audited_cherfd("server_settings")
-    offset = float(((settings.get("result") or {}).get("settings") or {}).get(
-        "gap_calibration_offset") or 0.0)
-    res["expected_gap"] = beamline.harmonic_gap(e, offset)
+    if station.undulator:
+        settings = audited_cherfd("server_settings")
+        offset = float(((settings.get("result") or {}).get("settings") or {}).get(
+            "gap_calibration_offset") or 0.0)
+        res["expected_gap"] = beamline.harmonic_gap(e, offset)
     return _as_json(res), []
 
 
 @_tool
 def t_move_gap(args):
+    _needs_undulator("cherfd_move_gap")
     g = float(args["gap_mm"])
     if not policy.GAP_MIN_MM <= g <= policy.GAP_MAX_MM:
         raise ValueError(f"gap {g} outside {policy.GAP_MIN_MM}-{policy.GAP_MAX_MM} mm")
@@ -384,6 +562,7 @@ def t_move_gap(args):
 
 @_tool
 def t_daq_count(args):
+    _needs_daq("cherfd_daq_count")
     body = {"duration_s": float(args.get("duration_s", 1.0)),
             "freq_hz": float(args.get("freq_hz", 10.0)),
             "gate_mode": args.get("gate_mode", "single"), "quick": bool(args.get("quick", False))}
@@ -408,7 +587,7 @@ def t_daq_count(args):
 
 @_tool
 def t_validate_command(args):
-    return _as_json(cmd_sci.validate_command(args["command"], args.get("crystal"))), []
+    return _as_json(cmd_sci.validate_command(args["command"], _crystal(args), station=_station())), []
 
 
 @_tool
@@ -422,9 +601,9 @@ def t_build_command(args):
         edge_info = get_edge_info(args["element"], args.get("edge", "K"))
         edge_ev = edge_info["tabulated_energy_ev"]
     kw = {k: args[k] for k in ("pre_edge_ev", "edge_lo_ev", "edge_hi_ev", "post_edge_ev",
-                               "edge_points_per_ev", "outer_speed", "freq_hz", "crystal")
+                               "edge_points_per_ev", "outer_speed", "freq_hz")
           if args.get(k) is not None}
-    out = cmd_sci.build_command(float(edge_ev), **kw)
+    out = cmd_sci.build_command(float(edge_ev), crystal=_crystal(args), station=_station(), **kw)
     out["edge_info"] = edge_info
     return _as_json(out), []
 
@@ -434,7 +613,7 @@ def t_simulate_scan(args):
     command = args["command"]
     anchor = None
     if args.get("table_anchor_ev") is not None:
-        anchor = {"energy": float(args["table_anchor_ev"]), "crystal": args.get("crystal")}
+        anchor = {"energy": float(args["table_anchor_ev"]), "crystal": _crystal(args)}
     sim = sim_bridge.simulate(command, ramp_type=args.get("ramp_type", "s_ramp"),
                               table=bool(args.get("table", False)), table_anchor=anchor)
     out = sim_bridge.summarize(sim)
@@ -460,19 +639,19 @@ def t_estimate_acquisition_time(args):
         except sim_bridge.SimulatorUnavailable as e:
             source = f"cruise estimate (simulator unavailable: {e})"
     if motion is None:
-        v = cmd_sci.validate_command(command)
+        v = cmd_sci.validate_command(command, _crystal(args), station=_station())
         if not v["ok"]:
             return _as_json({"ok": False, "errors": v["errors"]}), []
         motion = v["estimated_motion_s"] + policy.PROFILE_SETTLING_S
     overhead = args.get("overhead_s")
-    overhead_src = "policy.PER_SWEEP_OVERHEAD_S (measured 2025-10)"
+    overhead_src = f"{_station().label} per-sweep overhead (station profile)"
     if overhead is None and args.get("reference_run_id"):
         run = files.resolve_run(files.require_root(config.data_dir()), run_id=args["reference_run_id"])
         if run["seconds_per_profile"]:
             overhead = max(0.0, run["seconds_per_profile"] - motion)
             overhead_src = f"measured cadence of {run['run_id']} minus profile time"
     if overhead is None:
-        overhead = policy.PER_SWEEP_OVERHEAD_S
+        overhead = _station().per_sweep_overhead_s
     est = cmd_sci.estimate_acquisition_time(motion, sweeps, reverse, float(overhead))
     est.update({"ok": True, "command": command, "motion_source": source,
                 "overhead_source": overhead_src})
@@ -481,6 +660,7 @@ def t_estimate_acquisition_time(args):
 
 @_tool
 def t_undulator_gap_for_energy(args):
+    _needs_undulator("cherfd_undulator_gap_for_energy")
     offset = float(args.get("calibration_offset_mm", 0.0))
     energies = args.get("energies_ev")
     if energies is None and args.get("energy_ev") is not None:
@@ -499,32 +679,37 @@ def t_undulator_gap_for_energy(args):
 
 @_tool
 def t_mono_convert(args):
-    crystal = args.get("crystal")
-    out: dict = {"crystal": (crystal or policy.DEFAULT_CRYSTAL).upper()}
+    station = _station()
+    crystal = _crystal(args)
+    out: dict = {"station": station.name, "crystal": crystal,
+                 "crystal_name": station.crystal_names[crystal]}
     if args.get("energy_ev") is not None:
         e = float(args["energy_ev"])
         out["energy_ev"] = e
-        out["bragg_deg"] = beamline.bragg_angle_deg(e, crystal)
-        out["ev_per_s_at_speed_1"] = beamline.ev_per_second(e, 1.0, crystal)
+        out["bragg_deg"] = beamline.bragg_angle_deg(e, crystal, station=station)
+        out["ev_per_s_at_speed_1"] = beamline.ev_per_second(e, 1.0, crystal, station=station)
         if args.get("anchor_ev") is not None:
-            out["beam_height_offset_mm"] = beamline.beam_height_offset_mm(e, float(args["anchor_ev"]), crystal)
+            out["beam_height_offset_mm"] = beamline.beam_height_offset_mm(
+                e, float(args["anchor_ev"]), crystal, station=station)
     elif args.get("bragg_deg") is not None:
         out["bragg_deg"] = float(args["bragg_deg"])
-        out["energy_ev"] = beamline.energy_from_bragg(out["bragg_deg"], crystal)
+        out["energy_ev"] = beamline.energy_from_bragg(out["bragg_deg"], crystal, station=station)
     elif args.get("encoder") is not None:
         if args.get("calibration_offset_deg") is None:
             raise ValueError("encoder conversion needs calibration_offset_deg "
                              "(mono_xtal - mono_enc*resolution, see cherfd_get_server_settings)")
-        ang = beamline.angle_from_encoder(float(args["encoder"]), float(args["calibration_offset_deg"]))
+        ang = beamline.angle_from_encoder(float(args["encoder"]), float(args["calibration_offset_deg"]),
+                                          station=station)
         out.update(encoder=float(args["encoder"]), bragg_deg=ang,
-                   energy_ev=beamline.energy_from_bragg(ang, crystal))
+                   energy_ev=beamline.energy_from_bragg(ang, crystal, station=station))
     else:
         raise ValueError("give one of energy_ev, bragg_deg, encoder")
     if args.get("freq_hz") and out.get("energy_ev"):
         out["trigger_timing"] = beamline.trigger_timing(float(args["freq_hz"]))
         if args.get("points_per_ev"):
             out["speed_for_points_per_ev"] = beamline.speed_for_points_per_ev(
-                out["energy_ev"], out["trigger_timing"]["real_freq_hz"], float(args["points_per_ev"]), crystal)
+                out["energy_ev"], out["trigger_timing"]["real_freq_hz"], float(args["points_per_ev"]),
+                crystal, station=station)
     return _as_json(out), []
 
 
@@ -551,7 +736,7 @@ def _clean_selected(args) -> tuple[dict, list[dict]]:
 
 
 def _signal_args(args) -> tuple[str, str | None]:
-    return args.get("signal") or policy.DEFAULT_SIGNAL, args.get("normalize_by") or None
+    return args.get("signal") or _station().default_signal, args.get("normalize_by") or None
 
 
 def _bin(cleaned: list[dict], args, signal, norm):
@@ -572,7 +757,8 @@ def _selection_echo(run, cleaned, signal, norm, args) -> dict:
             "signal": signal, "normalize_by": norm, "alignment": args.get("align", "trigger"),
             "direction_correction_ev": args.get("direction_correction_ev") or 0.0}
     if not args.get("signal"):
-        echo["signal_warning"] = (f"signal defaulted to {policy.DEFAULT_SIGNAL!r}; set it explicitly "
+        echo["signal_warning"] = (f"signal defaulted to {_station().default_signal!r} "
+                                  f"({_station().label}); set it explicitly "
                                   "(counter selection is an experiment input)")
     if not norm:
         echo["normalization_note"] = ("no normalizer: intensity includes ring-current/I0 "
@@ -630,7 +816,7 @@ def t_read_sweep(args):
     n = len(a["absev"])
     max_points = int(args.get("max_points", 200))
     step = max(1, int(np.ceil(n / max_points)))
-    cols = args.get("columns") or ["trigger", "absev", policy.DEFAULT_SIGNAL]
+    cols = args.get("columns") or ["trigger", "absev", _station().default_signal]
     cols = [x for x in cols if x in a]
     out = {"run_id": run["run_id"], "sweep": sel[0].label, "file": Path(sel[0].path).name,
            "command": c["commanded"]["command"], "columns_available": sorted(a),
@@ -651,7 +837,8 @@ def t_assess_run_quality(args):
     per = []
     for c in cleaned:
         q = frames.sweep_quality(c, signal=signal, expected_range=c["commanded"]["energy_range"],
-                                 expected_freq_hz=c["commanded"]["freq_hz"])
+                                 expected_freq_hz=c["commanded"]["freq_hz"],
+                                 range_shortfall_warn_ev=_station().range_shortfall_warn_ev)
         per.append({"sweep": c["sweep"].label, "verdict": q["verdict"], "issues": q["issues"],
                     "signal": q["signal"], "coverage": q["coverage"],
                     "frames": c["qc"]["frames_kept"],
@@ -766,13 +953,14 @@ def t_assess_energy_calibration(args):
         edge_info = get_edge_info(args["element"], args.get("edge", "K"))
         ref = edge_info["tabulated_energy_ev"]
     res = analysis.energy_calibration(b["energy"], b["merged"], ref,
-                                      crystal=args.get("crystal"))
+                                      crystal=_crystal(args), station=_station())
     res["edge_info"] = edge_info
     return _as_json({**_selection_echo(run, cleaned, signal, norm, args), **res}), []
 
 
 @_tool
 def t_check_gap_tracking(args):
+    _needs_undulator("cherfd_check_gap_tracking")
     run, cleaned = _clean_selected(args)
     per = []
     for c in cleaned:
@@ -828,7 +1016,7 @@ def t_plot_sweep_diagnostics(args):
     signal, _ = _signal_args(args)
     a = c["arrays"]
     ideal = None
-    if "gap" in a:
+    if "gap" in a and _station().undulator:
         ideal = np.array([beamline.harmonic_gap(e)["ideal_gap_mm"] or np.nan for e in a["absev"]])
         r = frames.gap_tracking(a["absev"], a["gap"],
                                 lambda e: beamline.harmonic_gap(e)["ideal_gap_mm"] or np.nan)
@@ -913,6 +1101,8 @@ def t_search_logs(args):
 HANDLERS: dict[str, callable] = {
     # control reads
     "cherfd_get_status": t_get_status,
+    "cherfd_get_station": t_get_station,
+    "cherfd_check_command": t_check_command,
     "cherfd_get_server_settings": t_get_server_settings,
     "cherfd_get_undulator_status": t_get_undulator_status,
     "cherfd_get_table_tracking": t_get_table_tracking,

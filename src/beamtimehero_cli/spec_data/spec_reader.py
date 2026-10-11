@@ -19,13 +19,16 @@ from pathlib import Path
 import numpy as np
 from silx.io.spech5 import SpecH5
 
+from beamtimehero_cli import station
+
 logger = logging.getLogger(__name__)
 
 # Default y-column preferences (first match wins). Stations can override
 # via BTH_DEFAULT_Y_COLUMNS (comma-separated); the default stays BL15-2.
 DEFAULT_Y_COLUMNS = [
     c.strip()
-    for c in os.environ.get("BTH_DEFAULT_Y_COLUMNS", "vortDT,I0,I1").split(",")
+    for c in (os.environ.get("BTH_DEFAULT_Y_COLUMNS")
+               or station.default("BTH_DEFAULT_Y_COLUMNS", "vortDT,I0,I1")).split(",")
     if c.strip()
 ] or ["vortDT", "I0", "I1"]
 

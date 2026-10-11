@@ -33,6 +33,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from beamtimehero_cli import station
 from beamtimehero_cli.config import DATA_DIR, SPEC_MOCK, SPEC_TRANSPORT
 from beamtimehero_cli.spec_control import (
     sandbox_client,
@@ -154,9 +155,10 @@ def _positive_float(raw: str) -> Optional[float]:
 
 
 _BEAM_STATUS_REQUIRES_GAP: bool = _flag(
-    os.environ.get("BTH_BEAM_STATUS_REQUIRES_GAP", ""), True)
+    (os.environ.get("BTH_BEAM_STATUS_REQUIRES_GAP")
+     or station.default("BTH_BEAM_STATUS_REQUIRES_GAP")), True)
 _MAX_COUNT_TIME_S: Optional[float] = _positive_float(
-    os.environ.get("BTH_MAX_COUNT_TIME_S", ""))
+    os.environ.get("BTH_MAX_COUNT_TIME_S") or station.default("BTH_MAX_COUNT_TIME_S"))
 
 
 def set_beam_status_requires_gap(required: bool) -> None:

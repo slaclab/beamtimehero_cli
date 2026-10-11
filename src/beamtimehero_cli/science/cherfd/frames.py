@@ -31,13 +31,26 @@ import numpy as np
 
 from beamtimehero_cli.science.cherfd import policy
 
-#: Columns that are FPGA ADC channels (offset-binary).
+#: Columns that are FPGA ADC channels.
 def is_adc(name: str) -> bool:
     return name.startswith("adc_")
 
 
-def adc_signed(values: np.ndarray) -> np.ndarray:
-    return np.asarray(values, dtype=float) - policy.ADC_OFFSET
+def adc_counts(values: np.ndarray) -> tuple[np.ndarray, bool]:
+    """ADC column as signed 16-bit counts, and whether it had to be decoded.
+
+    cherfd_claude decodes ADC words when it writes a sweep since 2026-10-08
+    (``data_frame.py``: (word - 2**31) / 2**16, signed counts, not volts).
+    Older sweeps hold the raw offset-binary word (~2.1e9 at zero input).
+    A decoded value can never exceed ``policy.ADC_COUNTS_MAX`` in magnitude,
+    so any value beyond it marks a column of raw words, which is decoded the
+    same way here: one unit for old and new data.
+    """
+    v = np.asarray(values, dtype=float)
+    finite = v[np.isfinite(v)]
+    if finite.size and np.abs(finite).max() > policy.ADC_COUNTS_MAX:
+        return (v - policy.ADC_OFFSET) / policy.ADC_WORD_SCALE, True
+    return v, False
 
 
 def infer_period_us(trig_1: np.ndarray, trig_2: np.ndarray | None = None) -> float | None:
@@ -160,8 +173,13 @@ def clean_sweep(
 
 
 def sweep_quality(clean: dict, *, signal: str, expected_range: tuple[float, float] | None = None,
-                  expected_freq_hz: float | None = None) -> dict:
-    """Verdict + issues for one cleaned sweep."""
+                  expected_freq_hz: float | None = None,
+                  range_shortfall_warn_ev: float = 2.0) -> dict:
+    """Verdict + issues for one cleaned sweep.
+
+    ``range_shortfall_warn_ev`` is the station's (``StationProfile``): BL4-1's
+    mono drive slack leaves a sweep that starts by reversing ~2 eV short.
+    """
     a, qc = clean["arrays"], clean["qc"]
     issues: list[dict] = []
 
@@ -197,8 +215,12 @@ def sweep_quality(clean: dict, *, signal: str, expected_range: tuple[float, floa
             "zero_fraction": round(float((s == 0).mean()), 4) if s.size else None,
         }
         if s.size == 0 or np.all(s == 0):
-            hint = (" -- the Xspress3 was probably still owned by SPEC (run `xtc 1` in SPEC "
-                    "before cherfd scans)") if signal == "vortex" else ""
+            hint = {
+                "vortex": " -- the Xspress3 was probably still owned by SPEC (run `xtc 1` in SPEC "
+                          "before cherfd scans)",
+                "xsum": " -- check the xsp32 service is running and the box gate (DO1) reaches "
+                        "the Xspress TTL input",
+            }.get(signal, "")
             add("fail", "signal_all_zero", f"signal {signal!r} is all zero{hint}")
         elif sig_stats["zero_fraction"] > 0.2:
             add("warn", "signal_zeros", f"{sig_stats['zero_fraction']:.0%} of {signal!r} frames are zero")
@@ -214,7 +236,7 @@ def sweep_quality(clean: dict, *, signal: str, expected_range: tuple[float, floa
             lo, hi = sorted(expected_range)
             short = max(coverage["e_min"] - lo, hi - coverage["e_max"], 0.0)
             coverage["shortfall_ev"] = round(short, 3)
-            if short > 2.0:
+            if short > range_shortfall_warn_ev:
                 add("warn", "incomplete_range",
                     f"sweep covers {coverage['e_min']:.1f}-{coverage['e_max']:.1f} eV of "
                     f"{lo:g}-{hi:g} eV (partial or stopped sweep?)")

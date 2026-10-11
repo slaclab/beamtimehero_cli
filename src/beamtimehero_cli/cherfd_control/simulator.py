@@ -15,6 +15,7 @@ emit on import (``setting crystal``) cannot corrupt the JSON.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 
 from beamtimehero_cli.cherfd_control import settings as config
@@ -54,10 +55,15 @@ def simulate(command: str, *, ramp_type: str = "s_ramp", table: bool = False,
         )
     req = {"command": command, "ramp_type": ramp_type, "table": bool(table),
            "table_anchor": table_anchor}
+    # The checkout needs a station, and would otherwise take the machine's
+    # confs/station file: pin it to this deployment's. Offline keeps Channel
+    # Access on localhost (the simulator never calls EPICS; this makes sure).
+    env = {**os.environ, "CHERFD_STATION": config.station().name, "CHERFD_OFFLINE": "1"}
+    env.pop("CHERFD_OFFLINE_ADDR_LIST", None)
     try:
         proc = subprocess.run(
             [config.simulator_python(), "-c", _RUNNER, str(proj), json.dumps(req)],
-            capture_output=True, text=True, timeout=timeout_s, cwd=str(proj),
+            capture_output=True, text=True, timeout=timeout_s, cwd=str(proj), env=env,
         )
     except subprocess.TimeoutExpired:
         raise SimulatorUnavailable(f"simulator timed out after {timeout_s} s") from None

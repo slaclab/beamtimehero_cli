@@ -19,10 +19,19 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from beamtimehero_cli.spec_data.cherfd.files import SweepFile, find_vortex_file
+import re
 
-#: Columns that come from the Xspress3 rather than the FPGA frame.
-DETECTOR_COLUMNS = ("vortex", "roi1", "roi_double", "vortex_intensity")
+from beamtimehero_cli.spec_data.cherfd.files import SweepFile, find_detector_file
+
+#: Columns that come from a detector rather than the FPGA frame: the BL15-2
+#: Vortex (vortex = roi1 + 2*roi_double) and the BL4-1 Ge detector (photons
+#: per element xsNN, sums xsum/xsA/xsB, raw ROIs r1_NN/r2_NN in its own file).
+DETECTOR_COLUMNS = ("vortex", "roi1", "roi_double", "vortex_intensity", "xsum", "xsA", "xsB")
+_DETECTOR_COLUMN_RE = re.compile(r"^(xs\d{2}|r[12]_\d{2})$")
+
+
+def is_detector_column(name: str) -> bool:
+    return name in DETECTOR_COLUMNS or bool(_DETECTOR_COLUMN_RE.match(name))
 
 
 class _Stub:
@@ -97,24 +106,25 @@ def load_frame_table(sf: SweepFile) -> pd.DataFrame:
 def load_sweep_arrays(sf: SweepFile) -> tuple[dict, dict, dict]:
     """(fpga_columns, detector_columns, provenance) as float arrays.
 
-    Detector columns come from the separate ``vortex_*.pkl`` when present
-    (it also carries roi1/roi_double), else from the merged table's
-    ``vortex`` column, which is the same frames in the same order.
+    Detector columns come from the sweep's own detector file when present
+    (``vortex_*.pkl`` with roi1/roi_double, or ``ge32_*.pkl`` with the raw
+    ROIs too), else from the merged table's detector columns, which are the
+    same frames in the same order.
     """
     df = load_frame_table(sf)
-    fpga = {c: df[c].to_numpy() for c in df.columns if c not in DETECTOR_COLUMNS}
+    fpga = {c: df[c].to_numpy() for c in df.columns if not is_detector_column(c)}
     det: dict[str, np.ndarray] = {}
     prov = {"file": Path(sf.path).name, "detector_source": None}
-    vpath = find_vortex_file(sf)
+    vpath = find_detector_file(sf)
     if vpath is not None:
         try:
             v = pd.read_pickle(vpath).apply(pd.to_numeric, errors="coerce").astype(float)
-            det = {c: v[c].to_numpy() for c in v.columns}
+            det = {c: v[c].to_numpy() for c in v.columns if is_detector_column(c)}
             prov["detector_source"] = vpath.name
         except Exception as e:  # noqa: BLE001
             prov["detector_error"] = f"{vpath.name}: {e}"
     if not det:
-        det = {c: df[c].to_numpy() for c in df.columns if c in DETECTOR_COLUMNS}
+        det = {c: df[c].to_numpy() for c in df.columns if is_detector_column(c)}
         if det:
             prov["detector_source"] = "merged table (row order == detector frame order)"
     return fpga, det, prov

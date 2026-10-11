@@ -148,7 +148,8 @@ def sweep_drift(sweeps: list[dict], *, signal: str, normalize_by: str | None,
             "verdict": "drift detected" if flags else "stable"}
 
 
-def energy_calibration(energy, values, reference_e0_ev: float | None, crystal: str | None = None) -> dict:
+def energy_calibration(energy, values, reference_e0_ev: float | None, crystal: str | None = None, *,
+                       station: policy.StationProfile) -> dict:
     e0 = _e0(energy, values)
     if e0 is None:
         raise ValueError("could not locate an edge (E0) in the merged spectrum")
@@ -158,14 +159,14 @@ def energy_calibration(energy, values, reference_e0_ev: float | None, crystal: s
         out["note"] = "give reference_e0_ev (or element/edge) to get a correction"
         return out
     delta = e0["e0_ev"] - float(reference_e0_ev)
-    th_meas = beamline.bragg_angle_deg(e0["e0_ev"], crystal)
-    th_ref = beamline.bragg_angle_deg(float(reference_e0_ev), crystal)
+    th_meas = beamline.bragg_angle_deg(e0["e0_ev"], crystal, station=station)
+    th_ref = beamline.bragg_angle_deg(float(reference_e0_ev), crystal, station=station)
     dtheta = th_ref - th_meas
     out.update({
         "reference_e0_ev": float(reference_e0_ev),
         "measured_minus_reference_ev": round(delta, 4),
         "bragg_angle_correction_deg": dtheta,
-        "encoder_ticks_equivalent": round(dtheta / beamline.MONO_ENCODER_RESOLUTION, 1),
+        "encoder_ticks_equivalent": round(dtheta / station.encoder_resolution_deg, 1),
         "interpretation": (
             "Add bragg_angle_correction_deg to the mono calibration offset (mono_xtal) to map "
             "the measured edge onto the reference. A constant angle offset is not a constant eV "

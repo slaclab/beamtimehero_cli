@@ -43,6 +43,32 @@ def http_timeout_s() -> float:
 
 
 # ---------------------------------------------------------------------------
+# Station
+# ---------------------------------------------------------------------------
+
+def station():
+    """The deployment's CHERFD station profile (``BTH_STATION``, see station.py)."""
+    from beamtimehero_cli import station as bth_station
+    from beamtimehero_cli.science.cherfd.policy import STATION_PROFILES
+    return STATION_PROFILES[bth_station.station_name()]
+
+
+def station_crystal(profile=None) -> str:
+    """The crystal set in use when the server can't say: the station's crystal
+    file (BL4-1: SPEC's mono.cfg, as cherfd_claude reads it) when present and
+    valid, else its default."""
+    profile = profile or station()
+    if profile.crystal_file:
+        try:
+            value = Path(profile.crystal_file).read_text(encoding="utf-8").strip().upper()
+        except OSError:
+            value = ""
+        if value in profile.lattice_factor:
+            return value
+    return profile.default_crystal
+
+
+# ---------------------------------------------------------------------------
 # The cherfd_claude checkout (simulator, logs, data)
 # ---------------------------------------------------------------------------
 

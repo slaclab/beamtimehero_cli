@@ -48,7 +48,7 @@ def send(cmd: RestCommand, body: dict | None) -> Reply:
     timeout = cmd.timeout_s or config.http_timeout_s()
     try:
         if cmd.method == "GET":
-            r = requests.get(url, timeout=timeout)
+            r = requests.get(url, params=body or None, timeout=timeout)
         else:
             r = requests.post(url, json=body or {}, timeout=timeout)
     except requests.RequestException as e:

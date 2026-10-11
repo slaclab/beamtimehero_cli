@@ -11,7 +11,8 @@ from __future__ import annotations
 _SRV = "cherfd control server REST API (server/server.py, default :5002); mock unless CHERFD_MOCK=0."
 _DAQ = "cscan_daq FastAPI app (cscan_daq/app.py, default :5004); mock unless CHERFD_MOCK=0."
 _DATA = ("Sweep pickles under CHERFD_DATA_DIR/<file_dir>/: scan_results_*_dataframe.pkl (frames), "
-         "vortex_*.pkl (Xspress3), scan_results_*.pkl (ScanResults via stub unpickler).")
+         "vortex_*.pkl (BL15-2 Xspress3) or ge32_*.pkl (BL4-1 Ge detector), scan_results_*.pkl "
+         "(ScanResults via stub unpickler).")
 
 
 def _e(long, func, out, source, detail, depends=(), mutates=False):
@@ -39,8 +40,19 @@ CHERFD_LINEAGE: dict[str, dict] = {
     "cherfd_get_status": _read(
         "status", "Controller state machine and current scan; also /spec_status for 'done'.",
         "JSON: envelope + summary {state, acquisition_active, done, current_scan, stop_latched}"),
+    "cherfd_get_station": _e(
+        "The deployment's station profile (BTH_STATION, science/cherfd/policy.py "
+        "STATION_PROFILES) next to the server's /station and /get_detector, with any "
+        "disagreement listed.",
+        "tools_cherfd.t_get_station -> audited_cherfd('station'), audited_cherfd('detector')",
+        "JSON: {ok, profile, server, server_detector, problems}", "cherfd_server", _SRV),
+    "cherfd_check_command": _read(
+        "check_command", "The server's dry run of /start_acquisition's command check against the "
+        "live MOTOR1 soft limits, DIR and MRES; writes nothing.",
+        "JSON: {ok, error | start_eV, final_eV, direction, steps, theta_start_deg, theta_end_deg, "
+        "crystal, table_targets, mono_energy_range_eV}", ["cherfd_validate_command"]),
     "cherfd_get_server_settings": _read(
-        "server_settings", "Persisted controller settings (server_settings.json on the host).",
+        "server_settings", "Persisted controller settings (server_settings_<station>.json on the host).",
         "JSON: settings dict"),
     "cherfd_get_undulator_status": _read(
         "undulator_status", "Undulator control flag, harmonic and gap as the controller sees them.",

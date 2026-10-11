@@ -99,7 +99,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="lede">The scientific core of the toolbelt: what each function does, what it is called by, and what it cites. Generated from the source tree, so a new function appears here by existing. Regenerate with <code>python -m beamtimehero_cli.docgen_science</code>.</p>
 <div class="statstrip">
 <div class="stat"><b>169</b><span>functions</span></div>
-<div class="stat"><b>134</b><span>public</span></div>
+<div class="stat"><b>135</b><span>public</span></div>
 <div class="stat"><b>41</b><span>modules</span></div>
 <div class="stat"><b>47</b><span>cited methods</span></div>
 <div class="stat"><b>60</b><span>attribution gaps</span></div>
@@ -955,7 +955,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>used by</b> cherfd cherfd-analyze-sweep-drift</p>
 </div>
 <div class="fn" data-hay="energy_calibration cherfd.analysis  cherfd cherfd-assess-energy-calibration">
-<span class="sig"><span class="fname">energy_calibration</span>(energy, values, reference_e0_ev, crystal=...)</span>
+<span class="sig"><span class="fname">energy_calibration</span>(energy, values, reference_e0_ev, crystal=..., *, station)</span>
 <p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration</p>
 </div>
 <div class="fn priv" data-hay="_e0 cherfd.analysis  cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-compare-directions">
@@ -964,47 +964,52 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </div>
 <div class="modblock">
-<div class="modhead"><span class="mpath">cherfd.beamline</span><span class="mdoc">Mono, undulator and trigger physics for BL15-2 CHERFD. Pure functions.</span></div>
-<div class="fn const" data-hay="cherfd.beamline hc_ev_angstrom _rad_2_deg _deg_2_rad mono_dspacing lattice_factor mono_min_gap_mm mono_encoder_resolution">
-<p class="users"><b>constants</b> <code>HC_EV_ANGSTROM</code>, <code>_RAD_2_DEG</code>, <code>_DEG_2_RAD</code>, <code>MONO_DSPACING</code>, <code>LATTICE_FACTOR</code>, <code>MONO_MIN_GAP_MM</code>, <code>MONO_ENCODER_RESOLUTION</code></p>
+<div class="modhead"><span class="mpath">cherfd.beamline</span><span class="mdoc">Mono, undulator and trigger physics for CHERFD. Pure functions.</span></div>
+<div class="fn const" data-hay="cherfd.beamline hc_ev_angstrom _rad_2_deg _deg_2_rad">
+<p class="users"><b>constants</b> <code>HC_EV_ANGSTROM</code>, <code>_RAD_2_DEG</code>, <code>_DEG_2_RAD</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
 </div>
+<div class="fn" data-hay="crystal_set cherfd.beamline the crystal set letter, checked against the station&#x27;s sets. cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-mono-convert cherfd cherfd-simulate-scan cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">crystal_set</span>(crystal, *, station)</span>
+<p class="fdoc">The crystal set letter, checked against the station&#x27;s sets.</p>
+<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-mono-convert, cherfd cherfd-simulate-scan, cherfd cherfd-validate-command +2 more</p>
+</div>
 <div class="fn" data-hay="bragg_angle_deg cherfd.beamline bragg angle (deg) for a photon energy on crystal set a or b. cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-mono-convert cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
-<span class="sig"><span class="fname">bragg_angle_deg</span>(energy_ev, crystal=...)</span>
+<span class="sig"><span class="fname">bragg_angle_deg</span>(energy_ev, crystal=..., *, station)</span>
 <p class="fdoc">Bragg angle (deg) for a photon energy on crystal set A or B.</p>
 <p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-mono-convert, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness +1 more</p>
 </div>
 <div class="fn" data-hay="energy_from_bragg cherfd.beamline  cherfd cherfd-mono-convert">
-<span class="sig"><span class="fname">energy_from_bragg</span>(angle_deg, crystal=...)</span>
+<span class="sig"><span class="fname">energy_from_bragg</span>(angle_deg, crystal=..., *, station)</span>
 <p class="users"><b>used by</b> cherfd cherfd-mono-convert</p>
 </div>
 <div class="fn" data-hay="angle_from_encoder cherfd.beamline encoder ticks to bragg angle, given the stored calibration offset. cherfd cherfd-mono-convert">
-<span class="sig"><span class="fname">angle_from_encoder</span>(encoder, calibration_offset_deg)</span>
+<span class="sig"><span class="fname">angle_from_encoder</span>(encoder, calibration_offset_deg, *, station)</span>
 <p class="fdoc">Encoder ticks to Bragg angle, given the stored calibration offset.</p>
 <p class="users"><b>used by</b> cherfd cherfd-mono-convert</p>
 </div>
 <div class="fn" data-hay="encoder_calibration_offset cherfd.beamline offset that maps ``encoder`` onto ``angle_deg`` (utils/mono.set_mono_offset).">
-<span class="sig"><span class="fname">encoder_calibration_offset</span>(angle_deg, encoder)</span>
+<span class="sig"><span class="fname">encoder_calibration_offset</span>(angle_deg, encoder, *, station)</span>
 <p class="fdoc">Offset that maps ``encoder`` onto ``angle_deg`` (utils/mono.set_mono_offset).</p>
 <p class="users"><span class="none">not reached from any catalog tool</span></p>
 </div>
 <div class="fn" data-hay="motor_steps cherfd.beamline signed motor steps between two energies (cscan_box/motion.get_num_steps). cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
-<span class="sig"><span class="fname">motor_steps</span>(start_ev, end_ev, crystal=...)</span>
+<span class="sig"><span class="fname">motor_steps</span>(start_ev, end_ev, crystal=..., *, station)</span>
 <p class="fdoc">Signed motor steps between two energies (cscan_box/motion.get_num_steps).</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
 </div>
 <div class="fn" data-hay="ev_per_second cherfd.beamline cruise scan rate |de/dt| at a speed factor (ev/s). cherfd cherfd-build-command cherfd cherfd-mono-convert">
-<span class="sig"><span class="fname">ev_per_second</span>(energy_ev, speed_factor, crystal=...)</span>
+<span class="sig"><span class="fname">ev_per_second</span>(energy_ev, speed_factor, crystal=..., *, station)</span>
 <p class="fdoc">Cruise scan rate |dE/dt| at a speed factor (eV/s).</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-mono-convert</p>
 </div>
 <div class="fn" data-hay="speed_for_points_per_ev cherfd.beamline speed factor that yields ``points_per_ev`` frames/ev at ``freq_hz`` (unclamped). cherfd cherfd-build-command cherfd cherfd-mono-convert">
-<span class="sig"><span class="fname">speed_for_points_per_ev</span>(energy_ev, freq_hz, points_per_ev, crystal=...)</span>
+<span class="sig"><span class="fname">speed_for_points_per_ev</span>(energy_ev, freq_hz, points_per_ev, crystal=..., *, station)</span>
 <p class="fdoc">Speed factor that yields ``points_per_ev`` frames/eV at ``freq_hz`` (unclamped).</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-mono-convert</p>
 </div>
 <div class="fn" data-hay="region_cruise_time_s cherfd.beamline cruise time for one region: |delta theta| / angular velocity (no ramps). cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
-<span class="sig"><span class="fname">region_cruise_time_s</span>(start_ev, end_ev, speed_factor, crystal=...)</span>
+<span class="sig"><span class="fname">region_cruise_time_s</span>(start_ev, end_ev, speed_factor, crystal=..., *, station)</span>
 <p class="fdoc">Cruise time for one region: |delta theta| / angular velocity (no ramps).</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
 </div>
@@ -1028,17 +1033,17 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-undulator-gap-for-energy, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness +1 more</p>
 </div>
 <div class="fn" data-hay="beam_height_offset_mm cherfd.beamline beam-height change at the sample, 2*min_gap*(cos theta - cos theta_anchor). cherfd cherfd-mono-convert">
-<span class="sig"><span class="fname">beam_height_offset_mm</span>(energy_ev, anchor_ev, crystal=...)</span>
+<span class="sig"><span class="fname">beam_height_offset_mm</span>(energy_ev, anchor_ev, crystal=..., *, station)</span>
 <p class="fdoc">Beam-height change at the sample, 2*MIN_GAP*(cos theta - cos theta_anchor).</p>
 <p class="users"><b>used by</b> cherfd cherfd-mono-convert</p>
-</div>
-<div class="fn priv" data-hay="_crystal cherfd.beamline  cherfd cherfd-assess-energy-calibration cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-mono-convert cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
-<span class="sig"><span class="fname">_crystal</span>(crystal)</span>
-<p class="users"><b>used by</b> cherfd cherfd-assess-energy-calibration, cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-mono-convert, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness +1 more</p>
 </div>
 </div>
 <div class="modblock">
 <div class="modhead"><span class="mpath">cherfd.command</span><span class="mdoc">The cherfd command string: parse, validate, reverse, build, time.</span></div>
+<div class="fn const" data-hay="cherfd.command command_keywords">
+<p class="users"><b>constants</b> <code>COMMAND_KEYWORDS</code></p>
+<p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
+</div>
 <div class="fn" data-hay="parse_command cherfd.command split a command into start, regions [(end_ev, speed)], freq. raises valueerror. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">parse_command</span>(command)</span>
 <p class="fdoc">Split a command into start, regions [(end_eV, speed)], freq. Raises ValueError.</p>
@@ -1055,17 +1060,17 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
 </div>
 <div class="fn" data-hay="validate_command cherfd.command every refusal and every silent modification the command will meet. cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
-<span class="sig"><span class="fname">validate_command</span>(command, crystal=...)</span>
+<span class="sig"><span class="fname">validate_command</span>(command, crystal=..., *, station, energy_range_ev=...)</span>
 <p class="fdoc">Every refusal and every silent modification the command will meet.</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
 </div>
 <div class="fn" data-hay="build_command cherfd.command three-region xanes command: fast pre-edge, slow edge, fast post-edge. cherfd cherfd-build-command">
-<span class="sig"><span class="fname">build_command</span>(edge_ev, *, pre_edge_ev=..., edge_lo_ev=..., edge_hi_ev=..., post_edge_ev=..., edge_points_per_ev=..., outer_speed=..., freq_hz=..., crystal=...)</span>
+<span class="sig"><span class="fname">build_command</span>(edge_ev, *, pre_edge_ev=..., edge_lo_ev=..., edge_hi_ev=..., post_edge_ev=..., edge_points_per_ev=..., outer_speed=..., freq_hz=..., crystal=..., station, energy_range_ev=...)</span>
 <p class="fdoc">Three-region XANES command: fast pre-edge, slow edge, fast post-edge.</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command</p>
 </div>
 <div class="fn" data-hay="estimate_acquisition_time cherfd.command wall time for a multi-sweep acquisition. cherfd cherfd-estimate-acquisition-time cherfd-write cherfd-start-scan">
-<span class="sig"><span class="fname">estimate_acquisition_time</span>(motion_s_per_sweep, sweeps, reverse, overhead_s=...)</span>
+<span class="sig"><span class="fname">estimate_acquisition_time</span>(motion_s_per_sweep, sweeps, reverse, overhead_s)</span>
 <p class="fdoc">Wall time for a multi-sweep acquisition.</p>
 <p class="users"><b>used by</b> cherfd cherfd-estimate-acquisition-time, cherfd-write cherfd-start-scan</p>
 </div>
@@ -1080,8 +1085,9 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <span class="sig"><span class="fname">is_adc</span>(name)</span>
 <p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
 </div>
-<div class="fn" data-hay="adc_signed cherfd.frames  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
-<span class="sig"><span class="fname">adc_signed</span>(values)</span>
+<div class="fn" data-hay="adc_counts cherfd.frames adc column as signed 16-bit counts, and whether it had to be decoded. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<span class="sig"><span class="fname">adc_counts</span>(values)</span>
+<p class="fdoc">ADC column as signed 16-bit counts, and whether it had to be decoded.</p>
 <p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
 </div>
 <div class="fn" data-hay="infer_period_us cherfd.frames trigger period in us: trig_2 (duration) is ~period-1ms; spacing of trig_1 is exact. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
@@ -1095,7 +1101,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
 </div>
 <div class="fn" data-hay="sweep_quality cherfd.frames verdict + issues for one cleaned sweep. cherfd cherfd-assess-run-quality cherfd cherfd-merge-sweeps">
-<span class="sig"><span class="fname">sweep_quality</span>(clean, *, signal, expected_range=..., expected_freq_hz=...)</span>
+<span class="sig"><span class="fname">sweep_quality</span>(clean, *, signal, expected_range=..., expected_freq_hz=..., range_shortfall_warn_ev=...)</span>
 <p class="fdoc">Verdict + issues for one cleaned sweep.</p>
 <p class="users"><b>used by</b> cherfd cherfd-assess-run-quality, cherfd cherfd-merge-sweeps</p>
 </div>
@@ -1107,8 +1113,8 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 <div class="modblock">
 <div class="modhead"><span class="mpath">cherfd.policy</span><span class="mdoc">Scientific and operational defaults for CHERFD, in one place.</span></div>
-<div class="fn const" data-hay="cherfd.policy speed_factor_min speed_factor_max speed_factor_hard_min energy_min_ev energy_max_ev freq_min_hz freq_max_hz freq_xspress_warn_hz sweeps_max min_region_steps_warn motor_step_deg full_speed_steps_per_s profile_settling_s default_crystal gap_min_mm gap_max_mm gap_tracking_warn_mm default_bin_ev default_signal adc_offset status_frame_bit detector_frame_offset energy_outlier_margin_ev run_gap_s per_sweep_overhead_s dropped_frame_warn_fraction direction_offset_warn_ev shift_search_ev shift_smooth_ev edge_drift_warn_ev intensity_drift_warn_fraction e0_smooth_span_ev build_pre_edge_ev build_edge_lo_ev build_edge_hi_ev build_post_edge_ev build_edge_points_per_ev build_outer_speed build_freq_hz">
-<p class="users"><b>constants</b> <code>SPEED_FACTOR_MIN</code>, <code>SPEED_FACTOR_MAX</code>, <code>SPEED_FACTOR_HARD_MIN</code>, <code>ENERGY_MIN_EV</code>, <code>ENERGY_MAX_EV</code>, <code>FREQ_MIN_HZ</code>, <code>FREQ_MAX_HZ</code>, <code>FREQ_XSPRESS_WARN_HZ</code>, <code>SWEEPS_MAX</code>, <code>MIN_REGION_STEPS_WARN</code>, <code>MOTOR_STEP_DEG</code>, <code>FULL_SPEED_STEPS_PER_S</code>, <code>PROFILE_SETTLING_S</code>, <code>DEFAULT_CRYSTAL</code>, <code>GAP_MIN_MM</code>, <code>GAP_MAX_MM</code>, <code>GAP_TRACKING_WARN_MM</code>, <code>DEFAULT_BIN_EV</code>, <code>DEFAULT_SIGNAL</code>, <code>ADC_OFFSET</code>, <code>STATUS_FRAME_BIT</code>, <code>DETECTOR_FRAME_OFFSET</code>, <code>ENERGY_OUTLIER_MARGIN_EV</code>, <code>RUN_GAP_S</code>, <code>PER_SWEEP_OVERHEAD_S</code>, <code>DROPPED_FRAME_WARN_FRACTION</code>, <code>DIRECTION_OFFSET_WARN_EV</code>, <code>SHIFT_SEARCH_EV</code>, <code>SHIFT_SMOOTH_EV</code>, <code>EDGE_DRIFT_WARN_EV</code>, <code>INTENSITY_DRIFT_WARN_FRACTION</code>, <code>E0_SMOOTH_SPAN_EV</code>, <code>BUILD_PRE_EDGE_EV</code>, <code>BUILD_EDGE_LO_EV</code>, <code>BUILD_EDGE_HI_EV</code>, <code>BUILD_POST_EDGE_EV</code>, <code>BUILD_EDGE_POINTS_PER_EV</code>, <code>BUILD_OUTER_SPEED</code>, <code>BUILD_FREQ_HZ</code></p>
+<div class="fn const" data-hay="cherfd.policy speed_factor_min speed_factor_max speed_factor_hard_min freq_min_hz freq_max_hz freq_xspress_warn_hz sweeps_max min_region_steps_warn full_speed_steps_per_s profile_settling_s gap_min_mm gap_max_mm gap_tracking_warn_mm default_bin_ev adc_offset adc_word_scale adc_counts_max status_frame_bit detector_frame_offset energy_outlier_margin_ev run_gap_s dropped_frame_warn_fraction direction_offset_warn_ev shift_search_ev shift_smooth_ev edge_drift_warn_ev intensity_drift_warn_fraction e0_smooth_span_ev build_pre_edge_ev build_edge_lo_ev build_edge_hi_ev build_post_edge_ev build_edge_points_per_ev build_outer_speed build_freq_hz default_station">
+<p class="users"><b>constants</b> <code>SPEED_FACTOR_MIN</code>, <code>SPEED_FACTOR_MAX</code>, <code>SPEED_FACTOR_HARD_MIN</code>, <code>FREQ_MIN_HZ</code>, <code>FREQ_MAX_HZ</code>, <code>FREQ_XSPRESS_WARN_HZ</code>, <code>SWEEPS_MAX</code>, <code>MIN_REGION_STEPS_WARN</code>, <code>FULL_SPEED_STEPS_PER_S</code>, <code>PROFILE_SETTLING_S</code>, <code>GAP_MIN_MM</code>, <code>GAP_MAX_MM</code>, <code>GAP_TRACKING_WARN_MM</code>, <code>DEFAULT_BIN_EV</code>, <code>ADC_OFFSET</code>, <code>ADC_WORD_SCALE</code>, <code>ADC_COUNTS_MAX</code>, <code>STATUS_FRAME_BIT</code>, <code>DETECTOR_FRAME_OFFSET</code>, <code>ENERGY_OUTLIER_MARGIN_EV</code>, <code>RUN_GAP_S</code>, <code>DROPPED_FRAME_WARN_FRACTION</code>, <code>DIRECTION_OFFSET_WARN_EV</code>, <code>SHIFT_SEARCH_EV</code>, <code>SHIFT_SMOOTH_EV</code>, <code>EDGE_DRIFT_WARN_EV</code>, <code>INTENSITY_DRIFT_WARN_FRACTION</code>, <code>E0_SMOOTH_SPAN_EV</code>, <code>BUILD_PRE_EDGE_EV</code>, <code>BUILD_EDGE_LO_EV</code>, <code>BUILD_EDGE_HI_EV</code>, <code>BUILD_POST_EDGE_EV</code>, <code>BUILD_EDGE_POINTS_PER_EV</code>, <code>BUILD_OUTER_SPEED</code>, <code>BUILD_FREQ_HZ</code>, <code>DEFAULT_STATION</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
 </div>
 </div>

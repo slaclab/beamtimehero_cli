@@ -23,7 +23,7 @@ def _cherfd_isolated(tmp_path, monkeypatch):
     monkeypatch.setenv("CHERFD_MOCK_STATE", str(tmp_path / "mock_state.json"))
     monkeypatch.setenv("CHERFD_EXPORT_DIR", str(tmp_path / "exports"))
     monkeypatch.setenv("CHERFD_MOCK_TIME_SCALE", "0.002")
-    for var in ("CHERFD_PROJECT_DIR", "CHERFD_DATA_DIR", "CHERFD_LOGS_DIR", "CHERFD_PYTHON"):
+    for var in ("CHERFD_PROJECT_DIR", "CHERFD_DATA_DIR", "CHERFD_LOGS_DIR", "CHERFD_PYTHON", "BTH_STATION"):
         monkeypatch.delenv(var, raising=False)
 
 

@@ -79,7 +79,8 @@ def test_quality_flags_all_zero_detector():
 def _clean(rng, **kw):
     cols, det, _, _ = synthetic_sweep(rng, **kw)
     c = frames.clean_sweep(cols, detector=det)
-    c["arrays"]["adc_1"] = frames.adc_signed(c["arrays"]["adc_1"])
+    c["arrays"]["adc_1"], raw = frames.adc_counts(c["arrays"]["adc_1"])
+    assert raw                                   # the synthetic sweep holds raw words
     return c["arrays"]
 
 
@@ -90,7 +91,7 @@ def test_merge_ratio_of_sums_preserves_intensity():
     hi = b["energy"] > 9040
     assert np.nanmean(b["merged"][hi]) == pytest.approx(500, rel=0.02), "absolute level kept"
     bn = reduce.bin_sweeps(sw, signal="vortex", normalize_by="adc_1", bin_ev=0.5)
-    assert np.nanmean(bn["merged"][hi]) == pytest.approx(500 / 1e7, rel=0.02)
+    assert np.nanmean(bn["merged"][hi]) == pytest.approx(500 / (1e7 / 2 ** 16), rel=0.02)
     assert np.all(np.isfinite(bn["sem"][bn["frames_per_bin"] > 0]))
 
 
@@ -127,7 +128,8 @@ def test_compare_directions_and_symmetric_correction():
 
 def test_energy_calibration_angle_correction():
     e = np.arange(8950, 9050, 0.1)
-    r = analysis.energy_calibration(e, edge(e, e0=8978.5), 8979.0)
+    r = analysis.energy_calibration(e, edge(e, e0=8978.5), 8979.0,
+                                    station=policy.STATION_PROFILES["bl15"])
     assert r["measured_minus_reference_ev"] == pytest.approx(-0.5, abs=0.1)
     # edge reads low -> needs a higher energy -> a smaller Bragg angle
     assert r["bragg_angle_correction_deg"] < 0 and r["significant"]
@@ -138,3 +140,21 @@ def test_noise_estimate_ignores_smooth_structure():
     e = np.linspace(0, 10, 4000)
     y = 50 * np.sin(e) + rng.normal(0, 2.0, e.size)
     assert reduce.noise_estimate(y) == pytest.approx(2.0, rel=0.1)
+
+
+def test_adc_counts_old_and_new_data():
+    # since 2026-10-08 cherfd_claude writes signed counts; older sweeps raw words
+    new = np.array([1910.9, -0.09, 2930.5, np.nan])
+    v, raw = frames.adc_counts(new)
+    assert not raw and np.array_equal(v, new, equal_nan=True)
+    old = policy.ADC_OFFSET + new * 2 ** 16
+    v, raw = frames.adc_counts(old)
+    assert raw and np.allclose(v[:3], new[:3])
+
+
+def test_quality_hint_for_an_all_zero_ge_sum():
+    rng = np.random.default_rng(3)
+    cols, det, _, _ = synthetic_sweep(rng)
+    c = frames.clean_sweep(cols, detector={"xsum": np.zeros_like(det["vortex"])})
+    q = frames.sweep_quality(c, signal="xsum")
+    assert any(i["code"] == "signal_all_zero" and "xsp32" in i["message"] for i in q["issues"])

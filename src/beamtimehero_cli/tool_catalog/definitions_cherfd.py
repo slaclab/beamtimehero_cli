@@ -14,7 +14,9 @@ shows names without their branch.
 
 Only schema vocabulary beamtimehero's ``add_arg`` understands is used (type,
 description, default, enum, items); scientific defaults are read from
-``science.policy``, never restated.
+``science.policy``, never restated. Descriptions cover both stations;
+what differs (detector, signal, crystals, undulator) comes from the
+deployment's ``BTH_STATION`` at call time -- see ``cherfd_get_station``.
 """
 from __future__ import annotations
 
@@ -28,7 +30,8 @@ TREE_WRITE = "cherfd-write"
 _LIVE_READS = frozenset({
     "cherfd_get_status", "cherfd_get_server_settings", "cherfd_get_undulator_status",
     "cherfd_get_table_tracking", "cherfd_get_scan_results", "cherfd_wait_for_scan",
-    "cherfd_get_daq_status", "cherfd_check_readiness",
+    "cherfd_get_daq_status", "cherfd_check_readiness", "cherfd_get_station",
+    "cherfd_check_command",
 })
 
 # ---- shared fragments ---------------------------------------------------------
@@ -61,16 +64,17 @@ _SELECT = {
     "direction": {"type": "string", "enum": ["both", "fwd", "rev"], "default": "both",
                   "description": "Which sweep directions to use."},
     "align": {"type": "string", "enum": ["trigger", "row"], "default": "trigger", "description": (
-        "Detector-frame pairing. 'trigger' (default) re-pairs Xspress3 frame k with trigger k; "
+        "Detector-frame pairing. 'trigger' (default) re-pairs detector frame k with trigger k; "
         "'row' keeps the pairing recorded in the file, which is off by up to a few frames "
         "because rows are stored out of time order. Use 'row' only to compare.")},
 }
 
 _SIGNAL = {
     "signal": {"type": "string", "description": (
-        f"Signal column (default {policy.DEFAULT_SIGNAL!r} = Xspress3 ROI1 + 2*ROI_double, IOC "
-        "dead-time corrected). Set it explicitly; cherfd_read_sweep lists the columns. adc_* "
-        "columns are converted from offset-binary.")},
+        "Signal column (default: the station's -- 'vortex' at BL15-2 = Xspress3 ROI1 + "
+        "2*ROI_double, dead-time corrected; 'xsum' at BL4-1 = Ge good-element sum; xsA/xsB and "
+        "per-element xs01.. also there). Set it explicitly; cherfd_read_sweep lists the columns. "
+        "adc_* columns are signed counts (older raw words are decoded).")},
     "normalize_by": {"type": "string", "description": (
         "Normalizer (I0) column, e.g. 'adc_1'. Merged value per bin = sum(signal)/sum(I0). "
         "Omit for raw signal (then beam-current variation is in the result).")},
@@ -90,14 +94,15 @@ _DIRCORR = {"direction_correction_ev": {"type": "number", "default": 0.0, "descr
 _PLOT = {"plot": {"type": "boolean", "default": True, "description": "Return a PNG figure."}}
 
 _COMMAND = {"command": {"type": "string", "description": (
-    "cherfd command: 'cherfd start_eV end1_eV speed1 [end2_eV speed2 ...] freq_Hz'. Speeds are "
+    "cherfd command: 'cherfd start_eV end1_eV speed1 [end2_eV speed2 ...] freq_Hz' ('cscan' "
+    "works as the keyword too). Energies run one way only (all up or all down). Speeds are "
     f"fractions of full mono speed ({policy.SPEED_FACTOR_MIN}-{policy.SPEED_FACTOR_MAX} used); "
     "freq is the trigger/detector frame rate (integer Hz, typically 20-100). "
     "Example: 'cherfd 8968 8990 1 9010 .3 9100 1 100'.")}}
 
 _CRYSTAL = {"crystal": {"type": "string", "enum": ["A", "B"], "description": (
-    f"Mono crystal set: A = Si(111), B = Si(311). Default {policy.DEFAULT_CRYSTAL} "
-    "(the controller is hardcoded to B).")}}
+    "Mono crystal set. BL15-2: A = Si(111), B = Si(311) (B in use); BL4-1: A = Si(220), "
+    "B = Si(111) (SPEC's mono.cfg says which). Default: the station's crystal in use.")}}
 
 
 def _t(name: str, description: str, props: dict | None = None, required: list[str] | None = None,
@@ -123,11 +128,22 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
     _t("cherfd_get_status",
        "cherfd controller state (idle / initializing / moving_to_start / Running / Stopped / error), "
        "whether an acquisition is active, the current sweep, and whether it is done. Read-only."),
+    _t("cherfd_get_station",
+       "This deployment's station (BTH_STATION: bl15 = BL15-2, bl41 = BL4-1) and everything that "
+       "follows from it: detector and default signal, crystals, step size, undulator, cscan_daq, "
+       "sweep overhead; plus the live server's /station (crystal in use, mono reach from MOTOR1's "
+       "soft limits) and scan detector. ok=false lists any disagreement."),
+    _t("cherfd_check_command",
+       "The server's own dry run of a command against the live mono: the check /start_acquisition "
+       "makes (one direction, MOTOR1 DIR and MRES, the whole profile inside the soft limits, the "
+       "table targets when tracking is on). Read-only; ok=false gives the reason.",
+       {**_COMMAND}, ["command"]),
     _t("cherfd_get_server_settings",
        "Persistent controller settings: data directory + file root, gap calibration offset, gap "
        "move latency, stored mono encoder calibration, table-tracking switch and anchor."),
     _t("cherfd_get_undulator_status",
-       "Undulator tracking: enabled flag, latched harmonic, gap position, calibration offset, latency."),
+       "Undulator tracking: enabled flag, latched harmonic, gap position, calibration offset, "
+       "latency. BL15-2 only (BL4-1 has no undulator)."),
     _t("cherfd_get_table_tracking",
        "Table (beam-height) tracking switch, the stored anchor, and a crystal-mismatch warning."),
     _t("cherfd_get_scan_results",
@@ -140,12 +156,15 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
        {"timeout_s": {"type": "number", "default": 600, "description": "Give up after this many seconds (max 7200)."},
         "poll_s": {"type": "number", "default": 2.0, "description": "Poll interval (s)."}}),
     _t("cherfd_get_daq_status",
-       "cscan_daq count app health (IOC reachability) and state, including the last count result."),
+       "cscan_daq count app health (IOC reachability) and state, including the last count "
+       "result. BL15-2 (at BL4-1 cscan_daq is superseded by cscan_acq)."),
     _t("cherfd_check_readiness",
-       "Pre-flight before a scan: controller idle and not stop-latched, data path, encoder "
-       "calibration, undulator and table-tracking state, beam status (via beamtimehero "
-       "spec-read get_beam_status), and optional validation of the command you intend to run. "
-       "Returns ready + blockers + warnings. Read-only.",
+       "Pre-flight before a scan: server is this deployment's station, controller idle and not "
+       "stop-latched, scan detector, the shared cscan box (a SPEC count running, another client "
+       "streaming, axes left armed), data path, encoder calibration, undulator (BL15-2) and "
+       "table-tracking state, beam status (spec-read beam_status), and, given a command, offline "
+       "validation plus the server's live soft-limit check. Returns ready + blockers + warnings. "
+       "Read-only.",
        {**_COMMAND, "include_beam_status": {"type": "boolean", "default": True,
                                             "description": "Also query beam status through beamtimehero."}}),
     # ======================= control: actions ===============================
@@ -153,20 +172,23 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
          "Start a continuous-scan acquisition (N sweeps, optionally forward+reverse each). Validates "
          "the command offline first, refuses unless the controller is idle, then confirms from "
          "/status that the scan really started (the server answers success before deciding). "
-         "Returns immediately; follow with cherfd_wait_for_scan. Run cherfd_check_readiness first.",
+         "The server may first wait up to ~70 s for a SPEC count on the shared box. Returns "
+         "immediately; follow with cherfd_wait_for_scan. Run cherfd_check_readiness first.",
          {**_COMMAND,
           "sweeps": {"type": "integer", "default": 1, "description": f"Number of sweeps (1-{policy.SWEEPS_MAX})."},
           "reverse": {"type": "boolean", "default": False,
                       "description": "Each sweep runs forward then reverse (two profiles per sweep)."},
-          "undulator_scan": {"type": "boolean", "default": True,
-                             "description": "Track the undulator gap during the sweep (production default)."},
+          "undulator_scan": {"type": "boolean",
+                             "description": "Track the undulator gap during the sweep. Default: on "
+                                            "where there is an undulator (BL15-2), off at BL4-1 (none)."},
           "file_dir": {"type": "string", "description": "Data subdirectory (default: the server's data_directory)."},
           "file_root": {"type": "string", "description": "File root for this run (default: the server's file_root)."}},
          ["command"]),
     _act("cherfd_stop_scan",
-         "Stop the running acquisition: halts sweeps, disables triggers, stops the gap, saves partial "
-         "data. The controller then stays 'Stopped' until cherfd_clear_stop. Works even when the "
-         "write safety switch is off."),
+         "Stop the running acquisition: halts the scan axes (STOP then SPMG=Stop, waits for DMOV), "
+         "disables triggers, stops the gap, saves partial data. The controller then stays "
+         "'Stopped' (or 'error' if an axis did not report stopped) until cherfd_clear_stop. Works "
+         "even when the write safety switch is off."),
     _act("cherfd_clear_stop", "Clear the 'Stopped'/'error' latch so a new scan can start."),
     _act("cherfd_reset_controller",
          "Reset controller state to idle (halts a running scan first). Heavier than clear_stop."),
@@ -187,8 +209,9 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
          "Set the look-ahead latency (s) of predictive gap tracking during a sweep. Persisted.",
          {"latency_s": {"type": "number", "description": "Latency in seconds (>= 0)."}}, ["latency_s"]),
     _act("cherfd_set_table_tracking",
-         "Enable/disable table (beam-height) tracking during scans. Enabling needs a stored anchor; "
-         "table motors are not yet commissioned on hardware.",
+         "Enable/disable table (beam-height) tracking during scans. Enabling needs a stored anchor, "
+         "and the server refuses it where the station has table tracking switched off (BL4-1 "
+         "scans are mono-only for now; no table profile has run on hardware).",
          {"enable": {"type": "boolean", "description": "True to enable."}}, ["enable"]),
     _act("cherfd_set_table_anchor",
          "Store the table-tracking anchor: aligned energy + both table heights (+ crystal), or capture "
@@ -199,11 +222,12 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
           "z2_mm": {"type": "number", "description": "Downstream table height (mm)."},
           **_CRYSTAL}),
     _act("cherfd_move_energy",
-         "Coordinated mono + undulator-gap move to an energy (asynchronous). Refused while a scan runs.",
+         "Mono move to an energy, with the undulator gap where there is one (asynchronous). The "
+         "server answers 409 while a scan owns the mono, including between its sweeps.",
          {"energy_ev": {"type": "number", "description":
-                        f"Target energy ({policy.ENERGY_MIN_EV:g}-{policy.ENERGY_MAX_EV:g} eV)."}},
+                        "Target energy (eV), inside the mono's reach (cherfd_get_station)."}},
          ["energy_ev"]),
-    _act("cherfd_move_gap", "Move the undulator gap directly (mm), asynchronously.",
+    _act("cherfd_move_gap", "Move the undulator gap directly (mm), asynchronously. BL15-2 only.",
          {"gap_mm": {"type": "number", "description": f"Gap ({policy.GAP_MIN_MM}-{policy.GAP_MAX_MM} mm)."}},
          ["gap_mm"]),
     _act("cherfd_stop_gap", "Stop undulator gap motion. Works even when the write safety switch is off."),
@@ -213,19 +237,21 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
          "this with the mono parked at a trusted position. Persisted."),
     _act("cherfd_daq_count",
          "Hardware-timed count on the cscan box counters (ctr1-4) via the cscan_daq app; "
-         "waits for the result by default.",
+         "waits for the result by default. BL15-2 only.",
          {"duration_s": {"type": "number", "default": 1.0, "description": "Count time (0.01-60 s)."},
           "freq_hz": {"type": "number", "default": 10.0, "description": "Chop rate for gate_mode='chopped' (0.5-100)."},
           "gate_mode": {"type": "string", "enum": ["single", "chopped"], "default": "single",
                         "description": "single = one gate for the whole window; chopped = trigger list."},
           "quick": {"type": "boolean", "default": False, "description": "Quick single-shot path (verify-only config)."},
           "wait": {"type": "boolean", "default": True, "description": "Wait for and return the result."}}),
-    _act("cherfd_daq_abort", "Abort a running cscan_daq count. Works even when the write switch is off."),
+    _act("cherfd_daq_abort", "Abort a running cscan_daq count and any ADC stream. Works even when "
+         "the write switch is off. BL15-2 only."),
     # ======================= planning (offline) =============================
     _t("cherfd_validate_command",
        "Check a cherfd command against every layer it meets (SPEC refusals, controller speed clamp, "
-       "FPGA trigger quantization, energy limits), and estimate per-region steps, time and "
-       "points/eV, the reverse command, and undulator harmonic changes. No hardware.",
+       "FPGA trigger quantization, one direction, the station's energy window), and estimate "
+       "per-region steps, time and points/eV, the reverse command, and undulator harmonic changes "
+       "(BL15-2). No hardware: the mono's soft limits are cherfd_check_command's.",
        {**_COMMAND, **_CRYSTAL}, ["command"]),
     _t("cherfd_build_command",
        "Build a 3-region XANES command around an edge: fast pre-edge, slow edge region solved for "
@@ -255,25 +281,25 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
        ["command"]),
     _t("cherfd_estimate_acquisition_time",
        "Wall-clock estimate for N sweeps (x2 with reverse): profile time from the production "
-       "simulator (or a cruise estimate) plus per-sweep overhead (measured default, or measured "
-       "from a reference run's cadence).",
+       "simulator (or a cruise estimate) plus per-sweep overhead (the station's measured default, "
+       "or measured from a reference run's cadence).",
        {**_COMMAND,
         "sweeps": {"type": "integer", "default": 1, "description": "Number of sweeps."},
         "reverse": {"type": "boolean", "default": False, "description": "Forward+reverse per sweep."},
-        "overhead_s": {"type": "number", "description": f"Per-profile overhead (default {policy.PER_SWEEP_OVERHEAD_S} s)."},
+        "overhead_s": {"type": "number", "description": "Per-profile overhead (default: the station's, see cherfd_get_station)."},
         "reference_run_id": {"type": "string", "description": "Measure overhead from this run's sweep cadence."},
         "use_simulator": {"type": "boolean", "default": True, "description": "Use the production simulator when available."}},
        ["command"]),
     _t("cherfd_undulator_gap_for_energy",
        "Undulator harmonic and gap for energies (controller polynomial + optional calibration "
-       "offset), and harmonic switches inside a scan range. No hardware.",
+       "offset), and harmonic switches inside a scan range. No hardware. BL15-2 only.",
        {"energy_ev": {"type": "number", "description": "One energy (eV)."},
         "energies_ev": {"type": "array", "items": {"type": "number"}, "description": "Several energies (eV)."},
         "e_start": {"type": "number", "description": "Scan range start (eV)."},
         "e_end": {"type": "number", "description": "Scan range end (eV)."},
         "calibration_offset_mm": {"type": "number", "default": 0.0, "description": "Gap calibration offset to add."}}),
     _t("cherfd_mono_convert",
-       "Mono conversions for BL15-2: energy <-> Bragg angle <-> encoder (given the calibration "
+       "Mono conversions for the station's mono: energy <-> Bragg angle <-> encoder (given the calibration "
        "offset), scan rate at full speed, beam-height offset vs an anchor, trigger quantization, "
        "and the speed factor for a target points/eV. No hardware.",
        {"energy_ev": {"type": "number", "description": "Energy (eV)."},
@@ -306,14 +332,14 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
         "sweep": {"type": "integer", "description": "Sweep number (default: first)."},
         "direction": {"type": "string", "enum": ["fwd", "rev"], "default": "fwd", "description": "Direction."},
         "columns": {"type": "array", "items": {"type": "string"},
-                    "description": "Columns to return (default trigger, absev, vortex)."},
+                    "description": "Columns to return (default trigger, absev and the station's signal)."},
         "max_points": {"type": "integer", "default": 200, "description": "Decimate to about this many rows."},
         "align": _SELECT["align"]}),
     # ======================= analysis =======================================
     _t("cherfd_assess_run_quality",
        "QC verdict per sweep and for the run: dropped triggers, status frames, corrupt energies, "
-       "frame rate vs command, energy back-steps, incomplete coverage, all-zero detector (SPEC still "
-       "owns the Xspress3), recorded detector-pairing offset. Run after every acquisition.",
+       "frame rate vs command, energy back-steps, incomplete coverage, all-zero detector, recorded "
+       "detector-pairing offset. Run after every acquisition.",
        {**_RUN, **_SELECT, "signal": _SIGNAL["signal"]}),
     _t("cherfd_merge_sweeps",
        "Rebin sweeps onto one energy grid and merge (ratio of sums with a normalizer, frame-weighted "
@@ -350,7 +376,7 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
         **_CRYSTAL}),
     _t("cherfd_check_gap_tracking",
        "Recorded undulator gap vs the ideal harmonic gap at each frame's energy: implied calibration "
-       "offset, tracking residual, and harmonic changes in the scanned range.",
+       "offset, tracking residual, and harmonic changes in the scanned range. BL15-2 only.",
        {**_RUN, **_SELECT}),
     _t("cherfd_export_merged",
        "Write the merged spectrum for the beamtimehero XAS tools: 'twocol' (energy, intensity; "
@@ -390,7 +416,8 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
 ]
 
 CHERFD_TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
-    ("CHERFD Control - state", ["cherfd_get_status", "cherfd_get_server_settings", "cherfd_get_undulator_status",
+    ("CHERFD Control - state", ["cherfd_get_status", "cherfd_get_station", "cherfd_check_command",
+                         "cherfd_get_server_settings", "cherfd_get_undulator_status",
                          "cherfd_get_table_tracking", "cherfd_get_scan_results", "cherfd_wait_for_scan",
                          "cherfd_get_daq_status", "cherfd_check_readiness"]),
     ("CHERFD Control - acquisition", ["cherfd_start_scan", "cherfd_stop_scan", "cherfd_clear_stop",

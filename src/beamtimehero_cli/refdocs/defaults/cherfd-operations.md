@@ -1,10 +1,36 @@
 # Running CHERFD from an agent
 
-CHERFD is continuous-scan HERFD at SSRL BL15-2: the mono sweeps
-continuously under an FPGA motion profile while the FPGA fires detector
-triggers at a fixed rate, and the undulator gap tracks the mono predictively.
-One **acquisition run** is N sweeps (each optionally forward + reverse) saved
-as one pickle set per sweep.
+CHERFD is continuous scanning on the cscan box at SSRL BL15-2 and BL4-1: the
+mono sweeps continuously under an FPGA motion profile while the FPGA fires
+detector triggers at a fixed rate (and, at BL15-2, the undulator gap tracks
+the mono predictively). One **acquisition run** is N sweeps (each optionally
+forward + reverse) saved as one pickle set per sweep.
+
+## The station
+
+A deployment sets one variable, `BTH_STATION` (`bl15` = BL15-2, the default;
+`bl41` = BL4-1). Everything station-specific follows from it -- for the SPEC
+tools as well as these (see `config.example.yaml`):
+
+| | BL15-2 (`bl15`) | BL4-1 (`bl41`) |
+|---|---|---|
+| Scan detector | Vortex on the 8-channel Xspress3 | 24-element Ge (Xspress3, xsp32 service) |
+| Default signal | `vortex` (ROI1 + 2*ROI_double) | `xsum` (good-element sum; also `xsA`, `xsB`, `xs01`..`xs24`) |
+| Detector setup | SPEC `xtc 1` hands the Xspress3 to cherfd | the xsp32 service must be running |
+| Crystals (A / B) | Si(111) / Si(311), B in use | Si(220) / Si(111), SPEC's `mono.cfg` says which |
+| Step size | 1e-5 deg | 2e-5 deg |
+| Undulator | yes (gap tools, `undulator_scan` default on) | none: gap tools refuse, `undulator_scan` off |
+| cscan_daq counts | yes | no (superseded by cscan_acq; SPEC `csct` counts) |
+| Per-sweep overhead | ~17 s | ~4.8 s |
+
+The station profile is `science/cherfd/policy.py STATION_PROFILES`; the live
+server reports its own station at `GET /station`. `cherfd_get_station` shows
+both, and `cherfd_check_readiness`, `cherfd_start_scan` and
+`cherfd_move_energy` refuse when the server is another station. The
+detector is the station's, not a per-scan choice: the server's detector can
+read `none` (the BL4-1 UI does this for transmission / TFY scans, box
+channels only), which readiness reports as a warning; any other detector is
+a blocker.
 
 The tools sit on three branches, split like SPEC's so an agent surface can
 grant them separately:
@@ -37,17 +63,22 @@ beamtimehero cherfd cherfd-list-runs --limit 5
 ## The loop
 
 1. **Plan** (no hardware) -- `cherfd_build_command` (from element/edge) or write
-   one; `cherfd_validate_command` (limits, speed clamp, trigger quantization,
-   harmonic changes); `cherfd_simulate_scan` (the production profile generator:
+   one; `cherfd_validate_command` (station energy window, one direction, speed
+   clamp, trigger quantization, harmonic changes at BL15-2);
+   `cherfd_simulate_scan` (the production profile generator for this station:
    authoritative refusal/duration); `cherfd_estimate_acquisition_time`.
 2. **Pre-flight** -- `cherfd_check_readiness --command ...`. Blockers must be
-   empty. Make sure SPEC has handed the Xspress3 over (`xtc 1` in SPEC; this
-   cannot be read from here -- an all-zero `vortex` column is the symptom).
+   empty. It runs the server's `cherfd_check_command` (the profile inside
+   MOTOR1's live soft limits) and reads the shared cscan box. The detector
+   setup (above) cannot be read from here -- an all-zero signal column is
+   the symptom.
 3. **Configure** -- `cherfd_set_data_path` (one file_root per sample/spot;
    roots can be reused but runs are then told apart by time).
 4. **Acquire** -- `cherfd_start_scan` then `cherfd_wait_for_scan`. The start
    tool confirms from `/status` that the scan really started: the server
-   answers `success: true` before the controller has accepted it.
+   answers `success: true` before the controller has accepted it (it does
+   refuse a bad command up front, with HTTP 400). `cherfd_wait_for_scan`
+   returns `ok: false` when the scan ended in `error`.
 5. **Check** -- `cherfd_get_latest_run` -> `cherfd_assess_run_quality`.
 6. **Reduce** -- `cherfd_compare_directions` (fwd/rev offset), then
    `cherfd_merge_sweeps` with `direction_correction_ev` if needed;
@@ -77,15 +108,32 @@ beamtimehero cherfd cherfd-list-runs --limit 5
 ## Things the hardware does that an agent must know
 
 * After `cherfd_stop_scan` the controller is latched in `Stopped`; new scans
-  are refused until `cherfd_clear_stop`.
+  are refused until `cherfd_clear_stop`. A stop halts every scan axis (`STOP`,
+  then `SPMG=Stop`, waits for DMOV); an axis that does not report stopped
+  leaves the controller in `error`.
+* The controller ends a sweep in `error` on purpose when it cannot trust it:
+  a profile cut short, fewer Ge frames than triggers (BL4-1; the data saved
+  before is kept), or the box triggers changing under it (a SPEC count fired
+  mid-sweep). Read `error_message`, then `cherfd_clear_stop`.
+* One command, one direction: energies all increasing or all decreasing (the
+  FPGA profile has one direction bit). Scan back with `reverse`.
+* The whole profile must lie inside MOTOR1's soft limits, which are read
+  live; `cherfd_check_command` asks the server. Profiles are relative, so a
+  scan only runs from where it was planned.
+* `/move_energy` and `/move_gap` answer **409** while an acquisition owns the
+  mono, including the idle gaps between its sweeps.
 * Speeds outside 0.2-1.0 are **silently clamped** by the controller; the
   trigger period is whole milliseconds (60 Hz runs at 62.5 Hz). Validation
   reports the command that will actually run (`effective_command`).
 * Above 80 Hz the Xspress3 is outside its tested rate.
-* A scan range crossing an undulator harmonic change shows an intensity step.
-* The crystal set is hardcoded to B (Si 311) in the controller.
-* Table tracking hardware (MOTOR2/3) is not commissioned yet.
-* The stop path's effect on the mono is not hardware-verified upstream
-  (`/stop` writes `STOP=0`, the same value a move writes to *clear* stop).
-  Treat `cherfd_stop_scan` as "stop triggers and sweeps", and confirm with
-  `cherfd_get_status`.
+* BL15-2: a scan range crossing an undulator harmonic change shows an
+  intensity step.
+* BL4-1, shared box: SPEC's `ct` uses the same cscan box. A scan waits for a
+  running count (up to ~70 s) before taking the box, and refuses if TRIG is
+  Enable with nothing of ours running (cscan_acq, or a dead run --
+  `csct_release` in SPEC clears it). Readiness reports both.
+* BL4-1, mono backlash: a sweep that starts by reversing direction loses
+  ~0.0084 deg of drive slack, so it starts ~2 eV short at 7.1 keV. The energy
+  axis is right (absev comes from the encoder); only the coverage is short.
+* Table tracking: BL4-1 only (Tz1/Tz2 = MOTOR3/MOTOR4) and switched off for
+  now -- continuous scans are mono-only, and the server refuses to enable it.

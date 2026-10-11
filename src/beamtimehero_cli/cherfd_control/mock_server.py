@@ -10,14 +10,21 @@ of separate CLI invocations -- start, poll status, stop -- behaves like one
 session. Scan progress is computed from the wall clock (scaled by
 ``CHERFD_MOCK_TIME_SCALE``) at every read, so ``wait`` tools actually wait.
 
-Two behaviours of the real server are reproduced on purpose because tools
-must cope with them:
+The mock is the deployment's station (``BTH_STATION``): BL4-1 has no
+undulator, the Ge detector and its own crystals. State is kept per station.
+
+Behaviours of the real server reproduced on purpose because tools must
+cope with them:
 
 * ``/start_acquisition`` returns ``success: true`` as soon as its worker
   thread starts, **even when the controller then refuses the scan** (not
   idle, stop latched). Only ``/status`` tells you whether it is running.
 * After ``/stop`` the controller sits in ``Stopped`` and refuses new scans
   until ``/clear_stop`` or ``/reset``.
+* ``/start_acquisition`` *does* refuse up front (HTTP 400) a command that
+  fails its check -- mixed directions, outside the mono's reach -- and
+  ``undulator_scan`` at a station without an undulator.
+* ``/move_energy`` and ``/move_gap`` answer 409 while a scan is active.
 
 It never writes data files: a mock scan produces status and a small
 synthetic ``/results`` payload, not pickles on disk.
@@ -34,8 +41,33 @@ from beamtimehero_cli.cherfd_control import settings as config
 from beamtimehero_cli.science.cherfd import beamline, command as cmd_sci, policy
 
 
+#: Mock MOTOR1 soft limits (deg): BL4-1's test fakes (cherfd_claude
+#: tests/test_motion_safety.py); BL15-2 uses its station window instead.
+_MOCK_SOFT_LIMITS_DEG = {"bl41": (5.5, 39.5)}
+_MOCK_START_EV = {"bl15": 9000.0, "bl41": 7112.0}
+
+
+def _station():
+    return config.station()
+
+
+def _crystal() -> str:
+    return config.station_crystal(_station())
+
+
+def _energy_range(station=None) -> tuple[float, float]:
+    station = station or _station()
+    limits = _MOCK_SOFT_LIMITS_DEG.get(station.name)
+    if limits is None:
+        return station.energy_min_ev, station.energy_max_ev
+    e = sorted(beamline.energy_from_bragg(a, _crystal(), station=station) for a in limits)
+    return e[0], e[1]
+
+
 def _default_state() -> dict:
+    station = _station()
     return {
+        "station": station.name,
         "settings": {
             "gap_calibration_offset": 0.03, "gap_move_latency": 0.2,
             "data_directory": "testing", "file_root": "testing",
@@ -43,8 +75,10 @@ def _default_state() -> dict:
             "table_tracking_enabled": False, "table_anchor_energy": None,
             "table_anchor_z1": None, "table_anchor_z2": None, "table_anchor_crystal": None,
         },
-        "undulator": {"enabled": True, "harmonic": None, "gap": 8.20},
-        "mono_energy": 9000.0,
+        "undulator": {"enabled": station.undulator, "harmonic": None,
+                      "gap": 8.20 if station.undulator else None},
+        "mono_energy": _MOCK_START_EV[station.name],
+        "detector": station.detector,
         "table_z": [0.0, 0.0],
         "controller": {"state": "idle", "error": None},
         "scan": None,
@@ -56,7 +90,10 @@ def _default_state() -> dict:
 
 @contextmanager
 def _state():
-    path = config.mock_state_path()
+    base = config.mock_state_path()
+    station = _station().name
+    # one state per station, so switching BTH_STATION never mixes them
+    path = base if station == "bl15" else base.with_name(f"{base.stem}_{station}{base.suffix}")
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "a+") as fh:
         fcntl.flock(fh, fcntl.LOCK_EX)
@@ -74,10 +111,11 @@ def _state():
 
 
 def reset_mock_state() -> None:
-    """Discard all mock state (tests; operator 'fresh session')."""
-    path = config.mock_state_path()
-    if path.exists():
-        path.unlink()
+    """Discard all mock state, every station's (tests; operator 'fresh session')."""
+    base = config.mock_state_path()
+    for path in [base, *base.parent.glob(f"{base.stem}_*{base.suffix}")]:
+        if path.exists():
+            path.unlink()
 
 
 def _now() -> float:
@@ -93,8 +131,14 @@ def _elapsed(t0: float) -> float:
 # Scan progression
 # ---------------------------------------------------------------------------
 
+def _validate(command: str, station=None) -> dict:
+    station = station or _station()
+    return cmd_sci.validate_command(command, _crystal(), station=station,
+                                    energy_range_ev=_energy_range(station))
+
+
 def _profile_seconds(command: str) -> float:
-    v = cmd_sci.validate_command(command)
+    v = _validate(command)
     motion = v.get("estimated_motion_s") or 5.0
     return motion + policy.PROFILE_SETTLING_S + 0.3
 
@@ -141,14 +185,14 @@ def _synthetic_results(scan: dict, completed: bool) -> dict:
     mid = 0.5 * (e0 + e1)
     for i in range(n):
         e = e0 + (e1 - e0) * i / (n - 1)
-        rows.append({"trig_1": (i + 1) * 10000, "absev": e,
-                     "vortex": 100.0 + 400.0 / (1 + math.exp(-(e - mid) / 2.0)),
-                     "adc_1": 2**31 + 1.0e7, "counter_1": 52})
+        row = {"trig_1": (i + 1) * 10000, "absev": e, "adc_1": 152.6, "counter_1": 52}
+        row[_station().default_signal] = 100.0 + 400.0 / (1 + math.exp(-(e - mid) / 2.0))
+        rows.append(row)
     return {
         "parameters": {"start_eV": e0, "final_eV": e1, "freq": p["freq_hz"],
                        "command": scan["command"], "direction": 0 if e1 > e0 else 1},
         "data_df": rows,
-        "summary": {"parsed_data_points": n, "vortex_mode": "TS", "mock": True,
+        "summary": {"parsed_data_points": n, "detector": _station().detector, "mock": True,
                     "completed": completed},
         "completion_time": _now(),
     }
@@ -193,6 +237,7 @@ def _server_settings(st, body):
 def _undulator_status(st, body):
     u = st["undulator"]
     return 200, {"success": True, "status": {
+        "available": _station().undulator,
         "enabled": u["enabled"], "harmonic": u["harmonic"],
         "gap_position": u["gap"] if u["enabled"] else None,
         "gap_calibration_offset": st["settings"]["gap_calibration_offset"],
@@ -210,9 +255,9 @@ def _anchor(st):
 def _table_tracking(st, body):
     a = _anchor(st)
     warning = None
-    if a and a.get("crystal") and a["crystal"] != policy.DEFAULT_CRYSTAL:
+    if a and a.get("crystal") and a["crystal"] != _crystal():
         warning = (f"anchor was set with crystal {a['crystal']} but crystal "
-                   f"{policy.DEFAULT_CRYSTAL} is selected - the anchor is not valid")
+                   f"{_crystal()} is selected - the anchor is not valid")
     return 200, {"success": True, "enabled": st["settings"]["table_tracking_enabled"],
                  "anchor": a, "crystal_warning": warning}
 
@@ -221,6 +266,13 @@ def _start(st, body):
     if not body or "command" not in body:
         return 400, {"success": False, "error": "Missing command parameter"}
     _advance(st)
+    station = _station()
+    if body.get("undulator_scan") and not station.undulator:
+        return 400, {"success": False, "error": f"{station.label} has no undulator"}
+    v = _validate(body["command"], station)
+    refusal = next((e for e in v["errors"] if "monotonic" in e or "outside" in e), None)
+    if refusal:
+        return 400, {"success": False, "error": refusal}
     sweeps = int(body.get("sweeps", 1))
     reverse = bool(body.get("reverse", False))
     label = f"{sweeps}-sweep scan" if sweeps > 1 else "Scan"
@@ -248,7 +300,7 @@ def _start(st, body):
                 "file_dir": body.get("file_dir") or st["settings"]["data_directory"],
                 "file_root": body.get("file_root") or st["settings"]["file_root"],
                 "started_at": _now(), "profile_s": _profile_seconds(body["command"]),
-                "overhead_s": policy.PER_SWEEP_OVERHEAD_S,
+                "overhead_s": station.per_sweep_overhead_s,
                 "n_profiles": sweeps * (2 if reverse else 1), "current_profile": 1,
                 "start_ev": p["start_ev"], "end_ev": p["final_ev"], "finished": False,
             }
@@ -295,6 +347,9 @@ def _set_data_path(st, body):
 def _set_undulator_enable(st, body):
     if not body or body.get("enable") is None:
         return 400, {"success": False, "error": "Enable flag is required"}
+    if body["enable"] and not _station().undulator:
+        return 400, {"success": False,
+                     "error": f"{_station().label} has no undulator - gap control can not be enabled"}
     st["undulator"]["enabled"] = bool(body["enable"])
     if not st["undulator"]["enabled"]:
         st["undulator"]["harmonic"] = None
@@ -339,7 +394,7 @@ def _set_table_tracking(st, body):
 def _set_table_anchor(st, body):
     body = body or {}
     if body.get("capture"):
-        energy, (z1, z2), crystal = st["mono_energy"], st["table_z"], policy.DEFAULT_CRYSTAL
+        energy, (z1, z2), crystal = st["mono_energy"], st["table_z"], _crystal()
     else:
         try:
             energy, z1, z2 = float(body["energy"]), float(body["z1"]), float(body["z2"])
@@ -362,11 +417,13 @@ def _move_energy(st, body):
         energy = float((body or {})["energy"])
     except (KeyError, TypeError, ValueError):
         return 400, {"success": False, "error": "Energy is required"}
-    if not 4500 <= energy <= 25000:
-        return 400, {"success": False, "error": f"Energy must be between 4500 and 25000 eV (got {energy})"}
     _advance(st)
     if st.get("scan") and not st["scan"].get("finished"):
-        return 500, {"success": False, "error": "Mono is moving (scan in progress)"}
+        return 409, {"success": False, "error": "Not moving the mono: a scan acquisition is in progress"}
+    e_min, e_max = _energy_range()
+    if not e_min <= energy <= e_max:
+        return 400, {"success": False, "error": f"Energy must be between {e_min:.0f} and {e_max:.0f} eV "
+                     f"(mono soft limits, got {energy})"}
     st["mono_energy"] = energy
     if st["undulator"]["enabled"]:
         hg = beamline.harmonic_gap(energy, st["settings"]["gap_calibration_offset"])
@@ -379,6 +436,9 @@ def _move_gap(st, body):
         gap = float((body or {})["gap"])
     except (KeyError, TypeError, ValueError):
         return 400, {"success": False, "error": "Gap value is required"}
+    _advance(st)
+    if st.get("scan") and not st["scan"].get("finished"):
+        return 409, {"success": False, "error": "Not moving the gap: a scan acquisition is in progress"}
     if not policy.GAP_MIN_MM <= gap <= policy.GAP_MAX_MM:
         return 500, {"success": False, "error": f"Gap {gap} outside {policy.GAP_MIN_MM}-{policy.GAP_MAX_MM} mm"}
     st["undulator"]["gap"] = gap
@@ -391,7 +451,7 @@ def _stop_gap(st, body):
 
 def _calibrate_energy(st, body):
     e = st["mono_energy"]
-    xtal = beamline.bragg_angle_deg(e)
+    xtal = beamline.bragg_angle_deg(e, _crystal(), station=_station())
     enc = 267_300_000.0
     st["settings"].update(mono_xtal=xtal, mono_enc=enc)
     return 200, {"success": True, "message": f"Mono calibrated at {e:.1f} eV",
@@ -443,6 +503,54 @@ def _daq_health(st, body):
     return 200, {"ok": True, "ioc": "mock", "mock": True}
 
 
+def _daq_stream_abort(st, body):
+    return 200, {"aborted": True}
+
+
+def _station_route(st, body):
+    station = _station()
+    lo, hi = _energy_range(station)
+    return 200, {"success": True, "station": station.name, "station_label": station.label,
+                 "offline": True, "undulator_available": station.undulator,
+                 "table_tracking_available": False, "table_motors": [],
+                 "detectors": [station.detector, "none"], "default_detector": station.detector,
+                 "crystal": _crystal(), "mono_energy_range_eV": [lo, hi],
+                 "mono_encoder_resolution": station.encoder_resolution_deg,
+                 "motor_step_degrees": station.motor_step_deg, "mock": True}
+
+
+def _get_detector(st, body):
+    station = _station()
+    return 200, {"success": True, "detector": st.get("detector", station.detector),
+                 "available": [station.detector, "none"]}
+
+
+def _check_command(st, body):
+    command = (body or {}).get("command", "").strip()
+    if not command:
+        return 400, {"success": False, "error": "Missing command parameter"}
+    v = _validate(command)
+    lo, hi = _energy_range()
+    if v["errors"]:
+        return 200, {"success": True, "ok": False, "command": command, "error": v["errors"][0],
+                     "mono_energy_range_eV": [lo, hi]}
+    p = v["parsed"]
+    return 200, {"success": True, "ok": True, "command": command, "start_eV": p["start_ev"],
+                 "final_eV": p["final_ev"], "direction": p["direction"],
+                 "steps": sum(r["steps"] for r in v["regions"]), "crystal": _crystal(),
+                 "table_targets": None, "mono_energy_range_eV": [lo, hi], "mock": True}
+
+
+def _box_status(st, body):
+    _advance(st)
+    scanning = bool(st.get("scan") and not st["scan"].get("finished"))
+    return 200, {"success": True, "trig": "Enable" if scanning else "Disable",
+                 "count_running": False, "triggers_enabled": scanning,
+                 "armed_axes": ["MOTOR1"] if scanning else [],
+                 "motion_busy": "a scan acquisition is in progress" if scanning else None,
+                 "error": None, "idle": not scanning, "mock": True}
+
+
 ROUTES = {
     "status": _status, "spec_status": _spec_status, "results": _results,
     "server_settings": _server_settings, "undulator_status": _undulator_status,
@@ -453,7 +561,9 @@ ROUTES = {
     "set_table_tracking": _set_table_tracking, "set_table_anchor": _set_table_anchor,
     "move_energy": _move_energy, "move_gap": _move_gap, "stop_gap": _stop_gap,
     "calibrate_energy": _calibrate_energy, "daq_count": _daq_count, "daq_status": _daq_status,
-    "daq_abort": _daq_abort, "daq_health": _daq_health,
+    "daq_abort": _daq_abort, "daq_health": _daq_health, "daq_stream_abort": _daq_stream_abort,
+    "station": _station_route, "detector": _get_detector, "check_command": _check_command,
+    "box_status": _box_status,
 }
 
 

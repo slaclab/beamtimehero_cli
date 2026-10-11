@@ -1,4 +1,4 @@
-"""Mono, undulator and trigger physics for BL15-2 CHERFD. Pure functions.
+"""Mono, undulator and trigger physics for CHERFD. Pure functions.
 
 Ports of the *pure* parts of cherfd_claude (``utils/mono.py``,
 ``utils/undulator.py``, ``cscan_box/triggers.py``). They are ported rather
@@ -6,7 +6,13 @@ than imported because the originals carry import-time side effects (log
 files, ``set_crystal('B')``, pyepics) and module-global state (the selected
 crystal, the calibration offset) that a tool must not inherit. The numbers
 are identical and the source of each is cited; the parity tests in
-``tests/test_beamline.py`` pin them against values printed by the originals.
+``tests/test_cherfd_command_and_beamline.py`` pin them against values printed
+by the originals.
+
+Every mono function takes the station profile (``policy.STATION_PROFILES``)
+as a required keyword: the crystals, lattice constant, encoder and step size
+differ between BL15-2 and BL4-1, and a silent default would give the other
+beamline's answer. The undulator functions are BL15-2's (BL4-1 has none).
 """
 from __future__ import annotations
 
@@ -20,13 +26,7 @@ HC_EV_ANGSTROM = 12398.4244          # utils/mono.py _hc_
 # controller bit-for-bit, not just to 1e-8 deg.
 _RAD_2_DEG = 57.295779524
 _DEG_2_RAD = 0.017453293
-MONO_DSPACING = 5.42973              # Si lattice constant used by utils/mono.py
-LATTICE_FACTOR = {"A": math.sqrt(3.0), "B": math.sqrt(11.0)}   # Si(111), Si(311)
-MONO_MIN_GAP_MM = {"A": 6.5024, "B": 6.5278}                   # beam-height offsets
-#: deg per encoder tick, measured (utils/mono.py MONO_ENCODER_RESOLUTION).
-MONO_ENCODER_RESOLUTION = -1.0 / 160057.0
-
-#: Undulator gap polynomial per odd harmonic, gap = a E^3 + b E^2 + c E + d
+#: BL15-2 undulator gap polynomial per odd harmonic, gap = a E^3 + b E^2 + c E + d
 #: (utils/undulator.py get_gap).
 GAP_COEFFS: dict[int, tuple[float, float, float, float]] = {
     13: (2.87553e-13, -2.15033e-8, 0.000783879, -2.108852014),
@@ -46,72 +46,80 @@ CITATIONS = {
 }
 
 
-def _crystal(crystal: str | None) -> str:
-    c = (crystal or policy.DEFAULT_CRYSTAL).strip().upper()
-    if c not in LATTICE_FACTOR:
-        raise ValueError(f"crystal must be 'A' (Si111) or 'B' (Si311), got {crystal!r}")
+Station = policy.StationProfile
+
+
+def crystal_set(crystal: str | None, *, station: Station) -> str:
+    """The crystal set letter, checked against the station's sets."""
+    c = (crystal or station.default_crystal).strip().upper()
+    if c not in station.lattice_factor:
+        sets = ", ".join(f"'{k}' ({v})" for k, v in station.crystal_names.items())
+        raise ValueError(f"crystal must be {sets} at {station.label}, got {crystal!r}")
     return c
 
 
-def bragg_angle_deg(energy_ev: float, crystal: str | None = None) -> float:
+def bragg_angle_deg(energy_ev: float, crystal: str | None = None, *, station: Station) -> float:
     """Bragg angle (deg) for a photon energy on crystal set A or B."""
-    c = _crystal(crystal)
+    c = crystal_set(crystal, station=station)
     if energy_ev <= 0:
         raise ValueError("energy must be positive")
-    s = HC_EV_ANGSTROM * LATTICE_FACTOR[c] / (2.0 * energy_ev * MONO_DSPACING)
+    s = HC_EV_ANGSTROM * station.lattice_factor[c] / (2.0 * energy_ev * station.mono_dspacing)
     if s >= 1.0:
-        raise ValueError(f"{energy_ev} eV is below the {c}-crystal Bragg cutoff")
+        raise ValueError(f"{energy_ev} eV is below the {station.crystal_names[c]} Bragg cutoff")
     return _RAD_2_DEG * math.asin(s)
 
 
-def energy_from_bragg(angle_deg: float, crystal: str | None = None) -> float:
-    c = _crystal(crystal)
+def energy_from_bragg(angle_deg: float, crystal: str | None = None, *, station: Station) -> float:
+    c = crystal_set(crystal, station=station)
     s = math.sin(angle_deg * _DEG_2_RAD)
     if s <= 0:
         raise ValueError("angle must be in (0, 90) degrees")
-    return HC_EV_ANGSTROM * LATTICE_FACTOR[c] / (2.0 * MONO_DSPACING * s)
+    return HC_EV_ANGSTROM * station.lattice_factor[c] / (2.0 * station.mono_dspacing * s)
 
 
-def angle_from_encoder(encoder: float, calibration_offset_deg: float) -> float:
+def angle_from_encoder(encoder: float, calibration_offset_deg: float, *, station: Station) -> float:
     """Encoder ticks to Bragg angle, given the stored calibration offset."""
-    return encoder * MONO_ENCODER_RESOLUTION + calibration_offset_deg
+    return encoder * station.encoder_resolution_deg + calibration_offset_deg
 
 
-def encoder_calibration_offset(angle_deg: float, encoder: float) -> float:
+def encoder_calibration_offset(angle_deg: float, encoder: float, *, station: Station) -> float:
     """Offset that maps ``encoder`` onto ``angle_deg`` (utils/mono.set_mono_offset)."""
-    return angle_deg - encoder * MONO_ENCODER_RESOLUTION
+    return angle_deg - encoder * station.encoder_resolution_deg
 
 
-def motor_steps(start_ev: float, end_ev: float, crystal: str | None = None) -> int:
+def motor_steps(start_ev: float, end_ev: float, crystal: str | None = None, *,
+                station: Station) -> int:
     """Signed motor steps between two energies (cscan_box/motion.get_num_steps)."""
-    d = bragg_angle_deg(end_ev, crystal) - bragg_angle_deg(start_ev, crystal)
-    return int(d / policy.MOTOR_STEP_DEG)
+    d = (bragg_angle_deg(end_ev, crystal, station=station)
+         - bragg_angle_deg(start_ev, crystal, station=station))
+    return int(d / station.motor_step_deg)
 
 
-def ev_per_second(energy_ev: float, speed_factor: float, crystal: str | None = None) -> float:
+def ev_per_second(energy_ev: float, speed_factor: float, crystal: str | None = None, *,
+                  station: Station) -> float:
     """Cruise scan rate |dE/dt| at a speed factor (eV/s).
 
     dE/dtheta = -E / tan(theta); the mono cruises at
-    FULL_SPEED_STEPS_PER_S * speed_factor steps of MOTOR_STEP_DEG.
+    FULL_SPEED_STEPS_PER_S * speed_factor steps of the station's step size.
     """
-    theta = math.radians(bragg_angle_deg(energy_ev, crystal))
-    omega = math.radians(policy.FULL_SPEED_STEPS_PER_S * speed_factor * policy.MOTOR_STEP_DEG)
+    theta = math.radians(bragg_angle_deg(energy_ev, crystal, station=station))
+    omega = math.radians(policy.FULL_SPEED_STEPS_PER_S * speed_factor * station.motor_step_deg)
     return energy_ev / math.tan(theta) * omega
 
 
 def speed_for_points_per_ev(energy_ev: float, freq_hz: float, points_per_ev: float,
-                            crystal: str | None = None) -> float:
+                            crystal: str | None = None, *, station: Station) -> float:
     """Speed factor that yields ``points_per_ev`` frames/eV at ``freq_hz`` (unclamped)."""
     if points_per_ev <= 0:
         raise ValueError("points_per_ev must be positive")
-    at_full = ev_per_second(energy_ev, 1.0, crystal)
+    at_full = ev_per_second(energy_ev, 1.0, crystal, station=station)
     return (freq_hz / points_per_ev) / at_full
 
 
 def region_cruise_time_s(start_ev: float, end_ev: float, speed_factor: float,
-                         crystal: str | None = None) -> float:
+                         crystal: str | None = None, *, station: Station) -> float:
     """Cruise time for one region: |delta theta| / angular velocity (no ramps)."""
-    steps = abs(motor_steps(start_ev, end_ev, crystal))
+    steps = abs(motor_steps(start_ev, end_ev, crystal, station=station))
     return steps / (policy.FULL_SPEED_STEPS_PER_S * speed_factor)
 
 
@@ -208,9 +216,10 @@ def harmonic_changes(e_start: float, e_end: float, step_ev: float = 1.0) -> list
 # Table (beam height) tracking
 # ---------------------------------------------------------------------------
 
-def beam_height_offset_mm(energy_ev: float, anchor_ev: float, crystal: str | None = None) -> float:
+def beam_height_offset_mm(energy_ev: float, anchor_ev: float, crystal: str | None = None, *,
+                          station: Station) -> float:
     """Beam-height change at the sample, 2*MIN_GAP*(cos theta - cos theta_anchor)."""
-    c = _crystal(crystal)
-    t = math.radians(bragg_angle_deg(energy_ev, c))
-    ta = math.radians(bragg_angle_deg(anchor_ev, c))
-    return 2.0 * MONO_MIN_GAP_MM[c] * (math.cos(t) - math.cos(ta))
+    c = crystal_set(crystal, station=station)
+    t = math.radians(bragg_angle_deg(energy_ev, c, station=station))
+    ta = math.radians(bragg_angle_deg(anchor_ev, c, station=station))
+    return 2.0 * station.mono_min_gap_mm[c] * (math.cos(t) - math.cos(ta))

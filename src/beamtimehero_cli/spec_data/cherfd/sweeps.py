@@ -37,12 +37,18 @@ def load_clean(sf: SweepFile, *, align: str = "trigger",
                                energy_range=c["energy_range"], align=align,
                                detector_frame_offset=detector_frame_offset)
     notes = []
+    decoded = []
     for name in list(clean["arrays"]):
         if frames.is_adc(name):
-            clean["arrays"][name] = frames.adc_signed(clean["arrays"][name])
+            clean["arrays"][name], raw = frames.adc_counts(clean["arrays"][name])
+            if raw:
+                decoded.append(name)
+    if decoded:
+        notes.append(f"{', '.join(sorted(decoded))}: raw offset-binary words (a sweep written "
+                     "before 2026-10-08) decoded to signed counts as cherfd_claude now does")
     if any(frames.is_adc(n) for n in clean["arrays"]):
-        notes.append(f"adc_* columns converted from offset-binary (minus {policy.ADC_OFFSET}); "
-                     "presentation not yet hardware-verified (cscan_daq checklist item 5)")
+        notes.append("adc_* are signed 16-bit counts, not volts (~3100 counts/V on BL4-1 ADC1); "
+                     "each frame's value is the mean of the input over that frame")
     clean.update({"sweep": sf, "meta": meta, "commanded": c, "provenance": prov, "notes": notes})
     return clean
 

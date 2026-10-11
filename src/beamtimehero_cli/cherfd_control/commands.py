@@ -7,7 +7,8 @@ Anything not registered here cannot be sent.
 
 ``kind`` is the safety class:
 
-* ``read``   -- GET; no state change. Logged to the query log.
+* ``read``   -- GET; no state change (a body becomes the query string).
+  Logged to the query log.
 * ``action`` -- POST to a control service. Requires a justification, is
   written to the action log *before* dispatch, and is refused while the
   write safety switch is off.
@@ -73,6 +74,15 @@ _ALL = [
     RestCommand("server_settings", SERVER, "GET", "/server_settings", "read"),
     RestCommand("undulator_status", SERVER, "GET", "/get_undulator_status", "read"),
     RestCommand("table_tracking", SERVER, "GET", "/get_table_tracking", "read"),
+    RestCommand("station", SERVER, "GET", "/station", "read",
+                doc="what the server's station has: crystal, mono reach, detector, undulator"),
+    RestCommand("detector", SERVER, "GET", "/get_detector", "read",
+                doc="detector read out with each scan (none = box channels only)"),
+    RestCommand("check_command", SERVER, "GET", "/check_command", "read",
+                lambda a: {"command": a["command"]},
+                doc="dry run of /start_acquisition's check: one direction, live soft limits"),
+    RestCommand("box_status", SERVER, "GET", "/box_status", "read",
+                doc="shared cscan box: TRIG (SPEC count running?), axes left armed"),
     RestCommand("daq_status", DAQ, "GET", "/api/status", "read"),
     RestCommand("daq_health", DAQ, "GET", "/api/health", "read"),
     # ---- actions --------------------------------------------------------
@@ -102,6 +112,7 @@ _ALL = [
     RestCommand("stop", SERVER, "POST", "/stop", "stop"),
     RestCommand("stop_gap", SERVER, "POST", "/stop_gap", "stop"),
     RestCommand("daq_abort", DAQ, "POST", "/api/abort", "stop"),
+    RestCommand("daq_stream_abort", DAQ, "POST", "/api/stream/abort", "stop"),
 ]
 
 COMMANDS: dict[str, RestCommand] = {c.name: c for c in _ALL}

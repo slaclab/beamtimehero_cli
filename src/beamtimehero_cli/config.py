@@ -18,6 +18,8 @@ from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
 
+from beamtimehero_cli import station
+
 load_dotenv()
 
 logger = logging.getLogger(__name__)
@@ -176,7 +178,7 @@ def active_counter_priority() -> tuple[str, ...]:
     Passed into ``science.reduce.counters.pick_active_counter``, which stays
     pure — see ``science/README.md``.
     """
-    raw = os.environ.get("BTH_ACTIVE_COUNTER_PRIORITY", "")
+    raw = os.environ.get("BTH_ACTIVE_COUNTER_PRIORITY") or station.default("BTH_ACTIVE_COUNTER_PRIORITY")
     return tuple(c.strip() for c in raw.split(",") if c.strip())
 
 
@@ -186,9 +188,11 @@ def active_counter_priority() -> tuple[str, ...]:
 # Station-specific PVs are env-overridable (BTH_-prefixed to avoid clashing
 # with unrelated EPICS software's environment) so other beamlines can consume
 # this package; defaults remain the BL15-2 values.
-EPICS_PV_SPEAR_CURRENT = os.getenv("BTH_EPICS_PV_SPEAR_CURRENT", "SPEAR:BeamCurrAvg")
-EPICS_PV_BL_STATE = os.getenv("BTH_EPICS_PV_BL_STATE", "BL15:State")
-EPICS_PV_GAP_OWNER = os.getenv("BTH_EPICS_PV_GAP_OWNER", "BL15:GapOwnerNode")
+EPICS_PV_SPEAR_CURRENT = (os.getenv("BTH_EPICS_PV_SPEAR_CURRENT")
+                          or station.default("BTH_EPICS_PV_SPEAR_CURRENT", "SPEAR:BeamCurrAvg"))
+EPICS_PV_BL_STATE = os.getenv("BTH_EPICS_PV_BL_STATE") or station.default("BTH_EPICS_PV_BL_STATE", "BL15:State")
+EPICS_PV_GAP_OWNER = (os.getenv("BTH_EPICS_PV_GAP_OWNER")
+                      or station.default("BTH_EPICS_PV_GAP_OWNER", "BL15:GapOwnerNode"))
 
 # ---------------------------------------------------------------------------
 # Beamline data directories and timezone
