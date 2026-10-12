@@ -7,6 +7,7 @@ app-level `TOOL_DEFINITIONS` import concatenates the two lists.
 import json
 from pathlib import Path
 
+from beamtimehero_cli import epics_ca as _epics_ca
 from beamtimehero_cli.science.exafs import policy as _exafs_policy
 from beamtimehero_cli.science.xrs import policy as _xrs_policy
 
@@ -1814,6 +1815,53 @@ AUTONOMY_TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "caget",
+            "description": (
+                "Read the current value of one or more EPICS process variables "
+                "over Channel Access (`caget`). Read-only: there is no write "
+                "counterpart to this tool. Searches only the CA address list "
+                "configured on this host (EPICS_CA_ADDR_LIST from the host's "
+                "EPICS environment), so a PV served outside it will not connect. "
+                "Returns JSON: per PV, value, timestamp, alarm status and "
+                "severity, or connected=false with the caget error; ok is true "
+                "only when every PV was read. An array PV returns its first "
+                "max_elements elements and its count."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pvs": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "minItems": 1,
+                        "maxItems": _epics_ca.MAX_PVS,
+                        "description": (
+                            "PV names, optionally with a field suffix "
+                            "(e.g. 'SPEAR:BeamCurrAvg', 'BL04:State', "
+                            "'SPEAR:BeamCurrAvg.DESC')."
+                        ),
+                    },
+                    "timeout_s": {
+                        "type": "number",
+                        "exclusiveMinimum": 0,
+                        "maximum": _epics_ca.MAX_TIMEOUT_S,
+                        "default": _epics_ca.DEFAULT_TIMEOUT_S,
+                        "description": "CA connect/get timeout per PV, in seconds.",
+                    },
+                    "max_elements": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": _epics_ca.DEFAULT_MAX_ELEMENTS,
+                        "description": "For array PVs, how many elements to return.",
+                    },
+                },
+                "required": ["pvs"],
+            },
+        },
+    },
 
     # ---- s3df: postgres-backed scan tools (tree=s3df) ----
     {
@@ -3345,7 +3393,7 @@ AUTONOMY_TOOL_CATEGORIES = [
         "plot_running_average", "plot_feature_evolution", "plot_data",
         "list_files", "read_file", "write_summary", "write_macro",
         "save_plan", "get_motor_config", "get_counter_config",
-        "evaluate_spec_macro",
+        "evaluate_spec_macro", "caget",
     ]),
     ("CAT-10 Interpretation", [
         "record_energy_calibration", "get_energy_calibration",

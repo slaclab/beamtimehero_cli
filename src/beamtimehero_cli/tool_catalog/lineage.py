@@ -1239,6 +1239,34 @@ TOOL_LINEAGE: dict[str, dict] = {
         ),
         "depends_on": [],
     },
+    "caget": {
+        "long_description": (
+            "Read EPICS process variables over Channel Access by running the "
+            "EPICS base `caget` binary once per PV (in parallel), with the "
+            "host's CA configuration. Read-only by construction: the client "
+            "can only execute a binary named caget, with an argument list and "
+            "no shell, PV names are validated and may not start with '-', and "
+            "no code path builds a caput. The agent controls PV names, the "
+            "timeout and an array element cap, never the CA address list — "
+            "that comes from the process environment, or from the export "
+            "lines of /etc/profile.d/epics.sh when the process has none."
+        ),
+        "python_func": "epics_ca.caget(pvs, timeout_s, max_elements) -> subprocess caget -w T -a -# N -- PV",
+        "spec_command": None,
+        # False: a CA read, no SPEC command, no hardware write, nothing
+        # audited. The module has no write path at all.
+        "mutates": False,
+        "output": "JSON: {ok, results: [{pv, connected, value, timestamp, status, severity} | {pv, connected: false, error}], ca_addr_list, ca_auto_addr_list}",
+        "source": "epics_ioc",
+        "source_detail": (
+            "EPICS Channel Access via the caget binary on PATH or under "
+            "$EPICS_BASE/bin/$EPICS_HOST_ARCH. Search list is the host's "
+            "EPICS_CA_ADDR_LIST / EPICS_CA_AUTO_ADDR_LIST (on BL4-1: the "
+            "spearca gateway, the beamline IOC broadcast and the local "
+            "current-amp and xsp32 IOCs)."
+        ),
+        "depends_on": [],
+    },
 
     # ---------- Observation ---------------------------------------------------
 

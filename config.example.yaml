@@ -230,6 +230,11 @@ env:
   # BTH_EPICS_PV_BL_STATE: "BL15:State"
   # BTH_EPICS_PV_GAP_OWNER: "BL15:GapOwnerNode"
 
+  # The read-only `tool caget` leaf takes no settings of its own. It runs the
+  # EPICS base caget binary with the host's CA configuration: EPICS_CA_ADDR_LIST
+  # and friends from the process environment, or, when that has no address
+  # list, the `export EPICS_*=` lines of /etc/profile.d/epics.sh.
+
   # Sample camera. Defaults 192.168.150.93, port 8080, JPEG quality 50.
   # SAMPLE_CAM_HOST: "192.168.150.93"
   # SAMPLE_CAM_PORT: "8080"

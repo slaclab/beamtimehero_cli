@@ -1079,6 +1079,23 @@ def t_evaluate_spec_macro(arguments: dict) -> tuple[str, list[str]]:
     return json.dumps(result, indent=2), images_b64
 
 
+def t_caget(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import epics_ca
+
+    pvs = arguments.get("pvs")
+    if isinstance(pvs, str):
+        pvs = [p for p in re.split(r"[\s,]+", pvs) if p]
+    try:
+        result = epics_ca.caget(
+            pvs or [],
+            timeout_s=arguments.get("timeout_s", epics_ca.DEFAULT_TIMEOUT_S),
+            max_elements=arguments.get("max_elements", epics_ca.DEFAULT_MAX_ELEMENTS),
+        )
+    except ValueError as e:
+        result = {"ok": False, "error": str(e)}
+    return _as_json(result), []
+
+
 # ---------------------------------------------------------------------------
 # Research sandbox — the one tool whose output is not ours
 # ---------------------------------------------------------------------------
@@ -2801,6 +2818,7 @@ _HANDLERS: dict[str, callable] = {
     "get_motor_config": t_get_motor_config,
     "get_counter_config": t_get_counter_config,
     "evaluate_spec_macro": t_evaluate_spec_macro,
+    "caget": t_caget,
     # Research sandbox (tree=research)
     "ask_question": t_ask_question,
     # CAT-10 · Scientific interpretation
