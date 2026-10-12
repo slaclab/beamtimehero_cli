@@ -228,7 +228,9 @@ def _merged_twocol_path(file_name) -> Path | None:
     """Resolve *file_name* to a merged two-column ASCII under the data roots.
 
     Roots are the same the scan backends read from: the collector directory
-    when ``SSRL_COLLECTOR_DIR`` is set, plus ``BL_SCAN_DIR``. Tries the name
+    when ``SSRL_COLLECTOR_DIR`` is set, plus ``BL_SCAN_DIR``; then the CHERFD
+    export directory (``CHERFD_EXPORT_DIR``), where ``cherfd_export_merged``
+    writes the file whose name it tells the caller to pass here. Tries the name
     as a root-relative path first (``MERGE/foo.dat``), then falls back to a
     recursive basename search — ``local_data.list_files`` reports these
     files by relative path, but users often quote just the basename.
@@ -240,6 +242,8 @@ def _merged_twocol_path(file_name) -> Path | None:
         roots.append(Path(collector_dir))
     if bl_config.BL_SCAN_DIR:
         roots.append(Path(bl_config.BL_SCAN_DIR))
+    from beamtimehero_cli.cherfd_control import settings as cherfd_settings
+    roots.append(cherfd_settings.export_dir())
 
     name = str(file_name)
     for root in roots:

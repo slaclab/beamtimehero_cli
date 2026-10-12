@@ -362,3 +362,14 @@ def test_plot_averaged_scans_overlays_merged_files(scan_dir):
     })
     assert len(images) == 1 and len(images[0]) > 100
     assert "MERGE/a.dat" in text and "MERGE/b.dat" in text
+
+
+def test_merged_file_found_in_cherfd_export_dir(scan_dir, tmp_path_factory, monkeypatch):
+    """cherfd_export_merged writes outside BL_SCAN_DIR; its file name still resolves."""
+    export = tmp_path_factory.mktemp("cherfd_exports")
+    monkeypatch.setenv("CHERFD_EXPORT_DIR", str(export))
+    _write_merged(export / "Fe_merged.dat", _GRID, _xanes(_GRID, 5483.0))
+    assert scans._merged_twocol_path("Fe_merged.dat") == export / "Fe_merged.dat"
+    # the scan directory still wins over the export directory
+    _write_merged(scan_dir / "Fe_merged.dat", _GRID, _xanes(_GRID, 5490.0))
+    assert scans._merged_twocol_path("Fe_merged.dat") == scan_dir / "Fe_merged.dat"
