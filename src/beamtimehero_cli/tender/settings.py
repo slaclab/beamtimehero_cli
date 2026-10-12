@@ -12,11 +12,10 @@ how each field reaches the library -- including its asymmetries:
   * dark="none", RIXS: use_dark_as_background=False -> min-projection.
   * dark="none", XES: bcg=None -> min-projection over the data files.
 
-Normalisation ranges (e0, pre1, pre2, norm1, norm2, nnorm) are NOT job
-fields yet -- chemcat's Tender jobs always normalise with larch's defaults.
-They are carried here because the chat tools can apply them, and
-`job_params()` reports them separately as `not_yet_job_fields` so nobody
-mistakes a chat result for something a job will reproduce.
+Normalisation ranges (e0, pre1, pre2, norm1, norm2, nnorm) are job fields
+of tender-herfd (TenderParams inherits chemcat's _PreEdge), so `job_params()`
+puts them in the job body. tender-xes writes no normalised spectrum and has
+none.
 """
 
 from __future__ import annotations
@@ -136,11 +135,6 @@ def job_params(kind: str, directory: str, sample: str, measurement: str,
         body["i0_corr"] = roi.i0_corr
         if roi.central_pix is not None:
             body["central_pix"] = roi.central_pix
-    out = {"job": body}
-    if norm is not None and norm.overrides:
-        out["not_yet_job_fields"] = {
-            "normalisation": dict(norm.overrides),
-            "note": ("Tender jobs normalise with larch's default ranges; these ranges "
-                     "are applied by the chat tools only (see PLAN-chemcat-processing-tab)."),
-        }
-    return out
+    if kind != "XES" and norm is not None:
+        body.update(norm.overrides)
+    return {"job": body}

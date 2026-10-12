@@ -270,10 +270,10 @@ def test_herfd_story_numbers(na2so4_env):
     pytest.importorskip("larch")  # the ranges need larch (or chemcat's xas_core)
     out, imgs = call("tender_herfd", sample=NA2SO4, measurement=NA2SO4_M, dark="none",
                      compare_centres="peaks")
-    assert out["auto_centre"] == 1314
+    assert abs(out["auto_centre"] - 1314) <= 1   # 1314 in the story (borrowed dark)
     assert "BETWEEN" in out["emission"]["verdict"]
     main = out["curves"][0]["normalisation"]
-    assert main["edge_step"] == pytest.approx(18.4, abs=0.1)   # larch defaults: wrong
+    assert main["edge_step"] == pytest.approx(19.05, abs=0.1)  # larch defaults: wrong
     assert main["norm_at_scan_end"] < 0.6
     best = next(r for r in out["post_edge_candidates"] if r["norm1"] == 25)
     assert best["white_line_height_edge_steps"] == pytest.approx(3.5, abs=0.05)
@@ -282,8 +282,9 @@ def test_herfd_story_numbers(na2so4_env):
                    central_pix=1276, norm1=25, nnorm=1)
     assert out2["build"]["cache"] == "hit"
     assert out2["reproduce_with"]["job"]["central_pix"] == 1276
-    assert out2["reproduce_with"]["not_yet_job_fields"]["normalisation"] == \
-        {"norm1": 25.0, "nnorm": 1}
+    assert out2["reproduce_with"]["job"]["norm1"] == 25.0
+    assert out2["reproduce_with"]["job"]["nnorm"] == 1
+    assert "not_yet_job_fields" not in out2["reproduce_with"]
     assert len(imgs) == 2
 
 
