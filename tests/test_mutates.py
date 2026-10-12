@@ -44,7 +44,7 @@ MUTATING_COUNT = 40
 
 #: Same rule for the second audited transport: CHERFD actions and stops,
 #: sent through ``audited_cherfd`` and living on ``cherfd-write``.
-CHERFD_MUTATING_COUNT = 16
+CHERFD_MUTATING_COUNT = 17
 
 TOOLS_CHERFD = TOOLS_CORE.with_name("tools_cherfd.py")
 
@@ -284,7 +284,7 @@ _CHERFD = _cherfd_handler_commands()
 
 
 def test_cherfd_scan_found_the_handlers():
-    assert len(_CHERFD) == 50 and sum(1 for c in _CHERFD.values() if c) > 20
+    assert len(_CHERFD) == 51 and sum(1 for c in _CHERFD.values() if c) > 20
 
 
 @pytest.mark.parametrize("name", sorted(_CHERFD))

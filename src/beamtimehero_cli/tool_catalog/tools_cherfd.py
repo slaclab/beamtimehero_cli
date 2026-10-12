@@ -495,6 +495,25 @@ def t_set_data_path(args):
 
 
 @_tool
+def t_set_detector(args):
+    name = str(args.get("detector") or "").strip().lower()
+    station = _station()
+    if name not in ("none", station.detector):
+        raise ValueError(f"{station.label} detectors are 'none' and {station.detector!r}, not {name!r}")
+    mismatch = _station_mismatch(_server_station())
+    if mismatch:
+        raise ValueError(mismatch)
+    # the server refuses during an acquisition (400); confirm it took from /get_detector
+    res = audited_cherfd("set_detector", {"detector": name}, _j(args))
+    after = audited_cherfd("detector")
+    res["detector_after"] = (after.get("result") or {}).get("detector") if after.get("ok") else None
+    if res.get("ok") and res["detector_after"] != name:
+        res["ok"] = False
+        res["error"] = f"server reports detector {res['detector_after']!r} after setting {name!r}"
+    return _as_json(res), []
+
+
+@_tool
 def t_set_undulator_tracking(args):
     if args.get("enable"):
         _needs_undulator("undulator tracking")
@@ -1116,6 +1135,7 @@ HANDLERS: dict[str, callable] = {
     "cherfd_clear_stop": t_clear_stop,
     "cherfd_reset_controller": t_reset_controller,
     "cherfd_set_data_path": t_set_data_path,
+    "cherfd_set_detector": t_set_detector,
     "cherfd_set_undulator_tracking": t_set_undulator_tracking,
     "cherfd_set_gap_calibration_offset": t_set_gap_calibration_offset,
     "cherfd_set_gap_move_latency": t_set_gap_move_latency,

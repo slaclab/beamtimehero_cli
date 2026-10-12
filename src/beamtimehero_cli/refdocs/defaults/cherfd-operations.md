@@ -27,10 +27,11 @@ The station profile is `science/cherfd/policy.py STATION_PROFILES`; the live
 server reports its own station at `GET /station`. `cherfd_get_station` shows
 both, and `cherfd_check_readiness`, `cherfd_start_scan` and
 `cherfd_move_energy` refuse when the server is another station. The
-detector is the station's, not a per-scan choice: the server's detector can
-read `none` (the BL4-1 UI does this for transmission / TFY scans, box
-channels only), which readiness reports as a warning; any other detector is
-a blocker.
+scan detector is the station's or `none` (box channels only: transmission,
+TFY on a diode). `cherfd_set_detector` chooses between them (refused during
+an acquisition; the BL4-1 cscan UI's technique selector writes the same
+persisted setting). Readiness reports `none` as a warning; any other
+detector is a blocker.
 
 The tools sit on three branches, split like SPEC's so an agent surface can
 grant them separately:

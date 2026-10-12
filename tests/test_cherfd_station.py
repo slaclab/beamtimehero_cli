@@ -120,3 +120,16 @@ def test_bl41_run_quality(bl41_data):
         assert "signal_all_zero" in codes                     # no Ge heads fitted that day
         assert "incomplete_range" not in codes                # ~2 eV backlash start is expected
         assert sw["missing_triggers"] == 0
+
+
+def test_bl41_set_detector(bl41):
+    d, _ = run("cherfd_set_detector", detector="none", justification="TFY on the PIPS diode")
+    assert d["ok"] and d["detector_after"] == "none"
+    s, _ = run("cherfd_get_station")
+    assert s["server_detector"] == "none"
+    d, _ = run("cherfd_set_detector", detector="vortex", justification="x")
+    assert not d["ok"] and "ge32" in d["error"]
+    run("cherfd_start_scan", command="cscan 7100 7150 .2 20", sweeps=200, justification="long")
+    d, _ = run("cherfd_set_detector", detector="ge32", justification="x")
+    assert not d["ok"] and "during an acquisition" in str(d)
+    run("cherfd_stop_scan", justification="done")

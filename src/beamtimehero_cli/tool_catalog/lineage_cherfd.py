@@ -94,6 +94,9 @@ CHERFD_LINEAGE: dict[str, dict] = {
     "cherfd_reset_controller": _action("reset", "Resets the controller to idle.", "JSON envelope"),
     "cherfd_set_data_path": _action("set_data_path", "Sets and persists file_dir/file_root.",
                                     "JSON envelope + settings"),
+    "cherfd_set_detector": _action("set_detector", "Sets and persists the scan detector, then "
+                                   "reads it back from /get_detector.",
+                                   "JSON envelope + detector_after", ["cherfd_get_station"]),
     "cherfd_set_undulator_tracking": _action("set_undulator_enable", "Toggles controller gap control.",
                                              "JSON envelope"),
     "cherfd_set_gap_calibration_offset": _action(

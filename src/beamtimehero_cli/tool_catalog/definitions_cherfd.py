@@ -197,6 +197,14 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
          {"file_dir": {"type": "string", "description": "Subdirectory under the cherfd data root."},
           "file_root": {"type": "string", "description": "File-name root for subsequent runs."}},
          ["file_dir", "file_root"]),
+    _act("cherfd_set_detector",
+         "Choose the detector read out with each scan: 'none' = cscan box channels only "
+         "(transmission I0/I1/I2, TFY on the PIPS diode; BL4-1 ctr1-4 = i0 i1 i2 pips), or the "
+         "station's detector ('ge32' at BL4-1, 'vortex' at BL15-2). Refused during an acquisition. "
+         "Persisted by the server; the cscan UI's technique selector writes the same setting.",
+         {"detector": {"type": "string", "enum": ["none", "ge32", "vortex"],
+                       "description": "'none', or the station's detector (cherfd_get_station)."}},
+         ["detector"]),
     _act("cherfd_set_undulator_tracking",
          "Enable/disable undulator gap control by the cherfd controller (disable resets the latched harmonic).",
          {"enable": {"type": "boolean", "description": "True to enable."}}, ["enable"]),
@@ -421,7 +429,8 @@ CHERFD_TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
                          "cherfd_get_table_tracking", "cherfd_get_scan_results", "cherfd_wait_for_scan",
                          "cherfd_get_daq_status", "cherfd_check_readiness"]),
     ("CHERFD Control - acquisition", ["cherfd_start_scan", "cherfd_stop_scan", "cherfd_clear_stop",
-                               "cherfd_reset_controller", "cherfd_set_data_path", "cherfd_daq_count",
+                               "cherfd_reset_controller", "cherfd_set_data_path", "cherfd_set_detector",
+                               "cherfd_daq_count",
                                "cherfd_daq_abort"]),
     ("CHERFD Control - beamline", ["cherfd_move_energy", "cherfd_move_gap", "cherfd_stop_gap",
                             "cherfd_set_undulator_tracking", "cherfd_set_gap_calibration_offset",

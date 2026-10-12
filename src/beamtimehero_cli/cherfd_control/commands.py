@@ -92,6 +92,8 @@ _ALL = [
     RestCommand("clear_stop", SERVER, "POST", "/clear_stop", "action"),
     RestCommand("set_data_path", SERVER, "POST", "/set_data_path", "action",
                 _pick("file_dir", "file_root")),
+    RestCommand("set_detector", SERVER, "POST", "/set_detector", "action", _pick("detector"),
+                doc="scan detector: none (box channels only), ge32 or vortex"),
     RestCommand("set_undulator_enable", SERVER, "POST", "/set_undulator_enable", "action",
                 lambda a: {"enable": bool(a["enable"])}),
     RestCommand("set_gap_calibration_offset", SERVER, "POST", "/set_gap_calibration_offset",

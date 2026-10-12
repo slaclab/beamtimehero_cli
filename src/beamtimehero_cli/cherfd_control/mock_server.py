@@ -525,6 +525,18 @@ def _get_detector(st, body):
                  "available": [station.detector, "none"]}
 
 
+def _set_detector(st, body):
+    station = _station()
+    name = str((body or {}).get("detector", "")).strip()
+    if name not in (station.detector, "none"):
+        return 400, {"success": False, "error": f"detector {name!r} not available at {station.label}"}
+    if _status(st, None)[1]["status"]["acquisition_active"]:
+        return 400, {"success": False, "error": "cannot change the detector during an acquisition"}
+    st["detector"] = name
+    return 200, {"success": True, "message": f"Scan detector: {name}", "detector": name,
+                 "available": [station.detector, "none"]}
+
+
 def _check_command(st, body):
     command = (body or {}).get("command", "").strip()
     if not command:
@@ -556,6 +568,7 @@ ROUTES = {
     "server_settings": _server_settings, "undulator_status": _undulator_status,
     "table_tracking": _table_tracking, "start_acquisition": _start, "stop": _stop,
     "reset": _reset, "clear_stop": _clear_stop, "set_data_path": _set_data_path,
+    "set_detector": _set_detector,
     "set_undulator_enable": _set_undulator_enable,
     "set_gap_calibration_offset": _set_gap_offset, "set_gap_move_latency": _set_gap_latency,
     "set_table_tracking": _set_table_tracking, "set_table_anchor": _set_table_anchor,
