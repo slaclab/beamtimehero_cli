@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "beamtimehero_cli"
-version = "0.6.1"
+version = "0.7.0"
 description = "Generic CLI for SSRL BL15-2 beamline: SPEC injection, scan data reads, log reads, action logging."
 requires-python = ">=3.9"
 readme = "README.md"

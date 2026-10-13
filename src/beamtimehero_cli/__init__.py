@@ -1,3 +1,3 @@
 """beamtimehero_cli — generic CLI for SSRL BL15-2 beamline."""
 
-__version__ = "0.6.1"
+__version__ = "0.7.0"
