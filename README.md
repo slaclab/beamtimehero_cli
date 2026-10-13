@@ -1,6 +1,7 @@
 # beamtimehero_cli
 
-Generic command-line interface for the SSRL BL15-2 beamline.
+Generic command-line interface for SSRL beamlines: BL15-2 (the default) and
+BL4-1, selected with `BTH_STATION`.
 
 Provides:
 
@@ -9,7 +10,9 @@ Provides:
 - **Spectroscopy analysis** — XAS/HERFD descriptors and interpretation, X-ray Raman (energy-loss) reduction, EXAFS chi(k)/Fourier-transform products.
 - **CHERFD continuous scanning** — plan, run and reduce continuous scans on the cscan box through the cherfd control server, at BL15-2 (Vortex) and BL4-1 (24-element Ge) (`cherfd`, `cherfd-read`, `cherfd-write` trees; `beamtimehero ref cherfd-operations`). Mocked unless `CHERFD_MOCK=0`.
 - **Deployment backends** — the same scan-read surface served from S3DF Postgres + pickled scan data; Slack messaging.
-- **Log reads** — beamline control log parsing, search.
+- **Log reads** — beamline control log parsing, search; read-only access to the station's application logs (`tool list-app-logs` / `read-app-log` / `search-app-logs`).
+- **Station services (BL4-1)** — read-only gas mixer / ion-chamber HV state, Ge detector status and Motor Analyzer diagnostics (`tool get-sample-environment`, `get-ge-detector-status`, `get-motor-diagnostics`); dark currents and check_beam (`spec-write measure-darks`, `set-check-beam`).
+- **Provenance** — per-experiment provenance records and results bundles with checksummed manifests (`tool record-provenance`, `export-results-bundle`).
 - **Action logging** — every command writes to a local SQLite audit trail.
 - **Reference docs** — `beamtimehero ref <name>` to fetch bundled procedure docs.
 
@@ -86,11 +89,18 @@ last of them stops holding, and carries a Claude Code allowlist.
 
 ## CLI surface
 
-Fourteen top-level trees, each with its own leaves. `beamtimehero --help` prints
-them with one-line descriptions, and `--help` works at any depth;
-`beamtimehero ref getting-started` is the same list as a page you can hand to
-someone. Agent profiles — curated alias views over the catalog, e.g.
-`bl-aligner` — are listed with `beamtimehero --list-profiles`.
+Up to fourteen top-level trees, each with its own leaves; a station leaves
+out the trees it has no use for (BL4-1 hides `xrs` and `tender`), and a tree
+with no tools is not listed. `beamtimehero --help` prints them with one-line
+descriptions, `--help` works at any depth and a leaf's `--help` starts with
+what the tool does; `beamtimehero ref getting-started` is the same list as a
+page you can hand to someone. Agent profiles — curated alias views over the
+catalog, e.g. `bl-aligner` — are listed with `beamtimehero --list-profiles`.
+
+`catalog` and `--list-profiles` belong to this package's own `beamtimehero`
+entry point. A consuming app's wrapper (e.g. autonomous_fourone's
+`scripts/beamtimehero`) builds its own parser from the parts below and may
+carry neither; there, `--help` is the discovery surface.
 
 ## Tool catalog (human-readable)
 
@@ -170,7 +180,11 @@ export BEAMTIMEHERO_CONFIG=$PWD/config.yaml
 A deployment picks its endstation with one variable, `BTH_STATION` (`bl15`,
 the default, or `bl41`); every station-specific default -- SPEC beam-status
 and count-time rules, counter priority, the CHERFD detector, crystals and
-undulator -- follows from it, and any single variable can still override it.
+undulator, the sample camera, the spec-eval port, the station's web services
+and log roots -- follows from it, and any single variable can still override
+it. Beamline *policy* is not a default and has no override: the scan modes a
+station allows (BL4-1 continuous + step, BL15-2 step only) and that a
+continuous scan never moves the table.
 
 Anything already exported wins over the file, so a checked-in baseline plus
 per-host overrides works. A `.env` file is also loaded, but it is resolved
