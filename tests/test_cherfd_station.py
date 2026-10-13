@@ -189,3 +189,22 @@ def test_scan_mode_policy(monkeypatch):
     with pytest.raises(ValueError):
         station.check_scan_mode("fly")
     assert station.scan_modes("bl15") == ("step",)
+
+
+def test_spec_eval_url_is_per_station(monkeypatch):
+    import importlib
+
+    from beamtimehero_cli import config
+    monkeypatch.delenv("SPEC_EVAL_URL", raising=False)
+    try:
+        monkeypatch.setenv("BTH_STATION", "bl41")
+        assert importlib.reload(config).SPEC_EVAL_URL == "http://127.0.0.1:5016"
+        monkeypatch.delenv("BTH_STATION")
+        assert importlib.reload(config).SPEC_EVAL_URL == "http://127.0.0.1:5006"   # BL15-2 unchanged
+        monkeypatch.setenv("BTH_STATION", "bl41")
+        monkeypatch.setenv("SPEC_EVAL_URL", "http://127.0.0.1:5999")
+        assert importlib.reload(config).SPEC_EVAL_URL == "http://127.0.0.1:5999"   # explicit wins
+    finally:
+        monkeypatch.delenv("SPEC_EVAL_URL", raising=False)
+        monkeypatch.delenv("BTH_STATION", raising=False)
+        importlib.reload(config)

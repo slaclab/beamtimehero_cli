@@ -131,7 +131,9 @@ SPEC_HOST = os.getenv("SPEC_HOST", "localhost")
 SPEC_PORT = int(os.getenv("SPEC_PORT", "2033"))
 SPEC_NAME = os.getenv("SPEC_NAME", "spec")
 
-SPEC_EVAL_URL = os.getenv("SPEC_EVAL_URL", "http://127.0.0.1:5006")
+# Station default: BL4-1's :5006 is the gas mixer, so its spec-eval runs on :5016.
+SPEC_EVAL_URL = (os.getenv("SPEC_EVAL_URL")
+                 or station.default("SPEC_EVAL_URL", "http://127.0.0.1:5006"))
 
 # ---------------------------------------------------------------------------
 # Research sandbox — the `research ask-question` leaf.
