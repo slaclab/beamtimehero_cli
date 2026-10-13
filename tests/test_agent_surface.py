@@ -292,7 +292,7 @@ def test_the_write_filter_is_the_only_thing_that_drops_anything(catalogue):
     build = build_surface(_aligner(), catalogue)
     mutating = sum(1 for t in build.tools if t.mutates)
     assert mutating == 2
-    assert len(build.tools) == len(TOOL_DEFINITIONS) - (40 + 17) + 2
+    assert len(build.tools) == len(TOOL_DEFINITIONS) - (42 + 17) + 2
 
 
 def test_a_branch_carries_its_nested_children(catalogue):
@@ -407,7 +407,7 @@ def test_every_leaf_carries_the_agent_role(catalogue):
         leaf for leaf in leaves(snapshot_parser(parser))
         if leaf["defaults"].get("_tool_name")
     ]
-    assert len(stamped) == 192 - (40 + 17) + 2
+    assert len(stamped) == 206 - (42 + 17) + 2
     assert all(leaf["defaults"]["_agent_role"] == "blaligner" for leaf in stamped)
 
 
@@ -840,7 +840,7 @@ def test_snapshot_keeps_the_dispatch_defaults_and_strip_keys_removes_them():
 def test_names_are_not_unique_but_no_shared_name_mutates(catalogue):
     """Why `ToolPath` is the identity, and why name-keying is still safe.
 
-    192 definitions under 186 names: six names exist on two trees each.
+    206 definitions under 200 names: six names exist on two trees each.
     Lineage — and therefore `mutates()` and `write_tools` — is keyed by
     *name*, so a name on two trees has one safety class for both. That is
     only sound while no such name mutates: if one did, naming it in
@@ -855,8 +855,8 @@ def test_names_are_not_unique_but_no_shared_name_mutates(catalogue):
     names = Counter(
         (tdef.get("function") or {}).get("name") for tdef in TOOL_DEFINITIONS
     )
-    assert sum(names.values()) == 192
-    assert len(names) == 186
+    assert sum(names.values()) == 206
+    assert len(names) == 200
     duplicated = {name for name, n in names.items() if n > 1}
     assert duplicated == {
         "get_latest_scan", "list_scans", "read_scan",
@@ -866,7 +866,7 @@ def test_names_are_not_unique_but_no_shared_name_mutates(catalogue):
 
     # And the index really is keyed by path, so both of a pair survive.
     paths = {"/".join(p) for p in catalogue.index()}
-    assert len(paths) == 192
+    assert len(paths) == 206
     assert {"spec-file/list_scans", "s3df/list_scans"} <= paths
 
 
@@ -874,7 +874,7 @@ def test_exactly_the_write_branches_mutate(catalogue):
     mutating = {
         "/".join(tool.path) for tool in catalogue.index().values() if tool.mutates
     }
-    assert len(mutating) == 40 + 17
+    assert len(mutating) == 42 + 17
     assert {p.split("/")[0] for p in mutating} == {"spec-write", "cherfd-write"}
 
 

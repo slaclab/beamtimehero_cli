@@ -306,6 +306,70 @@ AUTONOMY_TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "measure_darks",
+            "description": (
+                "BL4-1: measure the I0/I1/I2/PIPS dark currents without the "
+                "interactive measure_offsets prompt — hold the shutter closed, count "
+                "count_time_s, store the dark rates the bgI0/bgI1/bgI2/bgpips "
+                "counters subtract, release the shutter. Redo after every amplifier "
+                "gain or offset change (the stored rates go stale). The hutch "
+                "lights add to the PIPS dark: say in the justification whether "
+                "they were off."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    **_J,
+                    "count_time_s": {"type": "number", "default": 2,
+                                     "description": "Dark count time (s)."},
+                },
+                "required": ["justification"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "set_check_beam",
+            "description": (
+                "BL4-1 check_beam.mac: when enabled, every SPEC step scan pauses at "
+                "its start while SPEAR is below 200 mA or BL4 is closed, and resumes "
+                "when the beam is back (check_beam_on / check_beam_off)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    **_J,
+                    "enabled": {"type": "boolean", "description": "True = check_beam_on."},
+                },
+                "required": ["justification", "enabled"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_check_beam",
+            "description": "BL4-1: whether check_beam is on (step scans pause without beam).",
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_crystal_set",
+            "description": (
+                "BL4-1 mono.mac get_crystal: which crystal set SPEC's energy "
+                "calculation uses (A = Si(220), B = Si(111)) and its d-spacing. "
+                "Read-only. Changing the set needs the monab stage moved as well — "
+                "staff only, no tool."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
 
     # -----------------------------------------------------------------
     # CAT-1 · Motor control
@@ -1863,6 +1927,178 @@ AUTONOMY_TOOL_DEFINITIONS = [
         },
     },
 
+    # ---- station services, app logs, provenance (tree=tool) ----
+    {
+        "type": "function",
+        "function": {
+            "name": "get_sample_environment",
+            "description": (
+                "Read the sample environment: the gas mixer / ion-chamber HV page "
+                "(per-chamber pressure and HV, mixer set points, vent/fill state; "
+                "BL4-1 gasmixer app, read-only) and any temperature PVs staff "
+                "configured (BTH_SAMPLE_TEMP_PVS; none by default — neither station "
+                "has a temperature controller in SPEC). Read-only: record the "
+                "conditions in provenance; nothing here changes them."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_ge_detector_status",
+            "description": (
+                "Read the 32-element Ge detector's state from its GUI service "
+                "(xspress_32element /api/state): ROIs, groups A/B, bad elements, "
+                "per-element rates and frame time. Read-only; changes go through "
+                "xsp32_task."
+            ),
+            "parameters": {"type": "object", "properties": {}, "required": []},
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_motor_diagnostics",
+            "description": (
+                "Motor Analyzer, read-only: a motor's SPEC configuration (steps/unit, "
+                "speed, acceleration, backlash, limits) and its most recent "
+                "diagnostic runs. Never starts a run (those move the motor; staff "
+                "use the Motor Analyzer page)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "mnemonic": {"type": "string", "description": "Motor's SPEC mnemonic; omit for every motor."},
+                    "runs": {"type": "integer", "default": 5, "description": "Recent runs to return."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_app_logs",
+            "description": (
+                "List the station's application and service log files, newest "
+                "first, per named log root (BTH_APP_LOG_ROOTS; at BL4-1 the "
+                "autonomous apps, CHERFD, cscan_acq, the Ge detector, Motor "
+                "Analyzer and current amps). Read-only."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "root": {"type": "string", "description": "One log root; omit for all."},
+                    "limit": {"type": "integer", "default": 50, "description": "Files per root."},
+                },
+                "required": [],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_app_log",
+            "description": (
+                "Tail of one application log file: root name plus a path relative "
+                "to it (from list_app_logs). Paths outside the root are refused. "
+                "Read-only."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "root": {"type": "string", "description": "Log root name."},
+                    "path": {"type": "string", "description": "File path relative to the root."},
+                    "lines": {"type": "integer", "default": 200, "description": "Lines from the end (max 2000)."},
+                },
+                "required": ["root", "path"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_app_logs",
+            "description": (
+                "Regex search over the newest application log files of one root "
+                "(or all roots). Returns file, line number and line. Read-only."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "pattern": {"type": "string", "description": "Python regular expression."},
+                    "root": {"type": "string", "description": "One log root; omit for all."},
+                    "max_matches": {"type": "integer", "default": 100, "description": "Stop after this many (max 500)."},
+                    "ignore_case": {"type": "boolean", "default": True},
+                },
+                "required": ["pattern"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "export_results_bundle",
+            "description": (
+                "Bundle result files for the user: copy them into a new timestamped "
+                "directory under the export root (BTH_EXPORT_DIR, else the data "
+                "directory's exports/), write manifest.json (sha256, size, source "
+                "path per file, plus the metadata given) and a zip. Sources must lie "
+                "under the scan directory, the CHERFD export/data directories or "
+                "BTH_EXPORT_SOURCE_ROOTS. Never overwrites."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "files": {"type": "array", "items": {"type": "string"}, "minItems": 1,
+                              "description": "Absolute paths, or names relative to the scan directory."},
+                    "name": {"type": "string", "description": "Bundle name, e.g. the experiment name."},
+                    "metadata": {"type": "object", "description": "Experiment / sample / proposal metadata for the manifest."},
+                    "zip": {"type": "boolean", "default": True, "description": "Also write <bundle>.zip."},
+                },
+                "required": ["files", "name"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "record_provenance",
+            "description": (
+                "Append one sample-provenance event (mounted, aligned, calibrated, "
+                "measured under conditions X, exported, ...) to the experiment's "
+                "provenance log (<data dir>/provenance/<experiment>.jsonl). "
+                "Append-only."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "experiment": {"type": "string", "description": "Experiment name or id."},
+                    "event": {"type": "string", "description": "Short event name, e.g. 'measured'."},
+                    "sample": {"type": "string", "description": "Sample name or id, if the event is per sample."},
+                    "details": {"type": "object", "description": "Free-form details (conditions, files, counts)."},
+                },
+                "required": ["experiment", "event"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_provenance",
+            "description": "Read an experiment's provenance events, optionally for one sample.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "experiment": {"type": "string", "description": "Experiment name or id."},
+                    "sample": {"type": "string", "description": "Only this sample's events."},
+                },
+                "required": ["experiment"],
+            },
+        },
+    },
+
     # ---- s3df: postgres-backed scan tools (tree=s3df) ----
     {
         "type": "function",
@@ -1988,6 +2224,25 @@ AUTONOMY_TOOL_DEFINITIONS = [
                     "thread_ts": {"type": "string", "description": "If set, posts as a reply in this thread."},
                 },
                 "required": ["channel_id", "text"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "tree": "slack",
+        "function": {
+            "name": "post_slack_dm",
+            "description": (
+                "Send a direct message to one Slack user (e.g. the on-call staff "
+                "member) by user id. Outward-facing, like post_slack_message."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {"type": "string", "description": "Slack user id (U...)."},
+                    "text": {"type": "string", "description": "Message text (Slack mrkdwn)."},
+                },
+                "required": ["user_id", "text"],
             },
         },
     },
@@ -3378,8 +3633,9 @@ AUTONOMY_TOOL_CATEGORIES = [
         "small_beam", "big_beam", "xtal_align", "reset_gap", "set_m2_stripe",
         "get_anchor", "set_anchor", "tracking",
     ]),
-    ("CAT-6 Beam", ["get_beam_size", "get_beam_status", "get_counts", "get_counter", "request_gap_ownership", "capture_sample_image", "get_reference_image"]),
-    ("CAT-7 State", ["get_element", "get_scan_number", "get_current_datafile", "get_plotselected_counter", "abort_current_scan"]),
+    ("CAT-6 Beam", ["get_beam_size", "get_beam_status", "get_counts", "get_counter", "request_gap_ownership", "capture_sample_image", "get_reference_image",
+                    "measure_darks", "set_check_beam", "get_check_beam"]),
+    ("CAT-7 State", ["get_element", "get_crystal_set", "get_scan_number", "get_current_datafile", "get_plotselected_counter", "abort_current_scan"]),
     ("CAT-8 Orchestration", [
         "request_human_intervention", "post_status_update",
         "log_status_assessment",
@@ -3406,6 +3662,9 @@ AUTONOMY_TOOL_CATEGORIES = [
         "list_files", "read_file", "write_summary", "write_macro",
         "save_plan", "get_motor_config", "get_counter_config",
         "evaluate_spec_macro", "caget",
+        "get_sample_environment", "get_ge_detector_status", "get_motor_diagnostics",
+        "list_app_logs", "read_app_log", "search_app_logs",
+        "export_results_bundle", "record_provenance", "get_provenance",
     ]),
     ("CAT-10 Interpretation", [
         "record_energy_calibration", "get_energy_calibration",

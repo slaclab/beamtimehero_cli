@@ -1096,6 +1096,117 @@ def t_caget(arguments: dict) -> tuple[str, list[str]]:
     return _as_json(result), []
 
 
+
+# ---------------------------------------------------------------------------
+# Station services, app logs, provenance, BL4-1 SPEC extras
+# ---------------------------------------------------------------------------
+
+def _guarded(fn):
+    """Run `fn`, turning ValueError into an ok=false envelope."""
+    try:
+        return _as_json(fn()), []
+    except ValueError as e:
+        return _as_json({"ok": False, "error": str(e)}), []
+
+
+def t_get_sample_environment(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import station_services
+    return _guarded(station_services.sample_environment)
+
+
+def t_get_ge_detector_status(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import station_services
+    return _guarded(station_services.ge_detector_status)
+
+
+def t_get_motor_diagnostics(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import station_services
+    return _guarded(lambda: station_services.motor_diagnostics(
+        arguments.get("mnemonic") or None, int(arguments.get("runs", 5))))
+
+
+def t_list_app_logs(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import applogs
+    return _guarded(lambda: applogs.list_logs(arguments.get("root") or None,
+                                              int(arguments.get("limit", 50))))
+
+
+def t_read_app_log(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import applogs
+    return _guarded(lambda: applogs.read_log(arguments.get("root") or "", arguments.get("path") or "",
+                                             int(arguments.get("lines", applogs.DEFAULT_TAIL_LINES))))
+
+
+def t_search_app_logs(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import applogs
+    return _guarded(lambda: applogs.search_logs(
+        arguments.get("pattern") or "", arguments.get("root") or None,
+        int(arguments.get("max_matches", 100)), bool(arguments.get("ignore_case", True))))
+
+
+def t_export_results_bundle(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import provenance
+    files = arguments.get("files") or []
+    if isinstance(files, str):
+        files = [f for f in re.split(r"[\s,]+", files) if f]
+    return _guarded(lambda: provenance.export_bundle(
+        files, arguments.get("name") or "", arguments.get("metadata") or {},
+        bool(arguments.get("zip", True))))
+
+
+def t_record_provenance(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import provenance
+    return _guarded(lambda: provenance.record_provenance(
+        arguments.get("experiment") or "", arguments.get("event") or "",
+        arguments.get("sample") or None, arguments.get("details") or {}))
+
+
+def t_get_provenance(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import provenance
+    return _guarded(lambda: provenance.read_provenance(
+        arguments.get("experiment") or "", arguments.get("sample") or None))
+
+
+def _bl41_only(tool: str):
+    from beamtimehero_cli import station
+    if station.station_name() != "bl41":
+        return _as_json({"ok": False, "error": f"{tool} uses BL4-1's SPEC macros; this "
+                                               f"station is {station.station_name()}"}), []
+    return None
+
+
+def t_measure_darks(arguments: dict) -> tuple[str, list[str]]:
+    refused = _bl41_only("measure_darks")
+    if refused:
+        return refused
+    j = (arguments.get("justification") or "").strip()
+    t = arguments.get("count_time_s", 2)
+    res = audited_call("measure_darks", [str(t)], justification=j)
+    return _as_json(res), []
+
+
+def t_set_check_beam(arguments: dict) -> tuple[str, list[str]]:
+    refused = _bl41_only("set_check_beam")
+    if refused:
+        return refused
+    j = (arguments.get("justification") or "").strip()
+    cmd = "check_beam_on" if arguments.get("enabled") else "check_beam_off"
+    return _as_json(audited_call(cmd, [], justification=j)), []
+
+
+def t_get_check_beam(arguments: dict) -> tuple[str, list[str]]:
+    refused = _bl41_only("get_check_beam")
+    if refused:
+        return refused
+    return _as_json(audited_call("check_beam_state", [], justification="")), []
+
+
+def t_get_crystal_set(arguments: dict) -> tuple[str, list[str]]:
+    refused = _bl41_only("get_crystal_set")
+    if refused:
+        return refused
+    return _as_json(audited_call("get_crystal", [], justification="")), []
+
 # ---------------------------------------------------------------------------
 # Research sandbox — the one tool whose output is not ours
 # ---------------------------------------------------------------------------
@@ -2833,6 +2944,19 @@ _HANDLERS: dict[str, callable] = {
     "get_counter_config": t_get_counter_config,
     "evaluate_spec_macro": t_evaluate_spec_macro,
     "caget": t_caget,
+    "get_sample_environment": t_get_sample_environment,
+    "get_ge_detector_status": t_get_ge_detector_status,
+    "get_motor_diagnostics": t_get_motor_diagnostics,
+    "list_app_logs": t_list_app_logs,
+    "read_app_log": t_read_app_log,
+    "search_app_logs": t_search_app_logs,
+    "export_results_bundle": t_export_results_bundle,
+    "record_provenance": t_record_provenance,
+    "get_provenance": t_get_provenance,
+    "measure_darks": t_measure_darks,
+    "set_check_beam": t_set_check_beam,
+    "get_check_beam": t_get_check_beam,
+    "get_crystal_set": t_get_crystal_set,
     # Research sandbox (tree=research)
     "ask_question": t_ask_question,
     # CAT-10 · Scientific interpretation
@@ -2888,6 +3012,7 @@ _HANDLERS: dict[str, callable] = {
         "read_thread_replies", args, kw=("channel_id", "thread_ts"),
     ),
     "list_channels": lambda args: _t_slack("list_channels", args, kw=()),
+    "post_slack_dm": lambda args: _t_slack("post_dm", args, kw=("user_id", "text")),
 }
 
 # CAT-CHERFD · continuous-scan handlers live in tools_cherfd.py (their own

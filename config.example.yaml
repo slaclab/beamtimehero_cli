@@ -235,10 +235,34 @@ env:
   # and friends from the process environment, or, when that has no address
   # list, the `export EPICS_*=` lines of /etc/profile.d/epics.sh.
 
-  # Sample camera. Defaults 192.168.150.93, port 8080, JPEG quality 50.
+  # Sample camera (RPi-Cam snapshot API). Unset, BL15-2 uses 192.168.150.93
+  # and BL4-1 has no camera (capture_sample_image says so) until its RPi-Cam
+  # is installed and this is set. Port 8080, JPEG quality 50.
   # SAMPLE_CAM_HOST: "192.168.150.93"
   # SAMPLE_CAM_PORT: "8080"
   # SAMPLE_CAM_QUALITY: "50"
+
+  # Station web services read by get_sample_environment, get_ge_detector_status
+  # and get_motor_diagnostics (HTTP GET only). BL4-1 defaults shown; BL15-2
+  # has none.
+  # BTH_GASMIXER_URL: "http://127.0.0.1:5006"
+  # BTH_XSP32_GUI_URL: "http://192.168.41.6:8032"
+  # BTH_MOTOR_ANALYZER_URL: "http://127.0.0.1:5011"
+
+  # Temperature PVs for get_sample_environment, as label=PV pairs, read with
+  # the read-only caget. Default "" (no station has a temperature controller
+  # in its SPEC config).
+  # BTH_SAMPLE_TEMP_PVS: "cryostat=BL41:LS336:T1"
+
+  # Named log roots the read-only app-log tools may open (name=/abs/dir,
+  # comma-separated). BL4-1 defaults to its apps' logs/ directories.
+  # BTH_APP_LOG_ROOTS: "fourone=/usr/local/projects/autonomous_fourone/logs"
+
+  # export_results_bundle: where bundles go (default <data dir>/exports), and
+  # extra directories it may copy from besides the scan directory, the CHERFD
+  # export/data directories and the data directory.
+  # BTH_EXPORT_DIR: "/data/fourone/exports"
+  # BTH_EXPORT_SOURCE_ROOTS: "/data/fourone/analysis"
 
   # =========================================================================
   # S3DF deployment — the `s3df` and `s3df psql` trees

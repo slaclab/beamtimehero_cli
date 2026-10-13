@@ -239,6 +239,8 @@ class _MockScreen:
         if low.startswith("p a["):
             motor = cmd.split("[")[1].split("]")[0]
             return f"{cls._positions.get(motor, 0.0)}"
+        if low == "p check_beam_enabled":
+            return "1"
         if low.startswith("p "):
             rest = cmd[2:].strip()
             return f"{cls._positions.get(rest, 0.0)}"
@@ -386,6 +388,17 @@ class _MockScreen:
             return "select_element complete."
         if low.startswith("calibrate_mono"):
             return "calibrate_mono complete. offset=-0.11"
+        if low.startswith("temp_hold_shutter 0; ct"):
+            # measure_darks: the dark rates the BL4-1 bg* counters subtract
+            return ("shutter held closed\n"
+                    "OFFSETS 1200.5 850.25 210 31.5")
+        if low == "get_crystal":
+            return "Crystal settings A [Si(220)], dspacing 5.43102"
+        if low.startswith(("check_beam_on", "check_beam_off")):
+            return ("Collection will pause when beam goes down."
+                    if low.startswith("check_beam_on") else
+                    "Collection will not pause when beam goes down.")
+
         if low.startswith("peak_mono_pitch"):
             return "peak_mono_pitch complete. gain=1.18"
         if low.startswith("gaprequest"):

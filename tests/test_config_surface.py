@@ -31,6 +31,9 @@ INDIRECT = {
     "SSRL_COLLECTOR_DIR",   # spec_data/ssrl_backend.py SSRL_COLLECTOR_DIR_ENV
     "SLAC_API_KEY_PRIMARY",  # spec_logs/error_checker.py _KEY_ENVS
     "SLAC_API_KEY",          # spec_logs/error_checker.py _KEY_ENVS
+    "BTH_GASMIXER_URL",      # station_services.py SERVICES
+    "BTH_XSP32_GUI_URL",     # station_services.py SERVICES
+    "BTH_MOTOR_ANALYZER_URL",  # station_services.py SERVICES
 }
 
 _READ = re.compile(

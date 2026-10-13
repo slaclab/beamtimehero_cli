@@ -67,6 +67,8 @@ Schema per entry:
                                  (not through SPEC), e.g. a current-amp server
           * ``external_agent`` — delegates to another project's agent, which
                                  owns that device (e.g. a detector agent)
+          * ``station_service`` — HTTP GET of a station web app's read API
+                                 (gas mixer, Ge detector GUI, Motor Analyzer)
     source_detail : str
         Human-readable specifics about where the data comes from.
     depends_on : list[str]
@@ -1268,6 +1270,172 @@ TOOL_LINEAGE: dict[str, dict] = {
         "depends_on": [],
     },
 
+    # ---------- Station services, app logs, provenance -------------------------
+    "get_sample_environment": {
+        "long_description": (
+            "Gas mixer / ion-chamber HV state from the station's gasmixer app "
+            "(GET /api/status, display-only app with no write path), plus the "
+            "temperature PVs named in BTH_SAMPLE_TEMP_PVS read with the "
+            "read-only caget. Neither station has a temperature controller in "
+            "its SPEC config, so temperatures are empty until staff name PVs."
+        ),
+        "python_func": "station_services.sample_environment()",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, station, gas_mixer: {ok, mixer, ion_chambers, hv, page_rules, pvs}, temperatures: {ok, readings}}",
+        "source": "station_service",
+        "source_detail": "HTTP GET BTH_GASMIXER_URL/api/status (BL4-1 default 127.0.0.1:5006); EPICS caget for BTH_SAMPLE_TEMP_PVS.",
+        "depends_on": [],
+    },
+    "get_ge_detector_status": {
+        "long_description": (
+            "The 32-element Ge detector GUI's /api/state: ROIs, groups, bad "
+            "elements, per-element counts and kcps. Read from the GUI's cache; "
+            "the GUI itself never writes the IOC on a GET."
+        ),
+        "python_func": "station_services.ge_detector_status()",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, url, state}",
+        "source": "station_service",
+        "source_detail": "HTTP GET BTH_XSP32_GUI_URL/api/state (BL4-1 default 192.168.41.6:8032).",
+        "depends_on": [],
+    },
+    "get_motor_diagnostics": {
+        "long_description": (
+            "Motor Analyzer reads: a motor's SPEC config parameters and its "
+            "recent diagnostic runs. Only GET routes are used; runs (which move "
+            "the motor) are never started from here."
+        ),
+        "python_func": "station_services.motor_diagnostics(mnemonic, runs)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, motors[], recent_runs[]}",
+        "source": "station_service",
+        "source_detail": "HTTP GET BTH_MOTOR_ANALYZER_URL/api/motors and /api/runs (BL4-1 default 127.0.0.1:5011).",
+        "depends_on": [],
+    },
+    "list_app_logs": {
+        "long_description": "Log files under each named log root, newest first.",
+        "python_func": "applogs.list_logs(root, limit)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, roots: {name: {path, files[{path, size_bytes, modified}]}}}",
+        "source": "filesystem",
+        "source_detail": "BTH_APP_LOG_ROOTS (BL4-1 default: the station apps' logs/ directories).",
+        "depends_on": [],
+    },
+    "read_app_log": {
+        "long_description": "Tail of one log file; the path is resolved inside its root and refused if it escapes.",
+        "python_func": "applogs.read_log(root, path, lines)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, root, path, lines[], n_lines, size_bytes}",
+        "source": "filesystem",
+        "source_detail": "BTH_APP_LOG_ROOTS; .log/.txt/.jsonl/.out/.err files only.",
+        "depends_on": ["list_app_logs"],
+    },
+    "search_app_logs": {
+        "long_description": "Regex search over the newest 50 log files per root.",
+        "python_func": "applogs.search_logs(pattern, root, max_matches, ignore_case)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, matches[{root, path, line_no, line}], truncated}",
+        "source": "filesystem",
+        "source_detail": "BTH_APP_LOG_ROOTS.",
+        "depends_on": [],
+    },
+    "export_results_bundle": {
+        "long_description": (
+            "Copies data files into a fresh timestamped bundle directory with a "
+            "sha256 manifest and the caller's metadata, plus a zip. Sources are "
+            "restricted to the data roots; nothing is overwritten or deleted."
+        ),
+        "python_func": "provenance.export_bundle(files, name, metadata, make_zip)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, path, n_files, total_bytes, manifest, zip}",
+        "source": "filesystem",
+        "source_detail": "Writes under BTH_EXPORT_DIR or <data dir>/exports.",
+        "depends_on": [],
+    },
+    "record_provenance": {
+        "long_description": "Appends one provenance event (JSON line) for an experiment / sample.",
+        "python_func": "provenance.record_provenance(experiment, event, sample, details)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, record, path}",
+        "source": "filesystem",
+        "source_detail": "<data dir>/provenance/<experiment>.jsonl, append-only.",
+        "depends_on": [],
+    },
+    "get_provenance": {
+        "long_description": "Reads an experiment's provenance events.",
+        "python_func": "provenance.read_provenance(experiment, sample)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {ok, records[], path}",
+        "source": "filesystem",
+        "source_detail": "<data dir>/provenance/<experiment>.jsonl.",
+        "depends_on": ["record_provenance"],
+    },
+    "measure_darks": {
+        "long_description": (
+            "BL4-1 offset_subtraction.mac's measure_offsets without its input() "
+            "prompt: temp_hold_shutter 0; ct t; store S[ch]/S[sec] as the dark "
+            "rates; release_hold_shutter. The bg* counters subtract these rates "
+            "from every later count. Refused at other stations."
+        ),
+        "python_func": "spec_cmd.call('measure_darks', [count_time_s], justification)",
+        "spec_command": "temp_hold_shutter 0; ct <t>; _offset_<ch> = S[<ch>]/S[sec]; release_hold_shutter",
+        "mutates": True,
+        "output": "JSON: {ok, kind, action_id, result: {offsets_cps: {I0, I1, I2, pips}, count_time_s, raw}}",
+        "source": "spec_session",
+        "source_detail": "SPEC macros in 41_spec/offset_subtraction.mac and shutter.mac.",
+        "depends_on": [],
+    },
+    "set_check_beam": {
+        "long_description": "check_beam_on / check_beam_off (41_spec/check_beam.mac): pause step scans while there is no beam.",
+        "python_func": "spec_cmd.call('check_beam_on' | 'check_beam_off', [], justification)",
+        "spec_command": "check_beam_on | check_beam_off",
+        "spec_commands": ["check_beam_on", "check_beam_off"],
+        "mutates": True,
+        "output": "JSON: {ok, kind, action_id, result: {enabled, raw}}",
+        "source": "spec_session",
+        "source_detail": "SPEC global check_beam_enabled.",
+        "depends_on": [],
+    },
+    "get_check_beam": {
+        "long_description": "Prints SPEC's check_beam_enabled.",
+        "python_func": "spec_cmd.call('check_beam_state', [])",
+        "spec_command": "p check_beam_enabled",
+        "mutates": False,
+        "output": "JSON: {ok, result: {enabled, raw}}",
+        "source": "spec_session",
+        "source_detail": "SPEC global check_beam_enabled (41_spec/check_beam.mac).",
+        "depends_on": [],
+    },
+    "get_crystal_set": {
+        "long_description": "mono.mac get_crystal: the crystal set (A/B) SPEC's energy calculation uses, from mono.cfg.",
+        "python_func": "spec_cmd.call('get_crystal', [])",
+        "spec_command": "get_crystal",
+        "mutates": False,
+        "output": "JSON: {ok, result: {crystal, name, dspacing, raw}}",
+        "source": "spec_session",
+        "source_detail": "41_spec/mono.mac; the set is stored in /usr/local/lib/spec.d/mono.cfg.",
+        "depends_on": [],
+    },
+    "post_slack_dm": {
+        "long_description": "Opens a DM with one Slack user and posts the text there.",
+        "python_func": "notify.slack.post_dm(user_id, text)",
+        "spec_command": None,
+        "mutates": False,
+        "output": "JSON: {status, channel, ts, user_id}",
+        "source": "slack",
+        "source_detail": "Slack Web API conversations.open + chat.postMessage (the 'slack' extra).",
+        "depends_on": [],
+    },
+
     # ---------- Observation ---------------------------------------------------
 
     "capture_sample_image": {
@@ -2413,7 +2581,7 @@ LINEAGE_OPTIONAL_KEYS: tuple[str, ...] = ("spec_commands",)
 _LINEAGE_SOURCES = frozenset({
     "spec_datafile", "spec_session", "spec_logfile", "spec_config",
     "autonomy_db", "filesystem", "tool_chain", "postgres", "camera",
-    "slack", "epics_ioc", "external_agent",
+    "slack", "epics_ioc", "external_agent", "station_service",
     "cherfd_server", "cherfd_daq", "cherfd_datafile", "cherfd_simulator", "cherfd_logfile",
 })
 

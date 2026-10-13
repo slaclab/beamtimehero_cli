@@ -43,6 +43,20 @@ STATION_ENV: dict[str, dict[str, str]] = {
         "BTH_ACTIVE_COUNTER_PRIORITY": "xsum,xsA,xsB,I1",
         "BTH_DEFAULT_Y_COLUMNS": "xsum,I1,I0",
         "BTH_EPICS_PV_BL_STATE": "BL04:State",
+        # local read-only web services (BL4-1_Web/services.json)
+        "BTH_GASMIXER_URL": "http://127.0.0.1:5006",
+        "BTH_XSP32_GUI_URL": "http://192.168.41.6:8032",
+        "BTH_MOTOR_ANALYZER_URL": "http://127.0.0.1:5011",
+        # where the station's apps write their logs (applogs.py)
+        "BTH_APP_LOG_ROOTS": (
+            "fourone=/usr/local/projects/autonomous_fourone/logs,"
+            "microagents=/usr/local/projects/autonomous_microagents/logs,"
+            "cherfd=/usr/local/projects/cherfd_claude/logs,"
+            "cscan_acq=/usr/local/projects/cscan_acq/logs,"
+            "xsp32=/usr/local/projects/xspress_32element/logs,"
+            "motor_analyzer=/usr/local/projects/motor_analyzer/logs,"
+            "current_amps=/usr/local/projects/ssrl-current-amp/logs"
+        ),
     },
 }
 

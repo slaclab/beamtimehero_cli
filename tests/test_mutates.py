@@ -40,7 +40,7 @@ TOOLS_CORE = (
 #: justification, writes an action-log row before SPEC sees it, and can
 #: move hardware; a silent change to the size of that set is exactly the
 #: thing a review should be forced to look at.
-MUTATING_COUNT = 40
+MUTATING_COUNT = 42  # + measure_darks, set_check_beam (BL4-1)
 
 #: Same rule for the second audited transport: CHERFD actions and stops,
 #: sent through ``audited_cherfd`` and living on ``cherfd-write``.
@@ -284,7 +284,7 @@ _CHERFD = _cherfd_handler_commands()
 
 
 def test_cherfd_scan_found_the_handlers():
-    assert len(_CHERFD) == 52 and sum(1 for c in _CHERFD.values() if c) > 20
+    assert len(_CHERFD) == 53 and sum(1 for c in _CHERFD.values() if c) > 20
 
 
 @pytest.mark.parametrize("name", sorted(_CHERFD))

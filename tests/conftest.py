@@ -9,6 +9,7 @@ per-session temp directory instead of ``<repo>/data``:
   switches of a test run never land in the checkout;
 * ``BL_SCAN_DIR`` -> the temp dir unless a test sets its own (the energy
   calibration store writes there);
+* SPEC_MOCK=1 and CHERFD_MOCK=1, whatever the shell exported;
 * EPICS CA for child processes -> loopback only, no broadcast.
 
 The socket guard refuses any ``connect`` to a non-loopback address for the
@@ -28,6 +29,9 @@ os.environ["BEAMTIMEHERO_DATA_DIR"] = _TMP
 os.environ["BEAMLINE_TOOLS_DB_PATH"] = os.path.join(_TMP, "beamline_tools.db")
 os.environ.setdefault("BL_SCAN_DIR", os.path.join(_TMP, "scans"))
 os.makedirs(os.environ["BL_SCAN_DIR"], exist_ok=True)
+# SPEC and the CHERFD server are always the in-memory mocks here
+os.environ["SPEC_MOCK"] = "1"
+os.environ["CHERFD_MOCK"] = "1"
 os.environ["EPICS_CA_AUTO_ADDR_LIST"] = "NO"
 os.environ["EPICS_CA_ADDR_LIST"] = "127.0.0.1:1"
 

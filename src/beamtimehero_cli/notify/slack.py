@@ -88,6 +88,15 @@ def post_message(
     }
 
 
+def post_dm(user_id: str, text: str) -> dict:
+    """Direct-message one user: open (or reuse) the DM, then post."""
+    client = _get_client()
+    opened = client.conversations_open(users=user_id)
+    channel = opened["channel"]["id"]
+    result = client.chat_postMessage(channel=channel, text=text)
+    return {"status": "posted", "channel": channel, "ts": result["ts"], "user_id": user_id}
+
+
 def list_channels() -> dict:
     """List public channels the bot is a member of."""
     client = _get_client()

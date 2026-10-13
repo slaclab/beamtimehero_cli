@@ -584,6 +584,19 @@ _READ: dict[str, CommandSpec] = {
         lambda a: "get_anchor",
         _parse_anchor,
     ),
+    # BL4-1 mono.mac: which crystal set the energy calculation uses
+    "get_crystal": CommandSpec(
+        "get_crystal", "read",
+        lambda a: "get_crystal",
+        lambda o, a: _parse_get_crystal(o),
+        timeout_s=15,
+    ),
+    "check_beam_state": CommandSpec(
+        "check_beam_state", "read",
+        lambda a: "p check_beam_enabled",
+        lambda o, a: _parse_check_beam_state(o),
+        timeout_s=15,
+    ),
 }
 
 _ACTION: dict[str, CommandSpec] = {
@@ -856,6 +869,23 @@ _ACTION: dict[str, CommandSpec] = {
         lambda o, a: _parse_kscan(o, a),
         timeout_s=86400,
     ),
+    # BL4-1 offset_subtraction.mac without its interactive prompt: hold the
+    # shutter closed, count, store the dark rates bgI0/bgI1/bgI2/bgpips use
+    "measure_darks": CommandSpec(
+        "measure_darks", "action",
+        lambda a: _render_measure_darks(a),
+        lambda o, a: _parse_measure_darks(o, a),
+        timeout_s=120,
+    ),
+    # BL4-1 check_beam.mac: pause step scans while SPEAR / BL4 are down
+    "check_beam_on": CommandSpec(
+        "check_beam_on", "action", lambda a: "check_beam_on",
+        lambda o, a: {"enabled": True, "raw": o}, timeout_s=15,
+    ),
+    "check_beam_off": CommandSpec(
+        "check_beam_off", "action", lambda a: "check_beam_off",
+        lambda o, a: {"enabled": False, "raw": o}, timeout_s=15,
+    ),
     # Closed-loop absolute energy move via the mono encoder (abs_energy.mac)
     "absenergy": CommandSpec(
         "absenergy", "action",
@@ -867,6 +897,49 @@ _ACTION: dict[str, CommandSpec] = {
 
 
 # ---- Renderers for polyvalent commands ----------------------------------
+
+_DARK_RE = re.compile(r"OFFSETS\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)")
+
+
+def _render_measure_darks(a: list[str]) -> str:
+    """One SPEC line: shutter held shut, count, store rates, release."""
+    t = _ct_arg(a[0] if a else "2")
+    if float(t) <= 0:
+        raise ValueError("count time must be positive")
+    return (
+        f"temp_hold_shutter 0; ct {t}; "
+        "if (S[sec] > 0) { _offset_i0 = S[I0]/S[sec]; _offset_i1 = S[I1]/S[sec]; "
+        "_offset_i2 = S[I2]/S[sec]; _offset_pips = S[pips]/S[sec] }; "
+        "release_hold_shutter; "
+        'printf("OFFSETS %g %g %g %g\\n", _offset_i0, _offset_i1, _offset_i2, _offset_pips)'
+    )
+
+
+def _parse_measure_darks(out: str, a: list[str]) -> dict:
+    m = None
+    for m in _DARK_RE.finditer(out or ""):
+        pass
+    if m is None:
+        return {"offsets_cps": None, "raw": out}
+    try:
+        vals = [float(x) for x in m.groups()]
+    except ValueError:
+        return {"offsets_cps": None, "raw": out}
+    return {"offsets_cps": dict(zip(("I0", "I1", "I2", "pips"), vals)),
+            "count_time_s": float(a[0]) if a else 2.0, "raw": out}
+
+
+def _parse_get_crystal(out: str) -> dict:
+    m = re.search(r"Crystal settings ([AB])\s*\[([^\]]+)\](?:,\s*dspacing\s*([\d.]+))?", out or "")
+    if not m:
+        return {"crystal": None, "raw": out}
+    return {"crystal": m.group(1), "name": m.group(2),
+            "dspacing": float(m.group(3)) if m.group(3) else None, "raw": out}
+
+
+def _parse_check_beam_state(out: str) -> dict:
+    m = re.search(r"(-?\d+(?:\.\d+)?)\s*$", (out or "").strip())
+    return {"enabled": (float(m.group(1)) != 0) if m else None, "raw": out}
 
 def _render_shutter(a: list[str]) -> str:
     if not a:
