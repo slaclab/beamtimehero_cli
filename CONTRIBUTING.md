@@ -234,6 +234,23 @@ what. Two content rules matter more than the format:
   since no test will say it for you. (`reduce/` and `statistics/` *are* pinned;
   they go in the bullet above.)
 
+## Who consumes this repo, and at what pin
+
+Inventory as of 2026-10-12. Update it when a consumer is added or bumps.
+
+| Consumer | Where | How it gets beamtimehero_cli | Pin |
+|---|---|---|---|
+| autonomous_fourone (BL4-1 autonomy) | bl41lx1 `/usr/local/projects` | `beamtimehero_cli @ git+https://github.com/slaclab/beamtimehero_cli.git@<sha>` in `requirements.txt`, non-editable in its own venv; `beamtimehero_cli.pin` holds the same SHA and `scripts/check_cli_pin.py` refuses anything else at start-up | `da476d3` (v0.6.1) |
+| autonomous_fourone's Python sandbox | bl41lx1, `venv-sandbox/` | the same requirement line, installed `--no-deps` by `scripts/build-sandbox-venv.sh` | follows fourone |
+| cherfd_claude's cherfd agent | bl41lx1, `scripts/beamtimehero` | runs fourone's venv (`$BTH_DEPLOY_DIR/venv/bin/python`) | follows fourone |
+| BL15-2 `autonomous` + `beamtimehero` apps | bl152lx1 | editable install of a shared checkout (`-e ../beamtimehero_cli`), no pin file | checkout at `31d7352` (64 commits behind, not accessed from BL4-1) |
+| this repo's own dev venv | `venv/` here | `pip install -e '.[dev]'` | working tree (development only) |
+
+Not consumers: autonomous_microagents has its own tool surface and CHERFD
+client (no dependency; see its parity notes); cscan_acq and exafs_analysis
+adapted code from here (`spec_control/tcp_client.py`, `spec_data/ssrl_ascii.py`)
+but do not import the package.
+
 ## Releases and the apps that pin them
 
 Each app installs a tagged release of this repo into its own venv
