@@ -45,7 +45,7 @@ RESERVED_TOP_LEVEL: frozenset[str] = CANONICAL_TREES | {"ref", "catalog"}
 # in ``beamtimehero --help`` — so this is a display decision, not a set.
 TREE_HELPS: dict[tuple[str, ...], str] = {
     ("tool",): "Non-SPEC tools: data queries, analysis, plotting, file I/O.",
-    ("db",): "Action-log queries.",
+    ("db",): "Database reads/writes: the action log, plus any experiment-plan tools the app registers.",
     ("spec-read",): "SPEC-bound reads (motor positions, beam status). No mutation.",
     ("spec-write",): "SPEC-bound mutations. Every leaf requires --justification.",
     ("spec-file",): "Scan tools that read SPEC files directly (file-cache backend).",

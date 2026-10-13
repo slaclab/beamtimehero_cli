@@ -80,6 +80,18 @@ def default(var: str, fallback: str = "") -> str:
     return STATION_ENV[station_name()].get(var, fallback)
 
 
+#: Tool trees a station's CLI leaves out entirely: BL4-1 has no X-ray Raman
+#: spectrometer (xrs) and does not read BL6-2a tender data.
+HIDDEN_TREES: dict[str, tuple[str, ...]] = {
+    "bl15": (),
+    "bl41": ("xrs", "tender"),
+}
+
+
+def hidden_trees(name: str | None = None) -> tuple[str, ...]:
+    return HIDDEN_TREES.get(name or station_name(), ())
+
+
 #: Scan modes each station collects with, the default first. ``step`` is a
 #: SPEC step scan (gscan / kscan); ``continuous`` is a CHERFD sweep on the
 #: cscan box. BL4-1 collects continuously by default and keeps step scans;

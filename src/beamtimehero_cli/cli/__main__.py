@@ -251,10 +251,18 @@ def build_catalog_subtrees(
         )
         return bucket[path]
 
-    # Pre-create the known trees so they always appear in --help even if no
-    # tools are registered there yet.
+    # Trees this station has no use for (station.hidden_trees(); BL4-1 has no
+    # Raman spectrometer and no BL6-2a data) are left out of the CLI.
+    from beamtimehero_cli import station as _station
+    hidden = set(_station.hidden_trees())
+    tool_defs = [t for t in tool_defs if categorize(t)[0] not in hidden]
+
+    # Pre-create the known trees that will hold at least one tool, in
+    # TREE_HELPS order (the order --help lists them). A branch every tool of
+    # which was filtered out by a consumer is not listed as an empty shell.
+    used = {categorize(t)[:i] for t in tool_defs for i in range(1, len(categorize(t)) + 1)}
     for path in TREE_HELPS:
-        if trees is None or path in trees:
+        if (trees is None or path in trees) and path in used:
             _ensure_bucket(path)
 
     for tdef in tool_defs:
@@ -269,7 +277,11 @@ def build_catalog_subtrees(
         description = (fn.get("description") or "").strip()
 
         cli_name = name.replace("_", "-")
-        leaf = _ensure_bucket(category).add_parser(cli_name, help=description)
+        # description= as well as help=: `<leaf> --help` then says what the
+        # tool does, not only which arguments it takes.
+        leaf = _ensure_bucket(category).add_parser(
+            cli_name, help=description, description=description or None,
+        )
         # Only set _agent_role when there is one: an unconditional
         # ``_agent_role=None`` would put a key on every Namespace the
         # unrestricted parser produces, which is not byte-identical.

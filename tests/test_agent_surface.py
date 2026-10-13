@@ -422,7 +422,7 @@ def test_exclusive_refuses_to_sit_beside_a_canonical_tree(catalogue):
         catalogue,
     )
     _parser, subs = _root()
-    build_catalog_subtrees(subs, [])          # pre-creates the canonical trees
+    build_catalog_subtrees(subs, TOOL_DEFINITIONS)   # creates the canonical trees
     with pytest.raises(SurfaceError) as exc:
         build.attach(subs)
     assert any("spec-write" in p for p in exc.value.problems)
