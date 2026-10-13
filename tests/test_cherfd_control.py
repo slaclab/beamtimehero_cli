@@ -84,7 +84,8 @@ def test_stop_latches_until_cleared(no_network, monkeypatch):
 
 def test_mock_validation_errors_match_routes(no_network):
     assert req("move_gap", {"gap": 30}, "x")["ok"] is False
-    assert "anchor" in req("set_table_tracking", {"enable": True}, "x")["error"]
+    assert "never moved" in req("set_table_tracking", {"enable": True}, "x")["error"]
+    assert "never moved" in req("set_table_anchor", {"capture": True}, "x")["error"]
     assert req("daq_count", {"duration_s": 100}, "x")["http_status"] == 422
 
 

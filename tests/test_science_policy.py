@@ -280,6 +280,8 @@ def test_cherfd_station_profiles_are_pinned():
     assert (b41.energy_min_ev, b41.energy_max_ev, b41.undulator) == (None, None, False)
     assert (b41.detector, b41.default_signal, b41.daq_available) == ("ge32", "xsum", False)
     assert (b41.per_sweep_overhead_s, b41.range_shortfall_warn_ev) == (4.8, 3.0)
+    # the table never moves in a continuous scan (BL4-1 beamline policy)
+    assert b15.table_tracking is False and b41.table_tracking is False
 
 
 def test_cherfd_schema_defaults_read_from_policy():

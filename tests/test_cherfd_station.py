@@ -6,6 +6,7 @@ detector heads fitted, so the Ge columns are zero; ADCs already decoded).
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from tests._cherfd_fixtures import *  # noqa: F401,F403 -- isolation fixtures
@@ -133,3 +134,58 @@ def test_bl41_set_detector(bl41):
     d, _ = run("cherfd_set_detector", detector="ge32", justification="x")
     assert not d["ok"] and "during an acquisition" in str(d)
     run("cherfd_stop_scan", justification="done")
+
+
+# ---------------------------------------------------------------------------
+# The table never moves in a continuous scan (BL4-1 beamline policy)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", ["bl15", "bl41"])
+def test_profiles_never_track_the_table(name):
+    from beamtimehero_cli.science.cherfd import policy
+    assert policy.STATION_PROFILES[name].table_tracking is False
+
+
+def test_table_tools_refuse_at_bl41(bl41):
+    on, _ = run("cherfd_set_table_tracking", enable=True, justification="x")
+    assert not on.get("ok", False) and "never moved" in json.dumps(on)
+    anchor, _ = run("cherfd_set_table_anchor", capture=True, justification="x")
+    assert not anchor.get("ok", False) and "never moved" in json.dumps(anchor)
+    off, _ = run("cherfd_set_table_tracking", enable=False, justification="x")
+    assert off["ok"], off
+
+
+def test_start_and_readiness_refuse_if_server_tracks_the_table(bl41, monkeypatch):
+    from beamtimehero_cli.tool_catalog import tools_cherfd
+    real = tools_cherfd.audited_cherfd
+
+    def tracking_on(name, *a, **kw):
+        if name == "table_tracking":
+            return {"ok": True, "result": {"enabled": True, "anchor": {"energy": 7100.0}}}
+        return real(name, *a, **kw)
+    monkeypatch.setattr(tools_cherfd, "audited_cherfd", tracking_on)
+    cmd = "cscan 7100 7150 .2 20"
+    s, _ = run("cherfd_start_scan", command=cmd, justification="x")
+    assert s["refused"] == "table_tracking"
+    r, _ = run("cherfd_check_readiness", command=cmd, include_beam_status=False)
+    assert not r["ready"] and any("never moves" in b for b in r["blockers"])
+
+
+def test_server_offering_table_tracking_is_a_mismatch(bl41):
+    from beamtimehero_cli.tool_catalog import tools_cherfd
+    why = tools_cherfd._station_mismatch({"station": "bl41", "table_tracking_available": True})
+    assert why and "never moves" in why
+
+
+def test_scan_mode_policy(monkeypatch):
+    # unset station: BL15-2, step only - the behaviour before scan modes existed
+    monkeypatch.delenv("BTH_STATION", raising=False)
+    assert station.scan_modes() == ("step",) and station.default_scan_mode() == "step"
+    with pytest.raises(ValueError, match="allowed: step"):
+        station.check_scan_mode("continuous")
+    monkeypatch.setenv("BTH_STATION", "bl41")
+    assert station.default_scan_mode() == "continuous"
+    assert station.check_scan_mode(" Step ") == "step"
+    with pytest.raises(ValueError):
+        station.check_scan_mode("fly")
+    assert station.scan_modes("bl15") == ("step",)

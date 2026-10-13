@@ -11,6 +11,10 @@ BL15-2, the default, or ``bl41`` = BL4-1). It decides two things:
   mono crystals and step size, the scan detector and its signal, whether
   there is an undulator, the cscan_daq app and the per-sweep overhead.
 
+It also names the scan modes the station collects with (``SCAN_MODES``:
+continuous by default at BL4-1, step-only at BL15-2). That is beamline
+policy, not a default, so no variable overrides it.
+
 A deployment sets ``BTH_STATION`` and nothing else station-specific. An
 unknown name raises rather than falling back to BL15-2, so a typo cannot run
 one beamline with another's settings.
@@ -60,3 +64,34 @@ def default(var: str, fallback: str = "") -> str:
     so an exported value always wins.
     """
     return STATION_ENV[station_name()].get(var, fallback)
+
+
+#: Scan modes each station collects with, the default first. ``step`` is a
+#: SPEC step scan (gscan / kscan); ``continuous`` is a CHERFD sweep on the
+#: cscan box. BL4-1 collects continuously by default and keeps step scans;
+#: BL15-2 is step-only. Policy, not a deployment setting: no BTH_* variable
+#: overrides it.
+SCAN_MODES: dict[str, tuple[str, ...]] = {
+    "bl15": ("step",),
+    "bl41": ("continuous", "step"),
+}
+
+
+def scan_modes(name: str | None = None) -> tuple[str, ...]:
+    """The scan modes ``name`` (default: this deployment's station) allows."""
+    return SCAN_MODES[name or station_name()]
+
+
+def default_scan_mode(name: str | None = None) -> str:
+    """The station's default scan mode."""
+    return scan_modes(name)[0]
+
+
+def check_scan_mode(mode: str, name: str | None = None) -> str:
+    """``mode`` if the station allows it, else ValueError naming the allowed ones."""
+    allowed = scan_modes(name)
+    m = (mode or "").strip().lower()
+    if m not in allowed:
+        raise ValueError(f"scan mode {mode!r} is not used at {name or station_name()} "
+                         f"(allowed: {', '.join(allowed)})")
+    return m

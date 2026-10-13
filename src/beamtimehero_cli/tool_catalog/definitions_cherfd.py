@@ -217,13 +217,14 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
          "Set the look-ahead latency (s) of predictive gap tracking during a sweep. Persisted.",
          {"latency_s": {"type": "number", "description": "Latency in seconds (>= 0)."}}, ["latency_s"]),
     _act("cherfd_set_table_tracking",
-         "Enable/disable table (beam-height) tracking during scans. Enabling needs a stored anchor, "
-         "and the server refuses it where the station has table tracking switched off (BL4-1 "
-         "scans are mono-only for now; no table profile has run on hardware).",
+         "Enable/disable table (beam-height) tracking during scans. Enabling is refused at both "
+         "stations: the table is never moved by a continuous scan (at BL4-1 this is beamline "
+         "policy). Disabling is always allowed.",
          {"enable": {"type": "boolean", "description": "True to enable."}}, ["enable"]),
     _act("cherfd_set_table_anchor",
          "Store the table-tracking anchor: aligned energy + both table heights (+ crystal), or capture "
-         "the current mono energy and table readbacks.",
+         "the current mono energy and table readbacks. Refused where table tracking is off (both "
+         "stations: the table is never moved by a continuous scan).",
          {"capture": {"type": "boolean", "default": False, "description": "Snapshot current positions instead."},
           "energy_ev": {"type": "number", "description": "Anchor energy (eV)."},
           "z1_mm": {"type": "number", "description": "Upstream table height (mm)."},

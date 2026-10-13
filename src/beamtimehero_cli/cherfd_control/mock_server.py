@@ -383,6 +383,9 @@ def _set_table_tracking(st, body):
     if not body or body.get("enable") is None:
         return 400, {"success": False, "error": "Enable flag is required"}
     enable = bool(int(body["enable"]))
+    if enable and not _station().table_tracking:
+        return 400, {"success": False, "error": f"{_station().label} has no table tracking: the "
+                     "table is never moved by continuous scans (confs TABLE_TRACKING_AVAILABLE)"}
     if enable and _anchor(st) is None:
         return 400, {"success": False,
                      "error": "No table anchor is set - set one with /set_table_anchor first"}
@@ -392,6 +395,9 @@ def _set_table_tracking(st, body):
 
 
 def _set_table_anchor(st, body):
+    if not _station().table_tracking:
+        return 400, {"success": False, "error": f"{_station().label} has no table tracking: the "
+                     "table is never moved by continuous scans (confs TABLE_TRACKING_AVAILABLE)"}
     body = body or {}
     if body.get("capture"):
         energy, (z1, z2), crystal = st["mono_energy"], st["table_z"], _crystal()

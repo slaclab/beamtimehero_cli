@@ -140,6 +140,26 @@ def _station_mismatch(server: dict | None) -> str | None:
     if server["station"] != st.name:
         return (f"the cherfd server is station {server['station']!r} but this deployment is "
                 f"BTH_STATION={st.name!r}: refusing to plan or scan with the wrong beamline's settings")
+    if server.get("table_tracking_available") and not st.table_tracking:
+        return (f"the cherfd server offers table tracking but the table never moves in a "
+                f"continuous scan at {st.label}: refusing until its station config is put back")
+    return None
+
+
+def _no_table_motion(what: str) -> None:
+    """Refuse anything that would set up table motion where the station forbids it."""
+    st = _station()
+    if not st.table_tracking:
+        raise ValueError(f"{st.label}: the table is never moved by a continuous scan, so "
+                         f"{what} is refused")
+
+
+def _table_tracking_on() -> str | None:
+    """Why the live server would move the table on the next scan, or None."""
+    t = (audited_cherfd("table_tracking").get("result") or {})
+    if t.get("enabled") and not _station().table_tracking:
+        return ("the cherfd server has table tracking enabled; the table never moves in a "
+                f"continuous scan at {_station().label}")
     return None
 
 
@@ -353,7 +373,10 @@ def t_check_readiness(args):
     tt = audited_cherfd("table_tracking")
     t = tt.get("result") or {}
     info["table_tracking"] = {"enabled": t.get("enabled"), "anchor": t.get("anchor")}
-    if t.get("enabled") and not t.get("anchor"):
+    if t.get("enabled") and not station.table_tracking:
+        blockers.append(f"table tracking is enabled on the server; the table never moves in a "
+                        f"continuous scan at {station.label} (cherfd_set_table_tracking enable=false)")
+    elif t.get("enabled") and not t.get("anchor"):
         blockers.append("table tracking enabled with no anchor: scans will refuse to start")
     if t.get("crystal_warning"):
         blockers.append(t["crystal_warning"])
@@ -423,6 +446,9 @@ def t_start_scan(args):
                          "warnings": v["warnings"]}), []
     if not _j(args):
         return _as_json({"ok": False, "error": "justification is required"}), []
+    table = _table_tracking_on()
+    if table:
+        return _as_json({"ok": False, "refused": "table_tracking", "error": table}), []
     pre = _status_body(audited_cherfd("status"))
     if pre.get("state") != "idle" or pre.get("acquisition_active"):
         return _as_json({"ok": False, "refused": "controller_not_idle", "state": pre.get("state"),
@@ -535,11 +561,14 @@ def t_set_gap_move_latency(args):
 
 @_tool
 def t_set_table_tracking(args):
+    if args.get("enable"):
+        _no_table_motion("enabling table tracking")
     return _as_json(audited_cherfd("set_table_tracking", {"enable": args["enable"]}, _j(args))), []
 
 
 @_tool
 def t_set_table_anchor(args):
+    _no_table_motion("a table anchor")
     if not args.get("capture") and any(args.get(k) is None for k in ("energy_ev", "z1_mm", "z2_mm")):
         raise ValueError("give energy_ev, z1_mm and z2_mm, or capture=true")
     body = {"capture": bool(args.get("capture"))} if args.get("capture") else {

@@ -188,6 +188,11 @@ class StationProfile:
     #: A sweep whose energy coverage falls short of the command by more than
     #: this is flagged incomplete.
     range_shortfall_warn_ev: float
+    #: May a continuous scan move the table (beam-height tracking)? Mirrors
+    #: cherfd_claude TABLE_TRACKING_AVAILABLE. False at both stations; at
+    #: BL4-1 it is beamline policy that the table never moves in a continuous
+    #: scan. Not read from the environment: no deployment setting changes it.
+    table_tracking: bool = False
 
 
 STATION_PROFILES: dict[str, StationProfile] = {

@@ -234,6 +234,23 @@ what. Two content rules matter more than the format:
   since no test will say it for you. (`reduce/` and `statistics/` *are* pinned;
   they go in the bullet above.)
 
+## Releases and the apps that pin them
+
+Each app installs a tagged release of this repo into its own venv
+(`pip install "beamtimehero_cli @ git+…@vX.Y.Z"`), not the shared checkout,
+so a change here reaches an app only when that app bumps. The rules:
+
+- **Additive only.** A station's existing defaults keep their values; a new
+  setting defaults to today's behaviour when `BTH_STATION` is unset.
+- **Tag every change an app will consume.** Bump `version` in
+  `pyproject.toml` and `__version__`, add a `CHANGELOG.md` entry, tag
+  `vX.Y.Z` on master, push the tag.
+- **Consumers bump deliberately.** An app moves its pin only after running its
+  own tests against the new tag.
+- **Beamline policy is not a setting.** Rules such as "the table never moves in a
+  continuous scan" and the per-station scan modes live in code (`policy.py`,
+  `station.py`) with no `BTH_*` override, and tests pin them.
+
 ## Layering
 
 ```
