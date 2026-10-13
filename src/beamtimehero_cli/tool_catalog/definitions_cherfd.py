@@ -276,6 +276,24 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
         "outer_speed": {"type": "number", "default": policy.BUILD_OUTER_SPEED, "description": "Speed factor outside the edge region."},
         "freq_hz": {"type": "number", "default": policy.BUILD_FREQ_HZ, "description": "Trigger rate (Hz)."},
         **_CRYSTAL}),
+    _t("cherfd_build_exafs_command",
+       "Build a continuous EXAFS command: the XANES layout up to edge + edge_hi_ev, then k-space to "
+       "k_max in equal-k regions, each sped up so the k spacing stays at or below dk (dE/dk grows "
+       "with k). Clamped speeds are reported. Counting time cannot be k-weighted in a sweep: "
+       "collect more sweeps instead. Give edge_ev or element(+edge). No hardware.",
+       {"element": {"type": "string", "description": "Absorber, e.g. 'Fe' (uses xraydb edge table)."},
+        "edge": {"type": "string", "default": "K", "description": "Edge label."},
+        "edge_ev": {"type": "number", "description": "Edge energy (eV); overrides element."},
+        "k_max": {"type": "number", "description": "End of the k range (1/Angstrom)."},
+        "dk": {"type": "number", "default": policy.EXAFS_DK, "description": "Largest k spacing (1/Angstrom)."},
+        "k_regions": {"type": "integer", "default": policy.EXAFS_K_REGIONS, "description": "Equal-k regions."},
+        "pre_edge_ev": {"type": "number", "default": policy.BUILD_PRE_EDGE_EV, "description": "Scan start below the edge (eV)."},
+        "edge_lo_ev": {"type": "number", "default": policy.BUILD_EDGE_LO_EV, "description": "Slow region starts this far below the edge."},
+        "edge_hi_ev": {"type": "number", "default": policy.BUILD_EDGE_HI_EV, "description": "Slow region ends (k-space starts) this far above the edge."},
+        "edge_points_per_ev": {"type": "number", "default": policy.BUILD_EDGE_POINTS_PER_EV, "description": "Target frame density in the edge region."},
+        "outer_speed": {"type": "number", "default": policy.BUILD_OUTER_SPEED, "description": "Speed factor of the pre-edge region."},
+        "freq_hz": {"type": "number", "default": policy.BUILD_FREQ_HZ, "description": "Trigger rate (Hz)."},
+        **_CRYSTAL}, ["k_max"]),
     _t("cherfd_simulate_scan",
        "Run the PRODUCTION motion-profile generator offline (cherfd_claude cscan_box/simulate.py, "
        "EPICS blocked): refusal if the profile cannot be built, duration, segments used/250, "
@@ -462,7 +480,8 @@ CHERFD_TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
                             "cherfd_set_undulator_tracking", "cherfd_set_gap_calibration_offset",
                             "cherfd_set_gap_move_latency", "cherfd_set_table_tracking",
                             "cherfd_set_table_anchor", "cherfd_calibrate_encoder"]),
-    ("CHERFD Planning", ["cherfd_validate_command", "cherfd_build_command", "cherfd_simulate_scan",
+    ("CHERFD Planning", ["cherfd_validate_command", "cherfd_build_command",
+                  "cherfd_build_exafs_command", "cherfd_simulate_scan",
                   "cherfd_estimate_acquisition_time", "cherfd_undulator_gap_for_energy",
                   "cherfd_mono_convert"]),
     ("CHERFD Data", ["cherfd_list_data_dirs", "cherfd_list_runs", "cherfd_get_latest_run",

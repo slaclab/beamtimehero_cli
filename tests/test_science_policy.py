@@ -259,6 +259,7 @@ def test_cherfd_policy_values_are_pinned():
     assert (p.BUILD_PRE_EDGE_EV, p.BUILD_EDGE_LO_EV, p.BUILD_EDGE_HI_EV, p.BUILD_POST_EDGE_EV) == (
         30.0, 10.0, 30.0, 100.0)
     assert (p.BUILD_EDGE_POINTS_PER_EV, p.BUILD_OUTER_SPEED, p.BUILD_FREQ_HZ) == (10.0, 1.0, 100.0)
+    assert (p.EXAFS_DK, p.EXAFS_K_REGIONS, p.ETOK) == (0.05, 8, 0.2624682843)
 
 
 def test_cherfd_station_profiles_are_pinned():

@@ -141,6 +141,14 @@ BUILD_EDGE_POINTS_PER_EV = 10.0
 BUILD_OUTER_SPEED = 1.0
 BUILD_FREQ_HZ = 100.0
 
+# build_exafs_command: the XANES regions above up to edge + BUILD_EDGE_HI_EV,
+# then k-space from there to k_max in EXAFS_K_REGIONS equal-k regions, each
+# sped up so the k spacing never exceeds EXAFS_DK (1/Angstrom).
+EXAFS_DK = 0.05
+EXAFS_K_REGIONS = 8
+#: E - E0 = k^2 / ETOK  (eV, 1/Angstrom): hbar^2 / 2 m_e = 3.81 eV A^2.
+ETOK = 0.2624682843
+
 # ---------------------------------------------------------------------------
 # Stations
 # ---------------------------------------------------------------------------

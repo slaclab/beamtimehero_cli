@@ -131,6 +131,12 @@ CHERFD_LINEAGE: dict[str, dict] = {
         "science.cherfd.command.build_command (+ science.tables.edges.get_edge_info)",
         "JSON: {command, edge_speed, notes, validation}", "tool_chain",
         "Pure computation; edge energies from xraydb via beamtimehero."),
+    "cherfd_build_exafs_command": _e(
+        "Continuous EXAFS command: XANES regions, then equal-k regions sped up for a k spacing <= dk.",
+        "science.cherfd.command.build_exafs_command (+ science.tables.edges.get_edge_info)",
+        "JSON: {command, final_ev, edge_speed, k_regions[{k_lo, k_hi, end_ev, speed, dk_at_k_lo}], notes, validation}",
+        "tool_chain",
+        "Pure computation; edge energies from xraydb via beamtimehero."),
     "cherfd_simulate_scan": _e(
         "The production profile generator run out of process with EPICS blocked.",
         "cherfd_control.simulator.simulate -> subprocess cscan_box.simulate.simulate_command; science.plots.cherfd.plot_profile",

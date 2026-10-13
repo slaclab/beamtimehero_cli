@@ -17,6 +17,8 @@ the fast, offline first pass that needs neither.
 """
 from __future__ import annotations
 
+import math
+
 from beamtimehero_cli.science.cherfd import beamline, policy
 
 
@@ -234,6 +236,80 @@ def build_command(
     cmd = format_command(start, regions, int(round(freq_hz)))
     return {"command": cmd, "edge_ev": edge_ev, "edge_speed": edge_speed,
             "requested_edge_points_per_ev": edge_points_per_ev, "notes": notes,
+            "validation": validate_command(cmd, crystal, station=station,
+                                           energy_range_ev=energy_range_ev)}
+
+
+def build_exafs_command(
+    edge_ev: float,
+    k_max: float,
+    *,
+    dk: float = policy.EXAFS_DK,
+    k_regions: int = policy.EXAFS_K_REGIONS,
+    pre_edge_ev: float = policy.BUILD_PRE_EDGE_EV,
+    edge_lo_ev: float = policy.BUILD_EDGE_LO_EV,
+    edge_hi_ev: float = policy.BUILD_EDGE_HI_EV,
+    edge_points_per_ev: float = policy.BUILD_EDGE_POINTS_PER_EV,
+    outer_speed: float = policy.BUILD_OUTER_SPEED,
+    freq_hz: float = policy.BUILD_FREQ_HZ,
+    crystal: str | None = None,
+    station: policy.StationProfile,
+    energy_range_ev: tuple[float, float] | None = None,
+) -> dict:
+    """Continuous EXAFS command: the XANES layout to edge + edge_hi_ev, then
+    k-space to ``k_max`` in ``k_regions`` equal-k regions.
+
+    At a fixed trigger rate a frame lands every freq/(eV/s) eV, and
+    dE/dk = 2k/ETOK, so constant k spacing needs the mono to speed up
+    linearly in k. Each k region's speed is solved at its *low*-k end (the
+    densest point it must cover), so the spacing inside it is never coarser
+    than ``dk``; speeds are clamped to the controller's range, and a clamp is
+    reported. A continuous sweep cannot weight counting time by k^n as a step
+    kscan does — collect more sweeps instead.
+    """
+    if k_max <= 0 or dk <= 0 or k_regions < 1:
+        raise ValueError("need k_max > 0, dk > 0 and k_regions >= 1")
+    if not (0 <= edge_lo_ev < pre_edge_ev) or edge_hi_ev <= 0:
+        raise ValueError("need 0 <= edge_lo_ev < pre_edge_ev and edge_hi_ev > 0")
+    k_start = math.sqrt(edge_hi_ev * policy.ETOK)
+    if k_max <= k_start:
+        raise ValueError(f"k_max {k_max} must exceed k at edge + {edge_hi_ev} eV ({k_start:.2f})")
+    timing = beamline.trigger_timing(freq_hz)
+    f = timing["real_freq_hz"]
+    notes: list[str] = []
+
+    def clamp(raw: float, where: str) -> float:
+        s = round(min(max(raw, policy.SPEED_FACTOR_MIN), policy.SPEED_FACTOR_MAX), 3)
+        if s != round(raw, 3):
+            notes.append(f"{where}: speed {raw:.3f} clamped to {s}")
+        return s
+
+    edge_speed = clamp(beamline.speed_for_points_per_ev(
+        edge_ev, f, edge_points_per_ev, crystal, station=station), "edge")
+    start = round(edge_ev - pre_edge_ev, 1)
+    regions = []
+    if edge_lo_ev > 0:
+        regions.append({"end_ev": round(edge_ev - edge_lo_ev, 1), "speed": outer_speed})
+    regions.append({"end_ev": round(edge_ev + edge_hi_ev, 1), "speed": edge_speed})
+    step = (k_max - k_start) / k_regions
+    k_grid = []
+    for i in range(k_regions):
+        k_lo, k_hi = k_start + i * step, k_start + (i + 1) * step
+        e_lo = edge_ev + k_lo ** 2 / policy.ETOK
+        ppev = policy.ETOK / (2.0 * k_lo * dk)          # frames/eV for spacing dk at k_lo
+        speed = clamp(beamline.speed_for_points_per_ev(e_lo, f, ppev, crystal, station=station),
+                      f"k {k_lo:.2f}-{k_hi:.2f}")
+        end = round(edge_ev + k_hi ** 2 / policy.ETOK, 1)
+        regions.append({"end_ev": end, "speed": speed})
+        # eV per frame at k_lo, over dE/dk = 2k/ETOK
+        achieved_dk = beamline.ev_per_second(e_lo, speed, crystal, station=station) / f \
+            * policy.ETOK / (2.0 * k_lo)
+        k_grid.append({"k_lo": round(k_lo, 3), "k_hi": round(k_hi, 3), "end_ev": end,
+                       "speed": speed, "dk_at_k_lo": round(achieved_dk, 4)})
+    cmd = format_command(start, regions, int(round(freq_hz)))
+    return {"command": cmd, "edge_ev": edge_ev, "k_max": k_max, "dk": dk,
+            "final_ev": regions[-1]["end_ev"], "edge_speed": edge_speed,
+            "k_regions": k_grid, "notes": notes,
             "validation": validate_command(cmd, crystal, station=station,
                                            energy_range_ev=energy_range_ev)}
 

@@ -657,6 +657,29 @@ def t_build_command(args):
 
 
 @_tool
+def t_build_exafs_command(args):
+    edge_ev = args.get("edge_ev")
+    edge_info = None
+    if edge_ev is None:
+        if not args.get("element"):
+            raise ValueError("give edge_ev, or element (+ edge, default K)")
+        from beamtimehero_cli.science.tables.edges import get_edge_info
+        edge_info = get_edge_info(args["element"], args.get("edge", "K"))
+        edge_ev = edge_info["tabulated_energy_ev"]
+    if args.get("k_max") is None:
+        raise ValueError("k_max is required")
+    kw = {k: args[k] for k in ("dk", "k_regions", "pre_edge_ev", "edge_lo_ev", "edge_hi_ev",
+                               "edge_points_per_ev", "outer_speed", "freq_hz")
+          if args.get(k) is not None}
+    if "k_regions" in kw:
+        kw["k_regions"] = int(kw["k_regions"])
+    out = cmd_sci.build_exafs_command(float(edge_ev), float(args["k_max"]), crystal=_crystal(args),
+                                      station=_station(), **kw)
+    out["edge_info"] = edge_info
+    return _as_json(out), []
+
+
+@_tool
 def t_simulate_scan(args):
     command = args["command"]
     anchor = None
@@ -1077,8 +1100,9 @@ def t_export_merged(args):
     echo = _selection_echo(run, cleaned, signal, norm, args)
     written = export.write(b, fmt=fmt, name=name, provenance=echo, out_dir=config.export_dir())
     return _as_json({"ok": True, **echo, **written,
-                     "next": "spec-file tools accept the file name when CHERFD_EXPORT_DIR is "
-                             "BL_SCAN_DIR (or copy it there); e.g. extract_xas_descriptors"}), []
+                     "next": "pass the returned file name to the spec-file XAS tools "
+                             "(e.g. extract_xas_descriptors); they search CHERFD_EXPORT_DIR "
+                             "after BL_SCAN_DIR, so no copy is needed"}), []
 
 
 # ---------------------------------------------------------------------------
@@ -1219,6 +1243,7 @@ HANDLERS: dict[str, callable] = {
     # planning
     "cherfd_validate_command": t_validate_command,
     "cherfd_build_command": t_build_command,
+    "cherfd_build_exafs_command": t_build_exafs_command,
     "cherfd_simulate_scan": t_simulate_scan,
     "cherfd_estimate_acquisition_time": t_estimate_acquisition_time,
     "cherfd_undulator_gap_for_energy": t_undulator_gap_for_energy,
