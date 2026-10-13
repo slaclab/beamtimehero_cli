@@ -1229,24 +1229,37 @@ def t_capture_sample_image(arguments: dict) -> tuple[str, list[str]]:
 
     import requests
 
+    from beamtimehero_cli import station
     from beamtimehero_cli.config import (
         SAMPLE_CAM_DEFAULT_QUALITY,
-        SAMPLE_CAM_HOST,
         SAMPLE_CAM_PORT,
         SPEC_MOCK,
+        sample_cam_host,
     )
 
     if SPEC_MOCK:
         return _as_json({"ok": True, "mock": True,
                          "note": "Camera not available in mock mode"}), []
 
+    host = sample_cam_host()
+    if host is None:
+        return _as_json({
+            "ok": False,
+            "error": (f"no sample camera is configured at {station.station_name()}: "
+                      "the BL4-1 RPi-Cam is not installed yet. Set SAMPLE_CAM_HOST "
+                      "to its address once it is."),
+        }), []
+    resolution = str(arguments.get("resolution") or "low").lower()
+    if resolution not in ("low", "full"):
+        return _as_json({"ok": False, "error": "resolution must be 'low' or 'full'"}), []
     quality = max(1, min(100, int(arguments.get("quality", SAMPLE_CAM_DEFAULT_QUALITY))))
-    url = f"http://{SAMPLE_CAM_HOST}:{SAMPLE_CAM_PORT}/snapshot.jpg"
+    url = f"http://{host}:{SAMPLE_CAM_PORT}/snapshot.jpg"
     try:
         resp = requests.get(
             url,
-            params={"resolution": "low", "quality": str(quality)},
-            timeout=10,
+            params={"resolution": resolution, "quality": str(quality)},
+            # a full-resolution still switches the sensor mode first
+            timeout=30 if resolution == "full" else 10,
             proxies={"http": None, "https": None},
         )
         resp.raise_for_status()
@@ -1274,9 +1287,10 @@ def t_capture_sample_image(arguments: dict) -> tuple[str, list[str]]:
     img_b64 = base64.b64encode(resp.content).decode("ascii")
     return _as_json({
         "ok": True,
-        "resolution": "low",
+        "resolution": resolution,
         "quality": quality,
         "size_bytes": len(resp.content),
+        "camera": f"{host}:{SAMPLE_CAM_PORT}",
     }), [img_b64]
 
 

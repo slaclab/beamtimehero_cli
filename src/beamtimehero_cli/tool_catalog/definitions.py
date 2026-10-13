@@ -2042,15 +2042,27 @@ AUTONOMY_TOOL_DEFINITIONS = [
         "function": {
             "name": "capture_sample_image",
             "description": (
-                "Capture a low-resolution JPEG snapshot of the sample from the "
-                "beamline sample camera (RPi-Cam). Returns image metadata as text "
-                "and the JPEG as an inline image. Use this to visually inspect "
-                "sample position, beam spot, or cryostat window before or during "
-                "alignment and data collection."
+                "Capture a JPEG snapshot of the sample from the beamline sample "
+                "camera (RPi-Cam). Returns image metadata as text and the JPEG as "
+                "an inline image. Use this to visually inspect sample position, "
+                "mounting, beam spot, or cryostat window before or during "
+                "alignment and data collection, and as evidence for a human "
+                "intervention. The camera is per station (SAMPLE_CAM_HOST); a "
+                "station without one returns ok=false saying so."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
+                    "resolution": {
+                        "type": "string",
+                        "enum": ["low", "full"],
+                        "default": "low",
+                        "description": (
+                            "'low' = the live frame (1600x1200); 'full' = a "
+                            "full-sensor still (4056x3040), slower, for mount "
+                            "checks."
+                        ),
+                    },
                     "quality": {
                         "type": "integer",
                         "description": (

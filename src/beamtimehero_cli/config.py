@@ -305,5 +305,20 @@ MAX_LOG_LINES = 1000
 # Sample camera (RPi-Cam snapshot endpoint)
 # ---------------------------------------------------------------------------
 SAMPLE_CAM_HOST = os.getenv("SAMPLE_CAM_HOST", "192.168.150.93")
+
+
+def sample_cam_host() -> str | None:
+    """The sample camera's host for this station, or None when it has none.
+
+    ``SAMPLE_CAM_HOST`` wins wherever it is set. Unset, BL15-2 keeps its
+    RPi-Cam (192.168.150.93) and BL4-1 has none until its RPi-Cam is
+    installed — so a BL4-1 snapshot never reaches the BL15-2 camera.
+    """
+    explicit = os.environ.get("SAMPLE_CAM_HOST")
+    if explicit:
+        return explicit
+    if station.station_name() == "bl41":
+        return None
+    return "192.168.150.93"
 SAMPLE_CAM_PORT = int(os.getenv("SAMPLE_CAM_PORT", "8080"))
 SAMPLE_CAM_DEFAULT_QUALITY = int(os.getenv("SAMPLE_CAM_QUALITY", "50"))

@@ -1289,8 +1289,10 @@ TOOL_LINEAGE: dict[str, dict] = {
         "source": "camera",
         "source_detail": (
             "HTTP GET to the RPi-Cam snapshot endpoint on the beamline "
-            "network (default 192.168.150.93:8080). Returns the latest "
-            "live video frame at 1600x1200. Override via SAMPLE_CAM_HOST "
+            "network: SAMPLE_CAM_HOST, else per station (BL15-2 "
+            "192.168.150.93:8080; BL4-1 none until its RPi-Cam is installed). "
+            "resolution=low is the live frame at 1600x1200, full a "
+            "4056x3040 still. Override via SAMPLE_CAM_HOST "
             "and SAMPLE_CAM_PORT env vars."
         ),
         "depends_on": [],
