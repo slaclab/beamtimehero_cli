@@ -2,6 +2,15 @@
 
 Tagged releases that apps pin (see CONTRIBUTING.md "Releases and the apps that pin them").
 
+## v0.6.1 — 2026-10-12
+
+- `cherfd_channel_stats` (offline `cherfd` tree, read-only): per-channel counts per
+  frame and per second (counts / the frame's `trig_2` gate) for `counter_*` and
+  detector sums, per-frame means for `adc_*`, std/sqrt(mean), zero fraction;
+  ln(a/b) per frame for requested ratios with the edge jump from pre/post windows;
+  per-sweep means as a run trend, overall and per direction. Science in
+  `science/cherfd/channels.py`. Additive: no existing tool or default changes.
+
 ## v0.6.0 — 2026-10-12
 
 - `station.SCAN_MODES` / `scan_modes()` / `default_scan_mode()` / `check_scan_mode()`:
