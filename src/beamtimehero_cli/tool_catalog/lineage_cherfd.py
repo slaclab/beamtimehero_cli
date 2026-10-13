@@ -182,6 +182,11 @@ CHERFD_LINEAGE: dict[str, dict] = {
     "cherfd_check_gap_tracking": _data("science.cherfd.frames.gap_tracking + science.cherfd.beamline.harmonic_gap",
                                        "Recorded gap vs ideal harmonic gap.",
                                        "JSON: per sweep {implied_calibration_offset_mm, residual_rms_mm}"),
+    "cherfd_channel_stats": _data("spec_data.cherfd.sweeps.load_clean -> science.cherfd.channels."
+                                  "sweep_channel_stats + run_channel_summary",
+                                  "Counts per frame and per second, ADC means, Poisson ratio and "
+                                  "ln(a/b) ratios with edge jump, per sweep and as a run trend.",
+                                  "JSON: {channels, run: {all, by_direction}, sweeps: [{channels, ratios}], notes}"),
     "cherfd_export_merged": _data("science.cherfd.reduce.bin_sweeps -> spec_data.cherfd.export.write",
                                   "Writes twocol/SPEC files for the spec-file XAS tools "
                                   "(a file write, not a hardware action).",

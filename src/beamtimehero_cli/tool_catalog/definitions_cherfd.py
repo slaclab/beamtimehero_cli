@@ -387,6 +387,31 @@ CHERFD_TOOL_DEFINITIONS: list[dict] = [
        "Recorded undulator gap vs the ideal harmonic gap at each frame's energy: implied calibration "
        "offset, tracking residual, and harmonic changes in the scanned range. BL15-2 only.",
        {**_RUN, **_SELECT}),
+    _t("cherfd_channel_stats",
+       "Per-channel diagnostics over an energy window, per sweep and across the run: counts per "
+       "frame and per second (counts / the frame's trig_2 gate) for counter_* and detector sums, "
+       "per-frame mean for adc_* (no rate), std/sqrt(mean) (~1 = Poisson for photon counts; V-to-F "
+       "ion-chamber counters can sit well below 1, so compare it across sweeps), zero fraction; "
+       "ln(a/b) per frame for each requested ratio, with the edge jump when pre/post windows are "
+       "given; the per-sweep means as a trend, overall and per direction (beam decay, I0 drops). "
+       "Window means are frame-weighted, so fwd and rev can differ where a channel varies with "
+       "energy. BL4-1 box: counter_1 = I0, counter_2 = I1, counter_3 = I2, counter_4 = PIPS, so "
+       "ratios ['counter_1/counter_2', 'counter_2/counter_3'] give sample and reference absorbance.",
+       {**_RUN, **_SELECT,
+        "channels": {"type": "array", "items": {"type": "string"}, "description": (
+            "Columns to summarise (default: every counter_*/adc_* that is not all zero, plus the "
+            "station's signal when recorded). cherfd_read_sweep lists the columns.")},
+        "ratios": {"type": "array", "items": {"type": "string"}, "description": (
+            "Log ratios as 'numerator/denominator', e.g. 'counter_1/counter_2' for ln(I0/I1). "
+            "Frames where either side is <= 0 are excluded and counted.")},
+        "signal": {"type": "string", "description": (
+            "Detector column added to the default channels (default: the station's signal).")},
+        "e_min": _BIN["e_min"], "e_max": _BIN["e_max"],
+        "pre_edge_ev": {"type": "array", "items": {"type": "number"}, "description": (
+            "[lo, hi] eV pre-edge window; with post_edge_ev, each ratio reports its mean in both "
+            "and jump = post - pre. A flat window is also where std/sqrt(mean) reads true noise.")},
+        "post_edge_ev": {"type": "array", "items": {"type": "number"},
+                         "description": "[lo, hi] eV post-edge window (with pre_edge_ev)."}}),
     _t("cherfd_export_merged",
        "Write the merged spectrum for the beamtimehero XAS tools: 'twocol' (energy, intensity; "
        "+ .sem.dat) or 'spec' (one #S per sweep + merged). Returns the path to pass as file_name.",
@@ -445,6 +470,6 @@ CHERFD_TOOL_CATEGORIES: list[tuple[str, list[str]]] = [
     ("CHERFD Analysis", ["cherfd_assess_run_quality", "cherfd_merge_sweeps", "cherfd_compare_directions",
                   "cherfd_analyze_sweep_drift", "cherfd_analyze_convergence",
                   "cherfd_assess_energy_calibration", "cherfd_check_gap_tracking",
-                  "cherfd_export_merged", "cherfd_plot_sweeps", "cherfd_plot_sweep_diagnostics"]),
+                  "cherfd_channel_stats", "cherfd_export_merged", "cherfd_plot_sweeps", "cherfd_plot_sweep_diagnostics"]),
     ("CHERFD Logs", ["cherfd_list_logs", "cherfd_read_log", "cherfd_search_logs"]),
 ]

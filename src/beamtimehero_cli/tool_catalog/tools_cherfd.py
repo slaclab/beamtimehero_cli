@@ -36,7 +36,7 @@ from beamtimehero_cli.cherfd_control import simulator as sim_bridge  # noqa: E40
 from beamtimehero_cli.audited_cherfd import audited_cherfd  # noqa: E402
 from beamtimehero_cli.spec_data.cherfd import export, files, loader, sweeps as sweep_data  # noqa: E402
 from beamtimehero_cli.science.cherfd import (  # noqa: E402
-    analysis, beamline, command as cmd_sci, frames, policy, reduce,
+    analysis, beamline, channels as chan_sci, command as cmd_sci, frames, policy, reduce,
 )
 from beamtimehero_cli.science.plots import cherfd as plots  # noqa: E402
 
@@ -1027,6 +1027,46 @@ def t_check_gap_tracking(args):
                              "gap_calibration_offset; residual_rms_mm is the tracking lag/jitter"}), []
 
 
+def _ev_window(args, key) -> tuple[float, float] | None:
+    w = args.get(key)
+    if w is None:
+        return None
+    if not isinstance(w, (list, tuple)) or len(w) != 2:
+        raise ValueError(f"{key} must be [lo_eV, hi_eV]")
+    return float(w[0]), float(w[1])
+
+
+@_tool
+def t_channel_stats(args):
+    run, cleaned = _clean_selected(args)
+    cleaned.sort(key=lambda c: c["sweep"].time)
+    pre, post = _ev_window(args, "pre_edge_ev"), _ev_window(args, "post_edge_ev")
+    if (pre is None) != (post is None):
+        raise ValueError("give both pre_edge_ev and post_edge_ev for an edge jump, or neither")
+    signal = args.get("signal") or _station().default_signal
+    chans = args.get("channels") or chan_sci.default_channels(cleaned[0]["arrays"], signal)
+    window = (args.get("e_min"), args.get("e_max"))
+    per = []
+    for c in cleaned:
+        s = chan_sci.sweep_channel_stats(c["arrays"], channels=chans, ratios=args.get("ratios"),
+                                         window=window, pre=pre, post=post,
+                                         period_us=c["qc"]["period_us"])
+        per.append({"sweep": c["sweep"].label, "direction": c["sweep"].direction,
+                    "time": c["sweep"].timestamp, **s})
+    summary = {"all": chan_sci.run_channel_summary(per)}
+    dirs = sorted({p["direction"] for p in per})
+    if len(dirs) > 1:
+        summary["by_direction"] = {d: chan_sci.run_channel_summary([p for p in per if p["direction"] == d])
+                                   for d in dirs}
+    notes = sorted({n for c in cleaned for n in c["notes"]})
+    notes.append("window means are frame-weighted: where a channel changes with energy, a different "
+                 "frame density (fwd vs rev, speed regions) moves them; compare in flat windows or "
+                 "use the pre/post edge means")
+    return _as_json({"run_id": run["run_id"], "sweeps_used": [p["sweep"] for p in per],
+                     "channels": chans, "window_ev": list(window),
+                     "pre_edge_ev": pre, "post_edge_ev": post,
+                     "run": summary, "sweeps": per, "notes": notes}), []
+
 @_tool
 def t_export_merged(args):
     run, cleaned = _clean_selected(args)
@@ -1197,6 +1237,7 @@ HANDLERS: dict[str, callable] = {
     "cherfd_analyze_convergence": t_analyze_convergence,
     "cherfd_assess_energy_calibration": t_assess_energy_calibration,
     "cherfd_check_gap_tracking": t_check_gap_tracking,
+    "cherfd_channel_stats": t_channel_stats,
     "cherfd_export_merged": t_export_merged,
     # plots
     "cherfd_plot_sweeps": t_plot_sweeps,

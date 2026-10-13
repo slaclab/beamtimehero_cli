@@ -98,10 +98,10 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <h1>Science index — <span class="thin">every function, and what uses it</span></h1>
 <p class="lede">The scientific core of the toolbelt: what each function does, what it is called by, and what it cites. Generated from the source tree, so a new function appears here by existing. Regenerate with <code>python -m beamtimehero_cli.docgen_science</code>.</p>
 <div class="statstrip">
-<div class="stat"><b>169</b><span>functions</span></div>
-<div class="stat"><b>135</b><span>public</span></div>
-<div class="stat"><b>41</b><span>modules</span></div>
-<div class="stat"><b>47</b><span>cited methods</span></div>
+<div class="stat"><b>180</b><span>functions</span></div>
+<div class="stat"><b>142</b><span>public</span></div>
+<div class="stat"><b>42</b><span>modules</span></div>
+<div class="stat"><b>48</b><span>cited methods</span></div>
 <div class="stat"><b>60</b><span>attribution gaps</span></div>
 <button id="themetoggle">&#9689; theme</button></div></header>
 <div class="therule"><blockquote>Everything under <code>science/</code> takes <b>numbers in</b> and returns <b>numbers out</b>. No file paths, no environment variables, no SPEC, no database, no argparse.</blockquote></div>
@@ -937,7 +937,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </details>
 <details class="dir" style="--c: var(--c-cherfd)" open>
-<summary><span class="dname">science/cherfd/</span><span class="chip" style="--c: var(--c-cherfd)">6 modules</span><span class="count">41 fns</span></summary>
+<summary><span class="dname">science/cherfd/</span><span class="chip" style="--c: var(--c-cherfd)">7 modules</span><span class="count">52 fns</span></summary>
 <div class="modblock">
 <div class="modhead"><span class="mpath">cherfd.analysis</span><span class="mdoc">Run-level CHERFD analysis: direction offsets, sweep drift, energy calibration.</span></div>
 <div class="fn" data-hay="compare_directions cherfd.analysis  cherfd cherfd-compare-directions">
@@ -1013,10 +1013,10 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="fdoc">Cruise time for one region: |delta theta| / angular velocity (no ramps).</p>
 <p class="users"><b>used by</b> cherfd cherfd-build-command, cherfd cherfd-estimate-acquisition-time, cherfd cherfd-validate-command, cherfd-read cherfd-check-readiness, cherfd-write cherfd-start-scan</p>
 </div>
-<div class="fn" data-hay="trigger_timing cherfd.beamline what the fpga will actually produce for a requested trigger rate. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-mono-convert cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<div class="fn" data-hay="trigger_timing cherfd.beamline what the fpga will actually produce for a requested trigger rate. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-mono-convert cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">trigger_timing</span>(freq_hz, duration_s=...)</span>
 <p class="fdoc">What the FPGA will actually produce for a requested trigger rate.</p>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking +11 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-channel-stats +12 more</p>
 </div>
 <div class="fn" data-hay="gap_for_harmonic cherfd.beamline  cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-estimate-acquisition-time cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-undulator-gap-for-energy cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-move-energy cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">gap_for_harmonic</span>(harmonic, energy_ev)</span>
@@ -1039,15 +1039,73 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </div>
 <div class="modblock">
+<div class="modhead"><span class="mpath">cherfd.channels</span><span class="mdoc">Per-channel diagnostics for cleaned CHERFD sweeps: counts, rates, ratios.</span></div>
+<div class="fn const" data-hay="cherfd.channels _counting_re _counting_sums">
+<p class="users"><b>constants</b> <code>_COUNTING_RE</code>, <code>_COUNTING_SUMS</code></p>
+<p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
+</div>
+<div class="fn" data-hay="is_counting cherfd.channels counts per frame (a rate makes sense), as opposed to an adc mean. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">is_counting</span>(name)</span>
+<p class="fdoc">Counts per frame (a rate makes sense), as opposed to an ADC mean.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn" data-hay="default_channels cherfd.channels box counters and adcs that are not all zero, plus ``signal``. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">default_channels</span>(arrays, signal=...)</span>
+<p class="fdoc">Box counters and ADCs that are not all zero, plus ``signal``.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn" data-hay="parse_ratio cherfd.channels  cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">parse_ratio</span>(spec)</span>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn" data-hay="channel_summary cherfd.channels per-frame statistics, plus rate and poisson ratio for a counting channel. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">channel_summary</span>(values, gate_s, counting)</span>
+<p class="fdoc">Per-frame statistics, plus rate and Poisson ratio for a counting channel.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn" data-hay="log_ratio cherfd.channels ln(num/den) per frame over frames where both are &gt; 0; and how many were not. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">log_ratio</span>(num, den)</span>
+<p class="fdoc">ln(num/den) per frame over frames where both are &gt; 0; and how many were not.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn" data-hay="sweep_channel_stats cherfd.channels statistics of each channel and log ratio over ``window`` (ev) of one sweep. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">sweep_channel_stats</span>(arrays, *, channels, ratios=..., window=..., pre=..., post=..., period_us=...)</span>
+<p class="fdoc">Statistics of each channel and log ratio over ``window`` (eV) of one sweep.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn" data-hay="run_channel_summary cherfd.channels across-sweep series of each channel&#x27;s mean (per frame, per second) and each ratio. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">run_channel_summary</span>(per_sweep)</span>
+<p class="fdoc">Across-sweep series of each channel&#x27;s mean (per frame, per second) and each ratio.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn priv" data-hay="_window_mask cherfd.channels  cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">_window_mask</span>(energy, window)</span>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn priv" data-hay="_r cherfd.channels  cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">_r</span>(x, sig=...)</span>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn priv" data-hay="_stats cherfd.channels  cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">_stats</span>(v)</span>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+<div class="fn priv" data-hay="_trend cherfd.channels spread of a per-sweep series and its linear trend, relative to its mean. cherfd cherfd-channel-stats">
+<span class="sig"><span class="fname">_trend</span>(y)</span>
+<p class="fdoc">Spread of a per-sweep series and its linear trend, relative to its mean.</p>
+<p class="users"><b>used by</b> cherfd cherfd-channel-stats</p>
+</div>
+</div>
+<div class="modblock">
 <div class="modhead"><span class="mpath">cherfd.command</span><span class="mdoc">The cherfd command string: parse, validate, reverse, build, time.</span></div>
 <div class="fn const" data-hay="cherfd.command command_keywords">
 <p class="users"><b>constants</b> <code>COMMAND_KEYWORDS</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
 </div>
-<div class="fn" data-hay="parse_command cherfd.command split a command into start, regions [(end_ev, speed)], freq. raises valueerror. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<div class="fn" data-hay="parse_command cherfd.command split a command into start, regions [(end_ev, speed)], freq. raises valueerror. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">parse_command</span>(command)</span>
 <p class="fdoc">Split a command into start, regions [(end_eV, speed)], freq. Raises ValueError.</p>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking +10 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-channel-stats +11 more</p>
 </div>
 <div class="fn" data-hay="format_command cherfd.command inverse of parse_command. ``regions`` = [{&quot;end_ev&quot;, &quot;speed&quot;}]. cherfd cherfd-build-command cherfd cherfd-estimate-acquisition-time cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">format_command</span>(start_ev, regions, freq_hz)</span>
@@ -1074,31 +1132,31 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <p class="fdoc">Wall time for a multi-sweep acquisition.</p>
 <p class="users"><b>used by</b> cherfd cherfd-estimate-acquisition-time, cherfd-write cherfd-start-scan</p>
 </div>
-<div class="fn priv" data-hay="_tokens cherfd.command  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<div class="fn priv" data-hay="_tokens cherfd.command  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">_tokens</span>(command)</span>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-check-gap-tracking +10 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-channel-stats +11 more</p>
 </div>
 </div>
 <div class="modblock">
 <div class="modhead"><span class="mpath">cherfd.frames</span><span class="mdoc">From raw FPGA/detector frames to a clean, trigger-ordered sweep.</span></div>
-<div class="fn" data-hay="is_adc cherfd.frames  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<div class="fn" data-hay="is_adc cherfd.frames  cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
 <span class="sig"><span class="fname">is_adc</span>(name)</span>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-channel-stats, cherfd cherfd-check-gap-tracking +6 more</p>
 </div>
-<div class="fn" data-hay="adc_counts cherfd.frames adc column as signed 16-bit counts, and whether it had to be decoded. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<div class="fn" data-hay="adc_counts cherfd.frames adc column as signed 16-bit counts, and whether it had to be decoded. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
 <span class="sig"><span class="fname">adc_counts</span>(values)</span>
 <p class="fdoc">ADC column as signed 16-bit counts, and whether it had to be decoded.</p>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-channel-stats, cherfd cherfd-check-gap-tracking +6 more</p>
 </div>
-<div class="fn" data-hay="infer_period_us cherfd.frames trigger period in us: trig_2 (duration) is ~period-1ms; spacing of trig_1 is exact. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<div class="fn" data-hay="infer_period_us cherfd.frames trigger period in us: trig_2 (duration) is ~period-1ms; spacing of trig_1 is exact. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
 <span class="sig"><span class="fname">infer_period_us</span>(trig_1, trig_2=...)</span>
 <p class="fdoc">Trigger period in us: trig_2 (duration) is ~period-1ms; spacing of trig_1 is exact.</p>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-channel-stats, cherfd cherfd-check-gap-tracking +6 more</p>
 </div>
-<div class="fn" data-hay="clean_sweep cherfd.frames return trigger-ordered arrays plus a qc ledger. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
+<div class="fn" data-hay="clean_sweep cherfd.frames return trigger-ordered arrays plus a qc ledger. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep">
 <span class="sig"><span class="fname">clean_sweep</span>(columns, *, detector=..., period_us=..., energy_range=..., align=..., detector_frame_offset=...)</span>
 <p class="fdoc">Return trigger-ordered arrays plus a QC ledger.</p>
-<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-check-gap-tracking, cherfd cherfd-compare-directions +5 more</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-channel-stats, cherfd cherfd-check-gap-tracking +6 more</p>
 </div>
 <div class="fn" data-hay="sweep_quality cherfd.frames verdict + issues for one cleaned sweep. cherfd cherfd-assess-run-quality cherfd cherfd-merge-sweeps">
 <span class="sig"><span class="fname">sweep_quality</span>(clean, *, signal, expected_range=..., expected_freq_hz=..., range_shortfall_warn_ev=...)</span>
@@ -1175,6 +1233,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <tr><td>gap</td><td>utils/undulator.py get_gap / find_harmonic_gap (cherfd_claude)</td><td class="mono">cherfd.beamline</td></tr>
 <tr><td>table</td><td>utils/mono.py _calc_table_track; SPEC tracking.mac</td><td class="mono">cherfd.beamline</td></tr>
 <tr><td>triggers</td><td>cscan_box/triggers.py trigger_timing (cherfd_claude)</td><td class="mono">cherfd.beamline</td></tr>
+<tr><td>frame gate time from trig_2 (us)</td><td>cherfd_claude cscan_box/data_frame.py parse_frame</td><td class="mono">cherfd.channels</td></tr>
 <tr><td>cherfd command grammar and limits</td><td>cherfd_claude cscan_box/motion.py parse_cherfd_command; spec/cherfd.mac validate_cherfd_command</td><td class="mono">cherfd.command</td></tr>
 <tr><td>DMA frame layout (trig_1 end time, status bit 31)</td><td>cherfd_claude cscan_box/references/DMA_structure_definition.txt</td><td class="mono">cherfd.frames</td></tr>
 <tr><td>AUTOBK-lite spline background removal</td><td>Reduced AUTOBK — cubic smoothing spline with the knot budget from the Nyquist criterion (2*rbkg*kmax/pi). Quick-look quality; cross-check against Larch/Ifeffit autobk before publication.</td><td class="mono">exafs.background</td></tr>
