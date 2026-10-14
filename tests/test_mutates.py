@@ -40,7 +40,7 @@ TOOLS_CORE = (
 #: justification, writes an action-log row before SPEC sees it, and can
 #: move hardware; a silent change to the size of that set is exactly the
 #: thing a review should be forced to look at.
-MUTATING_COUNT = 42  # + measure_darks, set_check_beam (BL4-1)
+MUTATING_COUNT = 43  # + measure_darks, set_check_beam, zero_amp_offsets (BL4-1)
 
 #: Same rule for the second audited transport: CHERFD actions and stops,
 #: sent through ``audited_cherfd`` and living on ``cherfd-write``.

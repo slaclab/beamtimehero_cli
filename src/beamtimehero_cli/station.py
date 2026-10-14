@@ -49,6 +49,8 @@ STATION_ENV: dict[str, dict[str, str]] = {
         "BTH_GASMIXER_URL": "http://127.0.0.1:5006",
         "BTH_XSP32_GUI_URL": "http://192.168.41.6:8032",
         "BTH_MOTOR_ANALYZER_URL": "http://127.0.0.1:5011",
+        # SR570 current-amp server (ssrl-current-amp): zero_amp_offsets
+        "BTH_CURRENT_AMP_URL": "http://192.168.41.6:8570",
         # where the station's apps write their logs (applogs.py)
         "BTH_APP_LOG_ROOTS": (
             "fourone=/usr/local/projects/autonomous_fourone/logs,"
