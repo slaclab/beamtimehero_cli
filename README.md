@@ -11,7 +11,7 @@ Provides:
 - **CHERFD continuous scanning** — plan, run and reduce continuous scans on the cscan box through the cherfd control server, at BL15-2 (Vortex) and BL4-1 (24-element Ge) (`cherfd`, `cherfd-read`, `cherfd-write` trees; `beamtimehero ref cherfd-operations`). Mocked unless `CHERFD_MOCK=0`.
 - **Deployment backends** — the same scan-read surface served from S3DF Postgres + pickled scan data; Slack messaging.
 - **Log reads** — beamline control log parsing, search; read-only access to the station's application logs (`tool list-app-logs` / `read-app-log` / `search-app-logs`).
-- **Station services (BL4-1)** — read-only gas mixer / ion-chamber HV state, Ge detector status and Motor Analyzer diagnostics (`tool get-sample-environment`, `get-ge-detector-status`, `get-motor-diagnostics`); dark currents and check_beam (`spec-write measure-darks`, `set-check-beam`).
+- **Station services (BL4-1)** — read-only gas mixer / ion-chamber HV state, Ge detector status and Motor Analyzer diagnostics (`tool get-sample-environment`, `get-ge-detector-status`, `get-motor-diagnostics`); dark currents, check_beam and amplifier offset auto-zero (`spec-write measure-darks`, `set-check-beam`, `zero-amp-offsets`).
 - **Provenance** — per-experiment provenance records and results bundles with checksummed manifests (`tool record-provenance`, `export-results-bundle`).
 - **Action logging** — every command writes to a local SQLite audit trail.
 - **Reference docs** — `beamtimehero ref <name>` to fetch bundled procedure docs.

@@ -7,6 +7,7 @@ app-level `TOOL_DEFINITIONS` import concatenates the two lists.
 import json
 from pathlib import Path
 
+from beamtimehero_cli import current_amp as _current_amp
 from beamtimehero_cli import epics_ca as _epics_ca
 from beamtimehero_cli.science.exafs import policy as _exafs_policy
 from beamtimehero_cli.science.xrs import policy as _xrs_policy
@@ -325,6 +326,34 @@ AUTONOMY_TOOL_DEFINITIONS = [
                     **_J,
                     "count_time_s": {"type": "number", "default": 2,
                                      "description": "Dark count time (s)."},
+                },
+                "required": ["justification"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "zero_amp_offsets",
+            "description": (
+                "BL4-1: auto-zero the SR570 current-amplifier input offsets (I0, I1, "
+                "I2, PIPS) with the current-amp server's Zero Offsets routine — each "
+                "detector's offset is set to the smallest ladder step whose cscan "
+                "box ADC reading is just above zero (+2 mV). Takes ~30 s; blocks "
+                "until done and returns per-detector before/after offsets and "
+                "voltages. Zero with the beam off (shutter closed): it cancels "
+                "whatever current is present. Not while a scan, a SPEC count or a "
+                "CHERFD stream is using the cscan box. On a failure or abort the "
+                "server restores every original offset. Rerun measure_darks "
+                "afterwards (the stored dark rates go stale)."
+            ),
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    **_J,
+                    "wait_s": {"type": "number", "default": _current_amp.DEFAULT_WAIT_S,
+                               "exclusiveMinimum": 0, "maximum": _current_amp.MAX_WAIT_S,
+                               "description": "Abort (offsets restored) if not finished by then (s)."},
                 },
                 "required": ["justification"],
             },
@@ -3634,7 +3663,7 @@ AUTONOMY_TOOL_CATEGORIES = [
         "get_anchor", "set_anchor", "tracking",
     ]),
     ("CAT-6 Beam", ["get_beam_size", "get_beam_status", "get_counts", "get_counter", "request_gap_ownership", "capture_sample_image", "get_reference_image",
-                    "measure_darks", "set_check_beam", "get_check_beam"]),
+                    "measure_darks", "zero_amp_offsets", "set_check_beam", "get_check_beam"]),
     ("CAT-7 State", ["get_element", "get_crystal_set", "get_scan_number", "get_current_datafile", "get_plotselected_counter", "abort_current_scan"]),
     ("CAT-8 Orchestration", [
         "request_human_intervention", "post_status_update",

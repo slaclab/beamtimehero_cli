@@ -1394,6 +1394,41 @@ TOOL_LINEAGE: dict[str, dict] = {
         "source_detail": "SPEC macros in 41_spec/offset_subtraction.mac and shutter.mac.",
         "depends_on": [],
     },
+    "zero_amp_offsets": {
+        "long_description": (
+            "Starts ssrl-current-amp's Zero Offsets routine (devices/autozero.py "
+            "there) and polls it to the end. The server measures every cscan box "
+            "ADC, probes one offset step per detector for the sign of dV/dI, jumps "
+            "to the predicted zero crossing on the SR570 1-2-5 offset ladder and "
+            "steps until the reading clears target_min_v (+2 mV at BL4-1). Its own "
+            "guards (max 8 offset changes per detector, probe response 0.5-2x the "
+            "nominal gain, readings must follow the prediction, 300 s per run) "
+            "restore a detector's original offset; an error or abort restores all "
+            "of them. Past wait_s this tool aborts the run. Refused where no "
+            "server is configured."
+        ),
+        "python_func": (
+            "audited_call.audited_device_call('zero_amp_offsets', ..., "
+            "run=current_amp.zero_offsets(wait_s))"
+        ),
+        "spec_command": None,
+        # True: SR570 offset writes through the current-amp server, audited
+        # with audited_device_call (justification, safety switch, action log).
+        "mutates": True,
+        "output": (
+            "JSON: {ok, kind, action_id, result: {ok, state, results: {det: {adc, "
+            "sensitivity, offset_before, offset_after, v_before, v_after, status, "
+            "note}}, log[], duration_s}, elapsed_s}"
+        ),
+        "source": "epics_ioc",
+        "source_detail": (
+            "HTTP to the ssrl-current-amp server (BTH_CURRENT_AMP_URL; BL4-1 "
+            "default 192.168.41.6:8570): POST /api/autozero/start, GET "
+            "/api/autozero, POST /api/autozero/abort. The server writes the "
+            "SR570s over its Moxa and reads the ADCs with cscan_acq's CsBox."
+        ),
+        "depends_on": [],
+    },
     "set_check_beam": {
         "long_description": "check_beam_on / check_beam_off (41_spec/check_beam.mac): pause step scans while there is no beam.",
         "python_func": "spec_cmd.call('check_beam_on' | 'check_beam_off', [], justification)",

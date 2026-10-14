@@ -1185,6 +1185,24 @@ def t_measure_darks(arguments: dict) -> tuple[str, list[str]]:
     return _as_json(res), []
 
 
+def t_zero_amp_offsets(arguments: dict) -> tuple[str, list[str]]:
+    from beamtimehero_cli import current_amp
+    from beamtimehero_cli.audited_call import audited_device_call
+    url = current_amp.server_url()
+    if not url:
+        from beamtimehero_cli import station
+        return _as_json({"ok": False, "error": f"{station.station_name()} has no current-amp "
+                                               f"server configured ({current_amp.URL_VAR})"}), []
+    j = (arguments.get("justification") or "").strip()
+    wait_s = float(arguments.get("wait_s", current_amp.DEFAULT_WAIT_S))
+    res = audited_device_call(
+        "zero_amp_offsets", [f"wait_s={wait_s:g}"], j,
+        lambda: current_amp.zero_offsets(wait_s),
+        wire=f"POST {url}/api/autozero/start",
+    )
+    return _as_json(res), []
+
+
 def t_set_check_beam(arguments: dict) -> tuple[str, list[str]]:
     refused = _bl41_only("set_check_beam")
     if refused:
@@ -2954,6 +2972,7 @@ _HANDLERS: dict[str, callable] = {
     "record_provenance": t_record_provenance,
     "get_provenance": t_get_provenance,
     "measure_darks": t_measure_darks,
+    "zero_amp_offsets": t_zero_amp_offsets,
     "set_check_beam": t_set_check_beam,
     "get_check_beam": t_get_check_beam,
     "get_crystal_set": t_get_crystal_set,

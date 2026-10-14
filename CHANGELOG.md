@@ -2,6 +2,15 @@
 
 Tagged releases that apps pin (see CONTRIBUTING.md "Releases and the apps that pin them").
 
+## Unreleased
+
+- `zero_amp_offsets` (`spec-write`, mutating): runs the ssrl-current-amp server's
+  Zero Offsets routine — each SR570's input offset set to the smallest ladder step
+  whose cscan box ADC reading clears +2 mV — and waits for it, aborting (offsets
+  restored by the server) past `wait_s`. Audited with `audited_device_call`. New
+  module `current_amp.py`; URL `BTH_CURRENT_AMP_URL` (BL4-1 default
+  `http://192.168.41.6:8570`, unset elsewhere so the tool refuses).
+
 ## v0.7.0 — 2026-10-12
 
 Additive; BL15-2 defaults unchanged (unset `BTH_STATION` behaves as before).
