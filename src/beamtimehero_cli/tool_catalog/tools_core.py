@@ -1453,6 +1453,7 @@ def _interpretation_inputs(arguments: dict):
 
     combined, file_name, counter, used_scans = scan_data.get_normalized_scan_arrays(
         arguments.get("file_name"), scan_numbers=arguments.get("scan_numbers"),
+        counter=arguments.get("counter") or None,
     )
     combined = combined.dropna()
     xas_policy.check_overlap(len(combined) if not combined.empty else 0)
@@ -1536,6 +1537,7 @@ def t_record_energy_calibration(arguments: dict) -> tuple[str, list[str]]:
         edge_meta = interp_edges.get_edge_info(element, edge)
         combined, file_name, counter, used_scans = scan_data.get_normalized_scan_arrays(
             arguments.get("file_name"), scan_numbers=arguments.get("scan_numbers"),
+            counter=arguments.get("counter") or None,
         )
         combined = combined.dropna()
         energy = combined.index.values.astype(float)

@@ -10,6 +10,8 @@ For the rigorous XAS normalizations (area, MBACK, Athena-style pre/post) see
 """
 from __future__ import annotations
 
+import re
+
 import numpy as np
 import pandas as pd
 
@@ -17,6 +19,34 @@ import pandas as pd
 # ---------------------------------------------------------------------------
 # Edge-step normalization
 # ---------------------------------------------------------------------------
+
+#: A derived transmission signal, e.g. ``ln(I0/I1)`` (sample) or
+#: ``ln(I1/I2)`` (reference foil between I1 and I2).
+_LOG_RATIO = re.compile(r"^\s*ln\(\s*(\w+)\s*/\s*(\w+)\s*\)\s*$")
+
+
+def with_derived_counter(df: pd.DataFrame, counter: str) -> tuple[pd.DataFrame, bool]:
+    """Return ``(df, derived)``: *df* with a ``ln(A/B)`` *counter* column added.
+
+    ``derived`` is True when *counter* is such an expression; the result is
+    already an absorbance, so callers must not divide it by I0 again.
+    Raises KeyError when A or B is not a column.
+    """
+    m = _LOG_RATIO.match(counter or "")
+    if not m or counter in df.columns:
+        return df, False
+    num, den = m.groups()
+    for c in (num, den):
+        if c not in df.columns:
+            raise KeyError(f"Counter '{c}' (in '{counter}') not found. Available: {list(df.columns)}")
+    a = df[num].values.astype(float)
+    b = df[den].values.astype(float)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mu = np.log(a / b)
+    df = df.copy()
+    df[counter] = np.where(np.isfinite(mu), mu, np.nan)
+    return df, True
+
 
 def edge_step_normalize(
     df: pd.DataFrame, counter: str, normalize_by: str | None = "I0",
@@ -85,6 +115,9 @@ def normalize_series(
     Returns ``(energy, values)``. Raises KeyError for a missing counter/monitor,
     ValueError for an unknown mode.
     """
+    df, derived = with_derived_counter(df, counter)
+    if derived:
+        normalize_by = None
     if mode not in NORMALIZATION_MODES:
         raise ValueError(
             f"Unknown normalization mode '{mode}'. "

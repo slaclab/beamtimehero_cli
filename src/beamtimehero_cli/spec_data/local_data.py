@@ -131,6 +131,10 @@ def _read_spec_scan(spec_path: str | Path, scan_index: int) -> pd.DataFrame | No
             return None
 
         df = pd.DataFrame(data.T, columns=labels)
+        # A counter listed twice on #L (e.g. I0 defined twice in SPEC's
+        # counter config) would make df[name] a 2-column frame and break
+        # every 1-D consumer. Keep the first occurrence.
+        df = df.loc[:, ~df.columns.duplicated()]
         if labels:
             df = df.set_index(labels[0])
 

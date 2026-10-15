@@ -19,6 +19,13 @@ import pandas as pd
 _VORT_CANDIDATES = ("vortDT", "vortDT2", "vortDT3", "vortDT4")
 
 
+def _is_flat(series) -> bool:
+    """True for a counter that never changes (e.g. all zeros: detector not
+    counting), which can carry no edge."""
+    vals = pd.to_numeric(series, errors="coerce").dropna()
+    return vals.empty or float(vals.max()) == float(vals.min())
+
+
 def pick_active_counter(
     df: pd.DataFrame, priority: Sequence[str] = (),
 ) -> tuple[str, str]:
@@ -53,7 +60,7 @@ def pick_active_counter(
     cols = set(df.columns)
 
     for c in priority:
-        if c in cols:
+        if c in cols and not _is_flat(df[c]):
             return c, f"caller-supplied counter priority override ({c})"
 
     if "SCA_sum" in cols:

@@ -2398,6 +2398,16 @@ AUTONOMY_TOOL_DEFINITIONS = [
                             "a different literature convention."
                         ),
                     },
+                    "counter": {
+                        "type": "string",
+                        "description": (
+                            "Signal to locate the edge on. A counter name, or a "
+                            "transmission absorbance 'ln(A/B)': 'ln(I1/I2)' for a "
+                            "reference foil between I1 and I2, 'ln(I0/I1)' for one "
+                            "between I0 and I1. Default: the auto-picked active "
+                            "counter, which is the sample's fluorescence, not the foil."
+                        ),
+                    },
                     "notes": {"type": "string", "description": "Free-text provenance notes."},
                 },
                 "required": ["file_name", "element", "edge"],
@@ -2648,6 +2658,16 @@ AUTONOMY_TOOL_DEFINITIONS = [
                     "scan_numbers": _XAS_SCAN_NUMBERS_PROP,
                     "element": _XAS_ELEMENT_PROP,
                     "edge": _XAS_EDGE_PROP,
+                    "counter": {
+                        "type": "string",
+                        "description": (
+                            "Signal to locate the edge on. A counter name, or a "
+                            "transmission absorbance 'ln(A/B)': 'ln(I1/I2)' for a "
+                            "reference foil between I1 and I2, 'ln(I0/I1)' for one "
+                            "between I0 and I1. Default: the auto-picked active "
+                            "counter, which is the sample's fluorescence, not the foil."
+                        ),
+                    },
                 },
                 "required": ["file_name"],
             },
