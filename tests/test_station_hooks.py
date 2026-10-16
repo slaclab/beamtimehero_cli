@@ -258,3 +258,15 @@ def test_device_call_records_failures(action_rows):
     res = audited_device_call("probe_write", [], "why",
                               lambda: {"ok": False, "error": "refused"}, wire="w")
     assert res["error"] == "refused"
+
+
+def test_action_rows_name_the_phase_run(action_rows, monkeypatch):
+    from beamtimehero_cli.audited_call import PHASE_RUN_ENV, audited_device_call
+
+    rows, _ = action_rows
+    monkeypatch.delenv(PHASE_RUN_ENV, raising=False)
+    audited_device_call("probe_write", [], "why", lambda: {"ok": True}, wire="w")
+    assert rows[0]["start"]["phase_run_id"] is None          # unset: as before
+    monkeypatch.setenv(PHASE_RUN_ENV, "pr-9")
+    audited_device_call("probe_write", [], "why", lambda: {"ok": True}, wire="w")
+    assert rows[1]["start"]["phase_run_id"] == "pr-9"

@@ -20,6 +20,7 @@ Returns the same dict shape callers expect today:
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from typing import Any, Callable, Optional
@@ -40,6 +41,15 @@ _SCAN_EMITTING_COMMANDS = {
     "ascan", "dscan", "d2scan", "gscan", "kscan",
     "run_xas", "emiss_scan", "run_shortcut",
 }
+
+
+#: Set by a host that runs agents per phase run (BL4-1's phase runner) so
+#: each action-log row names the run it belongs to. Unset -> NULL, as before.
+PHASE_RUN_ENV = "BEAMTIMEHERO_PHASE_RUN_ID"
+
+
+def _phase_run_id() -> Optional[str]:
+    return os.environ.get(PHASE_RUN_ENV) or None
 
 
 def _extract_scan_number(output: str | None) -> Optional[int]:
@@ -113,6 +123,7 @@ def audited_call(
         phase=phase,
         spec_string=spec_string,
         experiment_id=exp_id,
+        phase_run_id=_phase_run_id(),
         agent=agent,
     )
     mark_action_started(row.id)
@@ -198,6 +209,7 @@ def audited_device_call(
         phase=phase,
         spec_string=wire,
         experiment_id=exp_id,
+        phase_run_id=_phase_run_id(),
         agent=agent,
     )
     mark_action_started(row.id)
