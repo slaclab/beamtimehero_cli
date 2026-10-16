@@ -305,7 +305,8 @@ def check_against_catalogue(spec: AgentSurface, catalogue) -> list[str]:
                 problems.append(f"unknown motor {motor!r}")
 
     if not spec.motors:
-        for tool in kept:
+        # reads are not motor-guarded, so only a carried move needs motors
+        for tool in (t for t in kept if t.mutates):
             keys = guard.motor_arg_keys_of(tool.definition)
             if keys:
                 problems.append(

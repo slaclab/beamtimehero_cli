@@ -219,12 +219,22 @@ def test_motors_validated_is_true_when_the_source_agrees(mock_catalogue):
 
 def test_carrying_a_motor_tool_with_no_motors_is_refused(catalogue):
     spec = AgentSurface(
-        name="zz", tools=("spec-read/read_motor_position",), motors=frozenset(),
+        name="zz", tools=("spec-write/move_motor",),
+        write_tools=frozenset({"move_motor"}), motors=frozenset(),
     )
     with pytest.raises(SurfaceError) as exc:
         build_surface(spec, catalogue)
     assert "declares no motors" in exc.value.problems[0]
-    assert "spec-read/read_motor_position" in exc.value.problems[0]
+    assert "spec-write/move_motor" in exc.value.problems[0]
+
+
+def test_a_read_only_motor_tool_does_not_demand_motors(catalogue):
+    """Reads are not motor-guarded, so carrying one needs no motor set."""
+    build = build_surface(
+        AgentSurface(name="zz", tools=("spec-read/read_motor_position",)),
+        catalogue,
+    )
+    assert [t.path for t in build.tools] == [("spec-read", "read_motor_position")]
 
 
 def test_a_dropped_write_tool_does_not_demand_motors(catalogue):
@@ -535,6 +545,26 @@ def test_executor_refuses_a_motor_outside_the_set(catalogue):
         "agent_role": "blaligner",
         "allowed_motors": ["Sx", "Sy", "Sz"],
     }
+
+
+def test_executor_lets_a_read_name_a_motor_outside_the_set(catalogue, monkeypatch):
+    """The set lists what the surface may move; reading any motor is fine."""
+    seen: list[dict] = []
+    build = build_surface(
+        _aligner(), catalogue,
+        before=(lambda tree, name, args: seen.append(dict(args)) or None,),
+    )
+    build.dispatch[("spec-read", "read_motor_position")] = (
+        lambda args: ('{"ok": true}', [])
+    )
+    text, _ = build.executor(("spec-read",), "read_motor_position", {"motor": "Tz"})
+    assert seen == [{"motor": "Tz"}]
+    # the move of the same motor is still refused
+    text, _ = build.executor(
+        ("spec-write",), "move_motor",
+        {"motor": "Tz", "position": 1.0, "justification": "test"},
+    )
+    assert "not in blaligner allowed set" in json.loads(text)["error"]
 
 
 def test_the_guard_runs_before_the_consumers_own_hooks(catalogue):
