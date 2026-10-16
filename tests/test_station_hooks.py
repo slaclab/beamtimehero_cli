@@ -270,3 +270,16 @@ def test_action_rows_name_the_phase_run(action_rows, monkeypatch):
     monkeypatch.setenv(PHASE_RUN_ENV, "pr-9")
     audited_device_call("probe_write", [], "why", lambda: {"ok": True}, wire="w")
     assert rows[1]["start"]["phase_run_id"] == "pr-9"
+
+
+def test_action_rows_take_the_phase_label_from_the_env(action_rows, monkeypatch):
+    from beamtimehero_cli import runtime_state
+    from beamtimehero_cli.audited_call import PHASE_ENV, audited_device_call
+
+    rows, _ = action_rows
+    monkeypatch.delenv(PHASE_ENV, raising=False)
+    audited_device_call("probe_write", [], "why", lambda: {"ok": True}, wire="w")
+    assert rows[0]["start"]["phase"] == runtime_state.get_phase()   # unset: as before
+    monkeypatch.setenv(PHASE_ENV, "energy_calibration")
+    audited_device_call("probe_write", [], "why", lambda: {"ok": True}, wire="w")
+    assert rows[1]["start"]["phase"] == "energy_calibration"

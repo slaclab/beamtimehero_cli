@@ -52,6 +52,16 @@ def _phase_run_id() -> Optional[str]:
     return os.environ.get(PHASE_RUN_ENV) or None
 
 
+#: Set by the same host to the running phase's slug: the label written on
+#: action and query rows. Unset -> runtime_state's workflow phase, as before
+#: (which stays at the plan's phase, e.g. "setup", while a phase agent runs).
+PHASE_ENV = "BEAMTIMEHERO_PHASE"
+
+
+def phase_label() -> str:
+    return os.environ.get(PHASE_ENV) or runtime_state.get_phase()
+
+
 def _extract_scan_number(output: str | None) -> Optional[int]:
     if not output:
         return None
@@ -74,7 +84,7 @@ def audited_call(
 ) -> dict:
     """Phase/experiment-aware audited SPEC dispatch."""
     args_list = list(args or [])
-    phase = runtime_state.get_phase()
+    phase = phase_label()
     exp_id = experiment_id or runtime_state.get_experiment_id()
 
     kind = spec_cmd.command_kind(command)
@@ -200,7 +210,7 @@ def audited_device_call(
     if safety_err:
         return {"ok": False, "kind": "action", "error": safety_err}
 
-    phase = runtime_state.get_phase()
+    phase = phase_label()
     exp_id = experiment_id or runtime_state.get_experiment_id()
     row = start_action(
         command=command,
