@@ -11,6 +11,12 @@ an orchestrator, a test — bypassed the runner and therefore the guard.
 Here the guard is a ``BeforeHook`` on the surface's own executor, so it
 runs for every call through that executor regardless of who made it, and
 the surface's parser cannot be built without it.
+
+The allow-list is the set of motors a surface may *move*. Reads are not
+limited by it: a role that moves the table only through a dedicated tool
+still has to be able to ``wm Tz`` afterwards. ``wrap_dispatch`` passes
+the paths of the carried read-only tools (``mutates`` false in lineage)
+as ``skip``, so the guard stands only in front of tools that move.
 """
 from __future__ import annotations
 
@@ -34,8 +40,15 @@ def motor_arg_keys_of(definition: dict) -> tuple[str, ...]:
     return tuple(key for key in MOTOR_ARG_KEYS if key in properties)
 
 
-def motor_guard(motors: Iterable[str], surface_name: str):
+def motor_guard(
+    motors: Iterable[str],
+    surface_name: str,
+    skip: Iterable[tuple[str, ...]] = (),
+):
     """A ``BeforeHook`` refusing any motor outside ``motors``.
+
+    ``skip`` holds tool paths (``tree + (name,)``) let through unchecked:
+    the surface's read-only tools.
 
     The refusal envelope is the one consumers already print — same keys,
     same wording — so a prompt or a log parser that recognised it still
@@ -45,8 +58,11 @@ def motor_guard(motors: Iterable[str], surface_name: str):
     """
     allowed = frozenset(motors)
     listing = sorted(allowed)
+    exempt = frozenset(tuple(path) for path in skip)
 
     def _guard(tree: tuple[str, ...], name: str, args: dict):
+        if tuple(tree) + (name,) in exempt:
+            return None
         for key in MOTOR_ARG_KEYS:
             value = args.get(key)
             if value and value not in allowed:

@@ -2,6 +2,13 @@
 
 Tagged releases that apps pin (see CONTRIBUTING.md "Releases and the apps that pin them").
 
+## Unreleased
+
+- Agent surfaces: the motor allow-list guards moves only. Read-only tools
+  (`mutates` false, today `read_motor_position`) may name any motor, so a role
+  that moves the table only through a dedicated tool can still `wm Tz`. A
+  surface that carries no motor-taking write tool no longer needs a motor set.
+
 ## v0.7.0 — 2026-10-12
 
 Additive; BL15-2 defaults unchanged (unset `BTH_STATION` behaves as before).

@@ -195,11 +195,14 @@ def wrap_dispatch(
     The motor guard goes in front of the consumer's own hooks, matching
     the order the old CLI-level check had: refuse the motor before
     validating the arguments of a call that is not going to happen.
+    It guards moves only: a read-only tool (``mutates`` false) may name
+    any motor, since reading a motor the role cannot move changes nothing.
     """
     table = {tool.path: tool.handler for tool in tools if tool.handler is not None}
     from beamtimehero_cli.tool_catalog.executor import make_executor
 
-    hooks = (motor_guard(motors, surface_name),) + tuple(before)
+    reads = tuple(tool.path for tool in tools if not tool.mutates)
+    hooks = (motor_guard(motors, surface_name, skip=reads),) + tuple(before)
     return table, make_executor(table, before=hooks, after=tuple(after))
 
 
