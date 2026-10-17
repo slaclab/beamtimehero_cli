@@ -247,7 +247,7 @@ def test_cherfd_policy_values_are_pinned():
     assert (p.SPEED_FACTOR_MIN, p.SPEED_FACTOR_MAX, p.SPEED_FACTOR_HARD_MIN) == (0.2, 1.0, 0.1)
     assert (p.FREQ_MIN_HZ, p.FREQ_MAX_HZ, p.FREQ_XSPRESS_WARN_HZ) == (20.0, 500.0, 80.0)
     assert (p.SWEEPS_MAX, p.MIN_REGION_STEPS_WARN) == (500, 200)
-    assert (p.FULL_SPEED_STEPS_PER_S, p.PROFILE_SETTLING_S) == (10000.0, 0.5)
+    assert p.PROFILE_SETTLING_S == 0.5
     assert (p.GAP_MIN_MM, p.GAP_MAX_MM, p.GAP_TRACKING_WARN_MM) == (7.3, 22.0, 0.02)
     assert (p.DEFAULT_BIN_EV, p.ADC_OFFSET, p.ADC_WORD_SCALE, p.ADC_COUNTS_MAX) == (
         0.25, 2 ** 31, 2 ** 16, 2 ** 15)
@@ -271,6 +271,7 @@ def test_cherfd_station_profiles_are_pinned():
         5.42973, {"A": 3 ** 0.5, "B": 11 ** 0.5}, {"A": 6.5024, "B": 6.5278})
     assert (b15.default_crystal, b15.crystal_file) == ("B", None)
     assert (b15.encoder_resolution_deg, b15.motor_step_deg) == (-1.0 / 160057.0, 1e-5)
+    assert b15.full_speed_steps_per_s == 10000.0
     assert (b15.energy_min_ev, b15.energy_max_ev, b15.undulator) == (4950.0, 25000.0, True)
     assert (b15.detector, b15.default_signal, b15.daq_available) == ("vortex", "vortex", True)
     assert (b15.per_sweep_overhead_s, b15.range_shortfall_warn_ev) == (17.0, 2.0)
@@ -278,6 +279,7 @@ def test_cherfd_station_profiles_are_pinned():
         5.43102, {"A": 8 ** 0.5, "B": 3 ** 0.5}, {"A": 6.5024, "B": 6.5278})
     assert (b41.default_crystal, b41.crystal_file) == ("B", "/usr/local/lib/spec.d/mono.cfg")
     assert (b41.encoder_resolution_deg, b41.motor_step_deg) == (6.25e-6, 2e-5)
+    assert b41.full_speed_steps_per_s == 8000.0
     assert (b41.energy_min_ev, b41.energy_max_ev, b41.undulator) == (None, None, False)
     assert (b41.detector, b41.default_signal, b41.daq_available) == ("ge32", "xsum", False)
     assert (b41.per_sweep_overhead_s, b41.range_shortfall_warn_ev) == (4.8, 3.0)

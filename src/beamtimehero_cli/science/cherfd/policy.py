@@ -54,9 +54,6 @@ MIN_REGION_STEPS_WARN = 200
 # Motion / mono (cscan_box/motion.py, utils/mono.py)
 # ---------------------------------------------------------------------------
 
-#: Full-speed cruise pulse rate, steps/s at speed factor 1.0
-#: (FULL_SPEED_CRUISE_INTERVAL_US = 100 us -> 10 kHz).
-FULL_SPEED_STEPS_PER_S = 10000.0
 #: Settling time appended to every profile (multisegment_move default).
 PROFILE_SETTLING_S = 0.5
 # ---------------------------------------------------------------------------
@@ -177,6 +174,11 @@ class StationProfile:
     #: (MOTOR_STEP_DEGREES = MOTOR1 MRES).
     encoder_resolution_deg: float
     motor_step_deg: float
+    #: Cruise pulse rate at speed factor 1.0, steps/s: the station's default
+    #: motion profile set (cherfd_claude confs/motion_profiles.py). The
+    #: server reports the set it will use at /station full_speed_steps_per_s;
+    #: cherfd_get_station flags a difference.
+    full_speed_steps_per_s: float
     #: Offline energy window. None: only the live soft limits bound it
     #: (server /check_command and /station mono_energy_range_eV).
     energy_min_ev: float | None
@@ -212,6 +214,8 @@ STATION_PROFILES: dict[str, StationProfile] = {
         mono_min_gap_mm={"A": 6.5024, "B": 6.5278},
         default_crystal="B", crystal_file=None,
         encoder_resolution_deg=-1.0 / 160057.0, motor_step_deg=1e-5,
+        # motion profile set legacy_32k: 100 us cruise interval
+        full_speed_steps_per_s=10000.0,
         # SPEC refuses < 4950 eV (spec/cherfd.mac); stricter than REST's 4500
         energy_min_ev=4950.0, energy_max_ev=25000.0,
         undulator=True,
@@ -238,6 +242,9 @@ STATION_PROFILES: dict[str, StationProfile] = {
         default_crystal="B", crystal_file="/usr/local/lib/spec.d/mono.cfg",
         # MOTOR1 ERES / MRES, caget 2026-10-08
         encoder_resolution_deg=6.25e-6, motor_step_deg=2e-5,
+        # motion profile set bl41_conservative (2026-10-16): 125 us cruise
+        # interval, capped below SPEC's 10000 steps/s crystal slew
+        full_speed_steps_per_s=8000.0,
         energy_min_ev=None, energy_max_ev=None,
         undulator=False,
         detector="ge32",

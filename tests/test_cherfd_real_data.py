@@ -12,7 +12,8 @@ from beamtimehero_cli.cherfd_control import simulator as sim
 
 def test_simulator_matches_our_step_count(sibling):
     r = sim.simulate("cherfd 8968 9100 .4 100")
-    assert r["ok"] and r["checks"]["commanded_steps"] == 38652 and r["checks"]["steps_match"]
+    assert r["ok"] and r["checks"]["command_steps"] == 38652 and r["checks"]["steps_match"]
+    assert r["quality"]["ok"]
 
 
 def test_simulator_refusal_is_reported(sibling):

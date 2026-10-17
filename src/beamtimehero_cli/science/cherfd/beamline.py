@@ -100,10 +100,10 @@ def ev_per_second(energy_ev: float, speed_factor: float, crystal: str | None = N
     """Cruise scan rate |dE/dt| at a speed factor (eV/s).
 
     dE/dtheta = -E / tan(theta); the mono cruises at
-    FULL_SPEED_STEPS_PER_S * speed_factor steps of the station's step size.
+    full_speed_steps_per_s * speed_factor steps of the station's step size.
     """
     theta = math.radians(bragg_angle_deg(energy_ev, crystal, station=station))
-    omega = math.radians(policy.FULL_SPEED_STEPS_PER_S * speed_factor * station.motor_step_deg)
+    omega = math.radians(station.full_speed_steps_per_s * speed_factor * station.motor_step_deg)
     return energy_ev / math.tan(theta) * omega
 
 
@@ -120,7 +120,7 @@ def region_cruise_time_s(start_ev: float, end_ev: float, speed_factor: float,
                          crystal: str | None = None, *, station: Station) -> float:
     """Cruise time for one region: |delta theta| / angular velocity (no ramps)."""
     steps = abs(motor_steps(start_ev, end_ev, crystal, station=station))
-    return steps / (policy.FULL_SPEED_STEPS_PER_S * speed_factor)
+    return steps / (station.full_speed_steps_per_s * speed_factor)
 
 
 # ---------------------------------------------------------------------------

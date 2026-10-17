@@ -195,6 +195,7 @@ def t_get_station(args):
         "undulator": st.undulator, "cscan_daq": st.daq_available,
         "crystals": st.crystal_names, "crystal_in_use_offline": config.station_crystal(st),
         "motor_step_deg": st.motor_step_deg, "encoder_resolution_deg": st.encoder_resolution_deg,
+        "full_speed_steps_per_s": st.full_speed_steps_per_s,
         "offline_energy_window_ev": ([st.energy_min_ev, st.energy_max_ev]
                                      if st.energy_min_ev is not None else None),
         "per_sweep_overhead_s": st.per_sweep_overhead_s,
@@ -209,6 +210,10 @@ def t_get_station(args):
     if server and server.get("motor_step_degrees") not in (None, st.motor_step_deg):
         problems.append(f"server motor_step_degrees {server['motor_step_degrees']} != "
                         f"station profile {st.motor_step_deg}")
+    if server and server.get("full_speed_steps_per_s") not in (None, st.full_speed_steps_per_s):
+        problems.append(f"server motion profile {server.get('motion_profile')!r} cruises at "
+                        f"{server['full_speed_steps_per_s']} steps/s; the station profile's "
+                        f"estimates assume {st.full_speed_steps_per_s}")
     if det_body.get("detector") not in (None, st.detector, "none"):
         problems.append(f"server scan detector is {det_body['detector']!r}; {st.label} uses "
                         f"{st.detector!r}")

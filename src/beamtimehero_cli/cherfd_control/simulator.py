@@ -89,6 +89,10 @@ def summarize(sim: dict) -> dict:
         "checks": sim.get("checks"),
         "warnings": sim.get("warnings"),
         "region_boundaries_s": sim.get("boundaries"),
+        # motion profile set, its quality gate (a real scan refuses a
+        # failing profile) and the run-up / run-out regions
+        "quality": sim.get("quality"),
+        "runup": sim.get("runup"),
     }
     if "table" in sim:
         t = sim["table"] or {}
