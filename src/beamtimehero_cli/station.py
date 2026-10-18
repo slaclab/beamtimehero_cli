@@ -43,6 +43,9 @@ STATION_ENV: dict[str, dict[str, str]] = {
         "BTH_ACTIVE_COUNTER_PRIORITY": "xsum,xsA,xsB,I1",
         "BTH_DEFAULT_Y_COLUMNS": "xsum,I1,I0",
         "BTH_EPICS_PV_BL_STATE": "BL04:State",
+        # 41_spec/logfile.mac writes log_<USER>_<MM-DD-YYYY> (log_fourone_*);
+        # BL15-2's built-in log__* matches none of them
+        "BTH_SPEC_LOG_FILE_PATTERN": "log_*",
         # spec-eval sandbox: :5006 is the gas mixer at BL4-1
         "SPEC_EVAL_URL": "http://127.0.0.1:5016",
         # local read-only web services (BL4-1_Web/services.json)

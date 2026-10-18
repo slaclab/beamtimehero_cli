@@ -298,7 +298,9 @@ def set_scan_dir(name: str) -> Path:
     return BL_SCAN_DIR
 
 
-LOG_FILE_PATTERN = "log__*"
+# SPEC log file glob in BL_LOGS_DIR (station default; BL15-2's is log__*)
+LOG_FILE_PATTERN = (os.getenv("BTH_SPEC_LOG_FILE_PATTERN")
+                    or station.default("BTH_SPEC_LOG_FILE_PATTERN", "log__*"))
 
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10MB
 MAX_LOG_LINES = 1000

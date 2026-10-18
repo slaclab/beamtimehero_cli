@@ -226,6 +226,10 @@ env:
   # (ct, ascan/dscan/d2scan, gscan, kscan). Default "" (no cap).
   # BTH_MAX_COUNT_TIME_S: "67"
 
+  # Glob for SPEC log files in BL_LOGS_DIR. Default "log__*" (BL15-2);
+  # BL4-1's 41_spec writes log_fourone_MM-DD-YYYY.
+  # BTH_SPEC_LOG_FILE_PATTERN: "log_*"
+
   # EPICS process variables for beam status. Defaults are BL15-2's.
   # BTH_EPICS_PV_SPEAR_CURRENT: "SPEAR:BeamCurrAvg"
   # BTH_EPICS_PV_BL_STATE: "BL15:State"

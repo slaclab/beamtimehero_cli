@@ -4,6 +4,10 @@ Tagged releases that apps pin (see CONTRIBUTING.md "Releases and the apps that p
 
 ## Unreleased
 
+- SPEC log glob is a station default (`BTH_SPEC_LOG_FILE_PATTERN`): BL4-1 reads
+  `log_*` (41_spec writes `log_fourone_MM-DD-YYYY`), so `list_logs`,
+  `search_logs` and `get_latest_log_entries` find its logs without a host
+  patch. BL15-2 keeps `log__*`.
 - Agent surfaces: the motor allow-list guards moves only. Read-only tools
   (`mutates` false, today `read_motor_position`) may name any motor, so a role
   that moves the table only through a dedicated tool can still `wm Tz`. A

@@ -35,6 +35,7 @@ def test_station_defaults_and_overrides(monkeypatch):
     assert station.default("BTH_BEAM_STATUS_REQUIRES_GAP") == "0"
     assert station.default("BTH_ACTIVE_COUNTER_PRIORITY").startswith("xsum")
     assert settings.station().detector == "ge32"
+    assert station.default("BTH_SPEC_LOG_FILE_PATTERN") == "log_*"
     monkeypatch.setenv("BTH_STATION", "bl99")
     with pytest.raises(ValueError, match="not a known station"):
         station.station_name()
