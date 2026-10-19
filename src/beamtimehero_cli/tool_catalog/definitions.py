@@ -638,7 +638,8 @@ AUTONOMY_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "shutter",
-            "description": "Fast-shutter control.",
+            "description": ("Fast-shutter control. fson (auto-shutter) is BL15-2 only; "
+                            "at BL4-1 hold the shutter open with fsopen then fsoff."),
             "parameters": {
                 "type": "object",
                 "properties": {

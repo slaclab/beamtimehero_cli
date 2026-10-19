@@ -694,7 +694,8 @@ TOOL_LINEAGE: dict[str, dict] = {
         "long_description": (
             "Fast-shutter control. fsopen/fsclose toggle the shutter; "
             "fson/fsoff enable/disable automatic shuttering; optional "
-            "delay_s for timed opens."
+            "delay_s for timed opens. BL4-1 has no fast shutter: fson is "
+            "refused there; hold the shutter open with fsopen then fsoff."
         ),
         "python_func": "spec_cmd.call('shutter', [command, delay_s?], justification)",
         "spec_command": "<fsopen|fsclose|fson|fsoff> [<delay_s>]",

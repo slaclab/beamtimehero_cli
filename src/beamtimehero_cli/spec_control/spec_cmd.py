@@ -947,6 +947,11 @@ def _render_shutter(a: list[str]) -> str:
     cmd = a[0]
     if cmd not in ("fsopen", "fsclose", "fson", "fsoff"):
         raise ValueError(f"invalid shutter command: {cmd}")
+    allowed = station.shutter_commands()
+    if cmd not in allowed:
+        # BL4-1: no fast shutter; hold it open with fsopen then fsoff
+        raise ValueError(f"shutter command {cmd!r} is not used at {station.station_name()} "
+                         f"(allowed: {', '.join(allowed)})")
     if cmd == "fson" and len(a) > 1:
         return f"fson {a[1]}"
     return cmd

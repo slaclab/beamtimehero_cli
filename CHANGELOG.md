@@ -8,6 +8,9 @@ Tagged releases that apps pin (see CONTRIBUTING.md "Releases and the apps that p
   `log_*` (41_spec writes `log_fourone_MM-DD-YYYY`), so `list_logs`,
   `search_logs` and `get_latest_log_entries` find its logs without a host
   patch. BL15-2 keeps `log__*`.
+- `shutter`: `fson` is refused at BL4-1 (`station.SHUTTER_COMMANDS`). It has no
+  fast shutter and its SPEC no longer accepts `fson`; hold the shutter open with
+  `fsopen` then `fsoff`. BL15-2 unchanged.
 - Agent surfaces: the motor allow-list guards moves only. Read-only tools
   (`mutates` false, today `read_motor_position`) may name any motor, so a role
   that moves the table only through a dedicated tool can still `wm Tz`. A

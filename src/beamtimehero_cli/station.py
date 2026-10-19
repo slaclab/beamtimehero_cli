@@ -108,6 +108,21 @@ SCAN_MODES: dict[str, tuple[str, ...]] = {
 }
 
 
+#: Fast-shutter commands each station's SPEC accepts. BL4-1 has no fast
+#: shutter, so its SPEC refuses ``fson`` (auto open/close around each count);
+#: the shutter is held open with ``fsopen; fsoff`` instead. BL15-2 keeps all
+#: four. Policy, not a deployment setting: no BTH_* variable overrides it.
+SHUTTER_COMMANDS: dict[str, tuple[str, ...]] = {
+    "bl15": ("fsopen", "fsclose", "fson", "fsoff"),
+    "bl41": ("fsopen", "fsclose", "fsoff"),
+}
+
+
+def shutter_commands(name: str | None = None) -> tuple[str, ...]:
+    """The fast-shutter commands ``name`` (default: this deployment's station) allows."""
+    return SHUTTER_COMMANDS[name or station_name()]
+
+
 def scan_modes(name: str | None = None) -> tuple[str, ...]:
     """The scan modes ``name`` (default: this deployment's station) allows."""
     return SCAN_MODES[name or station_name()]

@@ -283,3 +283,21 @@ def test_action_rows_take_the_phase_label_from_the_env(action_rows, monkeypatch)
     monkeypatch.setenv(PHASE_ENV, "energy_calibration")
     audited_device_call("probe_write", [], "why", lambda: {"ok": True}, wire="w")
     assert rows[1]["start"]["phase"] == "energy_calibration"
+
+
+# ---- fast shutter ----------------------------------------------------------
+
+def test_shutter_fson_kept_at_bl152(monkeypatch):
+    monkeypatch.delenv("BTH_STATION", raising=False)
+    assert spec_cmd.render("shutter", ["fson", "0.5"]) == "fson 0.5"
+    assert spec_cmd.render("shutter", ["fson"]) == "fson"
+
+
+def test_shutter_fson_refused_at_bl41(monkeypatch):
+    # BL4-1 has no fast shutter; its SPEC refuses fson. Hold it open instead.
+    monkeypatch.setenv("BTH_STATION", "bl41")
+    with pytest.raises(ValueError, match="not used at bl41"):
+        spec_cmd.render("shutter", ["fson"])
+    assert spec_cmd.render("shutter", ["fsopen"]) == "fsopen"
+    assert spec_cmd.render("shutter", ["fsoff"]) == "fsoff"
+    assert spec_cmd.render("shutter", ["fsclose"]) == "fsclose"
