@@ -1137,15 +1137,33 @@ AUTONOMY_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "list_scans",
-            "description": "List processed scans with metadata (file name, scan number, command, counters, number of points).",
+            "description": (
+                "List processed scans with metadata (file name, scan number, command, counters, "
+                "number of points), most recent first. To see what a beamtime holds, start with "
+                "summary=true: one row per (file, command) with scan count, scan-number range and "
+                "time range. Filter with file_name and/or command to narrow it down."
+            ),
             "parameters": {
                 "type": "object",
                 "properties": {
                     "limit": {
                         "type": "integer",
-                        "description": "Maximum number of scans to list (default 20)",
+                        "description": "Maximum number of scans (or summary groups) to list (default 20). Applied after filtering.",
                         "default": 20,
-                    }
+                    },
+                    "file_name": {
+                        "type": "string",
+                        "description": "Only scans from this SPEC data file (exact name, e.g. 'monos4').",
+                    },
+                    "command": {
+                        "type": "string",
+                        "description": "Only scans whose command contains this text, case-insensitive (e.g. 'mono', 'gscan', 'ascan Tz').",
+                    },
+                    "summary": {
+                        "type": "boolean",
+                        "description": "Group matching scans by (file, command) instead of listing each scan.",
+                        "default": False,
+                    },
                 },
                 "required": [],
             },

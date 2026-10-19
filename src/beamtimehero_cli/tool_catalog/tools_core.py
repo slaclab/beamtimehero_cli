@@ -561,9 +561,51 @@ def t_get_latest_scan(arguments: dict) -> tuple[str, list[str]]:
     }
     return json.dumps(trimmed, indent=2), images_b64
 
+# Filters and summaries must see every scan; `limit` applies afterwards.
+_ALL_SCANS = 1_000_000
+
+
+def _summarize_scans(scans: list[dict]) -> list[dict]:
+    """One row per (file, command), most recently active group first.
+
+    ``scans`` arrive most-recent first, so the first scan seen in a group
+    is its latest.
+    """
+    groups: dict[tuple, dict] = {}
+    for s in scans:
+        key = (s["file_name"], s["scan_command"])
+        g = groups.get(key)
+        if g is None:
+            groups[key] = {
+                "file_name": s["file_name"],
+                "scan_command": s["scan_command"],
+                "count": 1,
+                "first_scan": s["scan_number"],
+                "last_scan": s["scan_number"],
+                "first_time": s["date_time"],
+                "last_time": s["date_time"],
+                "num_points": {s["num_points"]},
+            }
+            continue
+        g["count"] += 1
+        g["first_scan"] = min(g["first_scan"], s["scan_number"])
+        g["last_scan"] = max(g["last_scan"], s["scan_number"])
+        g["first_time"] = s["date_time"]
+        g["num_points"].add(s["num_points"])
+    for g in groups.values():
+        pts = sorted(p for p in g["num_points"] if p is not None)
+        g["num_points"] = pts[0] if len(pts) == 1 else pts
+    return list(groups.values())
+
+
 def t_list_scans(arguments: dict) -> tuple[str, list[str]]:
     images_b64: list[str] = []
-    result = scan_data.list_processed_scans(limit=arguments.get("limit", 20))
+    limit = arguments.get("limit", 20)
+    file_name = arguments.get("file_name") or ""
+    command = (arguments.get("command") or "").lower()
+    summary = bool(arguments.get("summary"))
+    whole_list = bool(file_name or command or summary)
+    result = scan_data.list_processed_scans(limit=_ALL_SCANS if whole_list else limit)
     if not result and not bl_config.SCAN_DIR_CONFIGURED:
         # An empty list would read as "this beamtime has no scans". Say what
         # is actually true: nothing is configured to read from. There is no
@@ -577,7 +619,18 @@ def t_list_scans(arguments: dict) -> tuple[str, list[str]]:
             ),
             **bl_config.data_dir_status(),
         }, indent=2), images_b64
-    return json.dumps(result, indent=2), images_b64
+    if file_name:
+        result = [s for s in result if s["file_name"] == file_name]
+    if command:
+        result = [s for s in result if command in (s["scan_command"] or "").lower()]
+    if summary:
+        groups = _summarize_scans(result)
+        return json.dumps({
+            "total_scans": len(result),
+            "total_groups": len(groups),
+            "groups": groups[:limit],
+        }, indent=2), images_b64
+    return json.dumps(result[:limit], indent=2), images_b64
 
 def t_read_scan(arguments: dict) -> tuple[str, list[str]]:
     images_b64: list[str] = []
