@@ -1723,7 +1723,7 @@ AUTONOMY_TOOL_DEFINITIONS = [
         "type": "function",
         "function": {
             "name": "list_files",
-            "description": "List non-SPEC files in the scan directory (macros, configs, text files).",
+            "description": "List non-SPEC files in the scan directory (macros, configs, text files). Returns the absolute scan_dir and each file's path relative to it.",
             "parameters": {
                 "type": "object",
                 "properties": {

@@ -280,7 +280,7 @@ tools work regardless, from the mock backend.
 
 The others are less helpful, and an agent needs to know it: with nothing
 configured `list-logs` returns `[]`, `read-scan` returns `Scan not found.`,
-`list-files` returns `No files found in scan directory.` — none of which
+`list-files` returns `No files found in scan directory (<dir>).` — none of which
 distinguishes "no data here" from "not configured". If a read comes back empty,
 check `BL_SCAN_DIR` before concluding the beamline has no scans.
 

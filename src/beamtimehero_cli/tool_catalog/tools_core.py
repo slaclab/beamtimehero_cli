@@ -1043,9 +1043,12 @@ def t_list_files(arguments: dict) -> tuple[str, list[str]]:
     images_b64: list[str] = []
     from beamtimehero_cli.spec_data import local_data
     result = local_data.list_files(pattern=arguments.get("pattern", "*"))
+    # File paths are relative to the scan dir; name it so a caller can give
+    # a user the full location.
+    scan_dir = str(bl_config.BL_SCAN_DIR) if bl_config.BL_SCAN_DIR else None
     if not result:
-        return "No files found in scan directory.", images_b64
-    return json.dumps(result, indent=2), images_b64
+        return f"No files found in scan directory ({scan_dir}).", images_b64
+    return json.dumps({"scan_dir": scan_dir, "files": result}, indent=2), images_b64
 
 def t_read_file(arguments: dict) -> tuple[str, list[str]]:
     images_b64: list[str] = []
