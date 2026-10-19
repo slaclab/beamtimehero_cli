@@ -6,6 +6,14 @@ Format (cscan_box/motion.py parse_cherfd_command)::
 
 (``cscan`` is accepted as the keyword too -- the BL4-1 UI's name for it.)
 
+An *edge scan* names an edge instead of giving energies: ``cscan Fe``
+(EXAFS), ``cscan Fe xanes``, ``cscan PtL3 exafs``, ``cscan Fe xanes 80``
+(trigger rate). The scan server expands it to the default it holds for that
+edge (cherfd_claude cscan_box/edge_scans.py; reviewed and enabled on the
+cscan UI's /edge-scans sheet). The table lives on the server, so this module
+only recognises the form (:func:`is_edge_shorthand`); the tools expand it
+through ``/check_command`` before validating.
+
 Validation applies every layer a command can meet on its way to hardware --
 the SPEC macro's refusal rules, the controller's silent speed clamp, the
 FPGA's millisecond trigger quantization -- and reports each as an *error*
@@ -18,6 +26,7 @@ the fast, offline first pass that needs neither.
 from __future__ import annotations
 
 import math
+import re
 
 from beamtimehero_cli.science.cherfd import beamline, policy
 
@@ -33,12 +42,28 @@ def _tokens(command: str) -> list[str]:
     return parts
 
 
+def is_edge_shorthand(command: str) -> bool:
+    """True when the command names an edge scan (``cscan Fe xanes``) rather
+    than giving energies; k-notation (``k10``) does not count."""
+    parts = _tokens(command)
+    if not parts:
+        return False
+    try:
+        float(parts[0])
+        return False
+    except ValueError:
+        return not re.match(r"^k[\d.]", parts[0], re.IGNORECASE)
+
+
 def parse_command(command: str) -> dict:
     """Split a command into start, regions [(end_eV, speed)], freq. Raises ValueError."""
     parts = _tokens(command)
     try:
         values = [float(p) for p in parts]
     except ValueError:
+        if is_edge_shorthand(command):
+            raise ValueError(f"{command!r} names an edge scan, which only the scan server can "
+                             "expand: cherfd_check_command shows the full command") from None
         raise ValueError(f"non-numeric token in command {command!r}") from None
     if len(values) < 4:
         raise ValueError(

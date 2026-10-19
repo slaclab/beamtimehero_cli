@@ -98,7 +98,11 @@ _COMMAND = {"command": {"type": "string", "description": (
     "works as the keyword too). Energies run one way only (all up or all down). Speeds are "
     f"fractions of full mono speed ({policy.SPEED_FACTOR_MIN}-{policy.SPEED_FACTOR_MAX} used); "
     "freq is the trigger/detector frame rate (integer Hz, typically 20-100). "
-    "Example: 'cherfd 8968 8990 1 9010 .3 9100 1 100'.")}}
+    "Example: 'cherfd 8968 8990 1 9010 .3 9100 1 100'. cherfd_start_scan, cherfd_check_command "
+    "and cherfd_check_readiness also take an edge scan, the server's reviewed default for an "
+    "edge: 'cscan Fe' (EXAFS), 'cscan Fe xanes', 'cscan PtL3 exafs', 'cscan Fe xanes 80' (80 Hz); "
+    "the server expands it (cherfd_check_command shows the full command) and refuses an edge "
+    "that is not enabled. The offline tools need the full command.")}}
 
 _CRYSTAL = {"crystal": {"type": "string", "enum": ["A", "B"], "description": (
     "Mono crystal set. BL15-2: A = Si(111), B = Si(311) (B in use); BL4-1: A = Si(220), "

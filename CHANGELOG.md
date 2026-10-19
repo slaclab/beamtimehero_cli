@@ -4,6 +4,15 @@ Tagged releases that apps pin (see CONTRIBUTING.md "Releases and the apps that p
 
 ## Unreleased
 
+- cherfd edge scans: `cherfd_start_scan`, `cherfd_check_readiness` and
+  `cherfd_check_command` take `cscan Fe`, `cscan Fe xanes`, `cscan PtL3 exafs`,
+  `cscan Fe xanes 80` (the scan server's reviewed default for an edge,
+  cherfd_claude `cscan_box/edge_scans.py`). The tools expand it through
+  `/check_command` and validate, estimate and send the full command; an edge
+  not enabled on the server, or a server that predates edge scans, is refused
+  before anything is sent. The mock expands a small fixed table.
+  `cherfd_check_readiness` no longer raises `KeyError` on a command that does
+  not parse.
 - SPEC log glob is a station default (`BTH_SPEC_LOG_FILE_PATTERN`): BL4-1 reads
   `log_*` (41_spec writes `log_fourone_MM-DD-YYYY`), so `list_logs`,
   `search_logs` and `get_latest_log_entries` find its logs without a host

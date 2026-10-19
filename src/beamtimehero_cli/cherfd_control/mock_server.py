@@ -25,6 +25,10 @@ cope with them:
   fails its check -- mixed directions, outside the mono's reach -- and
   ``undulator_scan`` at a station without an undulator.
 * ``/move_energy`` and ``/move_gap`` answer 409 while a scan is active.
+* Edge scans (``cscan Fe xanes``) expand in ``/check_command`` and
+  ``/start_acquisition`` from a small fixed table (``_MOCK_EDGE_SCANS``, one
+  enabled and one disabled edge per station); every ``/check_command`` reply
+  carries ``edge_scan`` (null for a plain command), as the real one does.
 
 It never writes data files: a mock scan produces status and a small
 synthetic ``/results`` payload, not pickles on disk.
@@ -34,6 +38,7 @@ from __future__ import annotations
 import fcntl
 import json
 import math
+import re
 import time
 from contextlib import contextmanager
 
@@ -45,6 +50,15 @@ from beamtimehero_cli.science.cherfd import beamline, command as cmd_sci, policy
 #: tests/test_motion_safety.py); BL15-2 uses its station window instead.
 _MOCK_SOFT_LIMITS_DEG = {"bl41": (5.5, 39.5)}
 _MOCK_START_EV = {"bl15": 9000.0, "bl41": 7112.0}
+#: Mock edge scans per station (the real table: cherfd_claude
+#: confs/bl41_edge_scans.json): key -> (command, enabled)
+_MOCK_EDGE_SCANS = {
+    "bl15": {"CuK_exafs": ("cherfd 8779 8969 1 9019 .4 9600 1 100", False),
+             "CuK_xanes": ("cherfd 8968 9100 .4 100", True)},
+    "bl41": {"FeK_exafs": ("cscan 6882 7092 1 7142 0.31 7660.64 1 7913.05 0.77 125", True),
+             "FeK_xanes": ("cscan 6962 7092 1 7142 0.31 7262 1 125", True),
+             "MnK_exafs": ("cscan 6309 6519 1 6569 0.31 6920 1 7285.76 0.77 100", False)},
+}
 
 
 def _station():
@@ -130,6 +144,34 @@ def _elapsed(t0: float) -> float:
 # ---------------------------------------------------------------------------
 # Scan progression
 # ---------------------------------------------------------------------------
+
+def _expand_edge_scan(command: str) -> tuple[str, str | None]:
+    """(full command, key) for ``cscan Fe [K] [exafs|xanes] [freq]``, as the
+    server's cscan_box/edge_scans.resolve; ValueError when unknown or not
+    enabled. A plain command comes back as given with key None."""
+    if not cmd_sci.is_edge_shorthand(command):
+        return command, None
+    parts = cmd_sci._tokens(command)
+    edge, rest = parts[0], parts[1:]
+    if rest and rest[0].upper() in ("K", "L", "L1", "L2", "L3"):
+        edge += rest.pop(0)
+    kind = rest.pop(0).lower() if rest and rest[0].lower() in ("exafs", "xanes") else "exafs"
+    freq = rest.pop(0) if rest else None
+    if rest:
+        raise ValueError(f"edge scan: cscan <element>[<edge>] [exafs|xanes] [freq] - "
+                         f"did not understand '{' '.join(rest)}'")
+    table = _MOCK_EDGE_SCANS.get(_station().name, {})
+    keys = [k for k in table if re.fullmatch(rf"{re.escape(edge)}(K|L[123])?_{kind}", k, re.IGNORECASE)]
+    if not keys:
+        raise ValueError(f"no {kind.upper()} scan for {edge}")
+    full, enabled = table[keys[0]]
+    if not enabled:
+        raise ValueError(f"the {keys[0]} default is not enabled - review and enable it on the "
+                         "edge scans sheet (cscan UI /edge-scans)")
+    if freq is not None:
+        full = " ".join(full.split()[:-1] + [freq])
+    return full, keys[0]
+
 
 def _validate(command: str, station=None) -> dict:
     station = station or _station()
@@ -269,6 +311,11 @@ def _start(st, body):
     station = _station()
     if body.get("undulator_scan") and not station.undulator:
         return 400, {"success": False, "error": f"{station.label} has no undulator"}
+    try:
+        command, edge_scan = _expand_edge_scan(str(body["command"]).strip())
+    except ValueError as e:
+        return 400, {"success": False, "error": str(e)}
+    body = dict(body, command=command)
     v = _validate(body["command"], station)
     refusal = next((e for e in v["errors"] if "monotonic" in e or "outside" in e), None)
     if refusal:
@@ -306,7 +353,8 @@ def _start(st, body):
             }
             st["controller"].update(state="initializing", error=None)
     _, s = _status(st, None) if not refused else (None, {"status": {"state": st["controller"]["state"]}})
-    return 200, {"success": True, "message": f"{label} started", "status": s["status"]}
+    return 200, {"success": True, "message": f"{label} started", "command": command,
+                 "edge_scan": edge_scan, "status": s["status"]}
 
 
 def _stop(st, body):
@@ -547,13 +595,19 @@ def _check_command(st, body):
     command = (body or {}).get("command", "").strip()
     if not command:
         return 400, {"success": False, "error": "Missing command parameter"}
-    v = _validate(command)
     lo, hi = _energy_range()
+    try:
+        command, edge_scan = _expand_edge_scan(command)
+    except ValueError as e:
+        return 200, {"success": True, "ok": False, "command": command, "error": str(e),
+                     "edge_scan": None, "mono_energy_range_eV": [lo, hi]}
+    v = _validate(command)
     if v["errors"]:
         return 200, {"success": True, "ok": False, "command": command, "error": v["errors"][0],
-                     "mono_energy_range_eV": [lo, hi]}
+                     "edge_scan": edge_scan, "mono_energy_range_eV": [lo, hi]}
     p = v["parsed"]
-    return 200, {"success": True, "ok": True, "command": command, "start_eV": p["start_ev"],
+    return 200, {"success": True, "ok": True, "command": command, "edge_scan": edge_scan,
+                 "start_eV": p["start_ev"],
                  "final_eV": p["final_ev"], "direction": p["direction"],
                  "steps": sum(r["steps"] for r in v["regions"]), "crystal": _crystal(),
                  "table_targets": None, "mono_energy_range_eV": [lo, hi], "mock": True}

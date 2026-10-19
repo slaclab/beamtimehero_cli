@@ -119,6 +119,27 @@ def _normalize_command(command: str) -> str:
     return command
 
 
+def _expand_edge_scan(command: str) -> tuple[str, str | None, str | None]:
+    """(command, edge_scan, error). An edge scan (``cscan Fe xanes``) comes
+    back as the full command the server's /check_command expands it to, with
+    its key (``FeK_xanes``); the table lives on the server and changes on
+    its sheet, so it is never expanded here. Any other command comes back
+    as given."""
+    if not cmd_sci.is_edge_shorthand(command):
+        return command, None, None
+    chk = audited_cherfd("check_command", {"command": command})
+    if not chk.get("ok"):
+        return command, None, (f"edge scan {command!r} needs the scan server to expand it: "
+                               f"{chk.get('error')}")
+    body = chk.get("result") or {}
+    if "edge_scan" not in body:
+        return command, None, (f"this scan server predates edge scans and can not expand "
+                               f"{command!r}; give the full command")
+    if not body.get("edge_scan"):
+        return command, None, body.get("error") or f"no edge scan for {command!r}"
+    return body["command"], body["edge_scan"], None
+
+
 def _needs_undulator(what: str) -> None:
     st = _station()
     if not st.undulator:
@@ -387,12 +408,18 @@ def t_check_readiness(args):
         blockers.append(t["crystal_warning"])
     command = args.get("command")
     if command:
-        command = _normalize_command(command)
+        command, edge_scan, edge_error = _expand_edge_scan(_normalize_command(command))
+        if edge_scan:
+            info["edge_scan"] = {"key": edge_scan, "command": command}
+        if edge_error:
+            blockers.append(f"command: {edge_error}")
+            command = None
+    if command:
         crystal = (server or {}).get("crystal") or config.station_crystal(station)
         v = cmd_sci.validate_command(command, crystal, station=station,
                                      energy_range_ev=_energy_range(server))
-        info["command_validation"] = {k: v[k] for k in ("ok", "effective_command", "errors",
-                                                        "warnings", "harmonic_changes")}
+        info["command_validation"] = {k: v.get(k) for k in ("ok", "effective_command", "errors",
+                                                            "warnings", "harmonic_changes")}
         blockers += [f"command: {e}" for e in v["errors"]]
         warnings += [f"command: {w}" for w in v["warnings"] if "checked live" not in w]
         if v["ok"]:
@@ -443,12 +470,19 @@ def t_start_scan(args):
     mismatch = _station_mismatch(server)
     if mismatch:
         return _as_json({"ok": False, "refused": "station", "error": mismatch}), []
+    # An edge scan is expanded first: what is validated, estimated and sent
+    # is the full command, so the scan runs what was checked even if the
+    # sheet changes in between
+    command, edge_scan, edge_error = _expand_edge_scan(command)
+    if edge_error:
+        return _as_json({"ok": False, "refused": "edge_scan", "error": edge_error}), []
     crystal = (server or {}).get("crystal") or config.station_crystal(station)
     v = cmd_sci.validate_command(command, crystal, station=station,
                                  energy_range_ev=_energy_range(server))
     if not v["ok"]:
         return _as_json({"ok": False, "refused": "validation", "errors": v["errors"],
-                         "warnings": v["warnings"]}), []
+                         "warnings": v["warnings"], "edge_scan": edge_scan,
+                         "command": command}), []
     if not _j(args):
         return _as_json({"ok": False, "error": "justification is required"}), []
     table = _table_tracking_on()
@@ -475,6 +509,8 @@ def t_start_scan(args):
                   for s in (embedded, post))
     per = v["estimated_motion_s"] + policy.PROFILE_SETTLING_S
     est = cmd_sci.estimate_acquisition_time(per, sweeps, body["reverse"], station.per_sweep_overhead_s)
+    if edge_scan:
+        res.update(edge_scan=edge_scan, expanded_command=command)
     res.update({"started": started, "state_after": post.get("state"),
                 "error_message": post.get("error_message"),
                 "validation_warnings": v["warnings"], "estimate": est})

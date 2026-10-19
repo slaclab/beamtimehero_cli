@@ -98,8 +98,8 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <h1>Science index — <span class="thin">every function, and what uses it</span></h1>
 <p class="lede">The scientific core of the toolbelt: what each function does, what it is called by, and what it cites. Generated from the source tree, so a new function appears here by existing. Regenerate with <code>python -m beamtimehero_cli.docgen_science</code>.</p>
 <div class="statstrip">
-<div class="stat"><b>183</b><span>functions</span></div>
-<div class="stat"><b>144</b><span>public</span></div>
+<div class="stat"><b>184</b><span>functions</span></div>
+<div class="stat"><b>145</b><span>public</span></div>
 <div class="stat"><b>42</b><span>modules</span></div>
 <div class="stat"><b>48</b><span>cited methods</span></div>
 <div class="stat"><b>60</b><span>attribution gaps</span></div>
@@ -947,7 +947,7 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 </div>
 </details>
 <details class="dir" style="--c: var(--c-cherfd)" open>
-<summary><span class="dname">science/cherfd/</span><span class="chip" style="--c: var(--c-cherfd)">7 modules</span><span class="count">53 fns</span></summary>
+<summary><span class="dname">science/cherfd/</span><span class="chip" style="--c: var(--c-cherfd)">7 modules</span><span class="count">54 fns</span></summary>
 <div class="modblock">
 <div class="modhead"><span class="mpath">cherfd.analysis</span><span class="mdoc">Run-level CHERFD analysis: direction offsets, sweep drift, energy calibration.</span></div>
 <div class="fn" data-hay="compare_directions cherfd.analysis  cherfd cherfd-compare-directions">
@@ -1111,6 +1111,11 @@ footer{margin-top:64px;padding-top:16px;border-top:3px double var(--rule-strong)
 <div class="fn const" data-hay="cherfd.command command_keywords">
 <p class="users"><b>constants</b> <code>COMMAND_KEYWORDS</code></p>
 <p class="fdoc">Module-level data and defaults. Editing these is the most common kind of contribution; nothing here needs a call graph to be safe to change, but see "used by" on the functions that read them.</p>
+</div>
+<div class="fn" data-hay="is_edge_shorthand cherfd.command true when the command names an edge scan (``cscan fe xanes``) rather cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-build-exafs-command cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
+<span class="sig"><span class="fname">is_edge_shorthand</span>(command)</span>
+<p class="fdoc">True when the command names an edge scan (``cscan Fe xanes``) rather</p>
+<p class="users"><b>used by</b> cherfd cherfd-analyze-convergence, cherfd cherfd-analyze-sweep-drift, cherfd cherfd-assess-energy-calibration, cherfd cherfd-assess-run-quality, cherfd cherfd-build-command, cherfd cherfd-build-exafs-command +12 more</p>
 </div>
 <div class="fn" data-hay="parse_command cherfd.command split a command into start, regions [(end_ev, speed)], freq. raises valueerror. cherfd cherfd-analyze-convergence cherfd cherfd-analyze-sweep-drift cherfd cherfd-assess-energy-calibration cherfd cherfd-assess-run-quality cherfd cherfd-build-command cherfd cherfd-build-exafs-command cherfd cherfd-channel-stats cherfd cherfd-check-gap-tracking cherfd cherfd-compare-directions cherfd cherfd-estimate-acquisition-time cherfd cherfd-export-merged cherfd cherfd-merge-sweeps cherfd cherfd-plot-sweep-diagnostics cherfd cherfd-plot-sweeps cherfd cherfd-read-sweep cherfd cherfd-validate-command cherfd-read cherfd-check-readiness cherfd-write cherfd-start-scan">
 <span class="sig"><span class="fname">parse_command</span>(command)</span>
